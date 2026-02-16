@@ -22,46 +22,37 @@ def duplicate_slide(slides_service, presentation_id, slide_object_id):
     new_slide_id = response["replies"][0]["duplicateObject"]["objectId"]
     return new_slide_id
 
-def apply_value_map_to_slide(slides_service,presentation_id,slide_id,value_map):
+def replace_placeholders(service, presentation_id, value_map):
     """
-    Accepts a dictionary mapping placeholder names to replacement values.
-    Applies all replacements to a single slide in one batchUpdate call.
-    
-    Example value_map:
-        {
-            "{Country_2}": "Canada",
-            "{City_2}": "Toronto"
-        }
+    Replace placeholders in a Google Slides presentation.
+
+    Args:
+        service: Authorized Google Slides API service instance
+        presentation_id: The ID of the presentation
+        value_map: Dict of {placeholder: replacement_value}
     """
 
     requests = []
 
-    for placeholder, value in value_map.items():
+    for placeholder, new_value in value_map.items():
         requests.append({
             "replaceAllText": {
                 "containsText": {
                     "text": placeholder,
                     "matchCase": True
                 },
-                "replaceText": value,
-                "pageObjectIds": [slide_id]
+                "replaceText": str(new_value)
             }
         })
 
     body = {"requests": requests}
 
-    response = slides_service.presentations().batchUpdate(
+    response = service.presentations().batchUpdate(
         presentationId=presentation_id,
         body=body
     ).execute()
 
-    # Return a list of occurrence counts for each placeholder
-    counts = [
-        reply["replaceAllText"]["occurrencesChanged"]
-        for reply in response["replies"]
-    ]
-
-    return counts
+    return response
 
 def replace_two_placeholders_on_slide(slides_service,presentation_id,slide_id,old_placeholder_1,new_placeholder_1,old_placeholder_2,new_placeholder_2):
     """
@@ -100,8 +91,8 @@ def replace_two_placeholders_on_slide(slides_service,presentation_id,slide_id,ol
     ).execute()
 
     # Return how many replacements were made for each placeholder
-    reply1 = response["replies"][0]["replaceAllText"]["occurrencesChanged"]
-    reply2 = response["replies"][1]["replaceAllText"]["occurrencesChanged"]
+    reply1 = response.get("replies", [{}])[0].get("replaceAllText", {}).get("occurrencesChanged", 0)
+    reply2 = response.get("replies", [{}])[1].get("replaceAllText", {}).get("occurrencesChanged", 0)
 
     return reply1, reply2
 
