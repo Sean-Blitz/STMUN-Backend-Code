@@ -3,55 +3,19 @@ import time
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 import string
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-# Requires: pip install gspread google-auth
 from typing import List, Union, Dict
 import driveFunctions
 import SlidesFunctions
 import sheetFunctions
+import AuthenticationFunctions
 
-SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/presentations']
-CREDENTIALS_FILE = 'credentials.json'
-TOKEN_FILE = 'token.json'
+drive_service, sheets_service, slides_service, docs_service, gmail_service = AuthenticationFunctions.authenticate()
 
-def authenticate():
-    """
-    Handles OAuth login and returns valid credentials.
-    """
-    creds = None
-
-    # Load existing token
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-
-    # If no valid credentials, log in
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CREDENTIALS_FILE, SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-
-        # Save token for next run
-        with open(TOKEN_FILE, 'w') as token:
-            token.write(creds.to_json())
-
-    return creds
-
-creds = authenticate()
-sheets_service = build('sheets', 'v4', credentials=creds)
-drive_service = driveFunctions.get_drive_service(creds)
-slides_service = build('slides', 'v1', credentials=creds)
-
-committeescount = int(input("How many committees are there? "))
+committeenames = sheetFunctions.read_headers_until_blank("1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs", "Placards Automation", sheets_service)
+committeescount = len(committeenames)
 
 dictionaryofplacards = sheetFunctions.read_columns_until_blank("1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs", "Placards Automation", committeescount, sheets_service)
-committeenames = sheetFunctions.read_headers("1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs", "Placards Automation", committeescount, sheets_service)
+
 
 newslidesURL = []
 for i in range(len(dictionaryofplacards)): # Iterate through each committee. You are on file level here.

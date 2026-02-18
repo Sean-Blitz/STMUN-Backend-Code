@@ -107,3 +107,213 @@ def get_first_slide_id(slides_service, presentation_id):
 
     first_slide = presentation["slides"][0]
     return first_slide["objectId"]
+
+def create_slide_copies(slides_service, presentation_id, template_slide_id, number_of_copies):
+    """
+    Duplicates a template slide N times.
+
+    Returns:
+        (count_created, [list_of_slide_ids])
+    """
+
+    created_slide_ids = []
+
+    for _ in range(number_of_copies):
+        new_slide_id = duplicate_slide(
+            slides_service,
+            presentation_id,
+            template_slide_id
+        )
+        created_slide_ids.append(new_slide_id)
+
+    return len(created_slide_ids), created_slide_ids
+
+def move_slides_to_indexes(slides_service, presentation_id, slide_ids, target_indexes):
+    if len(slide_ids) != len(target_indexes):
+        raise ValueError("slide_ids and target_indexes must match length.")
+
+    # Sort by target index ascending
+    moves = sorted(zip(slide_ids, target_indexes), key=lambda x: x[1])
+
+    for i, (slide_id, target_index) in enumerate(moves):
+        # Get current slide count before move
+        presentation = slides_service.presentations().get(presentationId=presentation_id).execute()
+        current_slide_count = len(presentation.get("slides", []))
+
+        # Cap target_index at the end
+        if target_index > current_slide_count:
+            target_index = current_slide_count
+
+        request = {
+            "requests": [
+                {
+                    "updateSlidesPosition": {
+                        "slideObjectIds": [slide_id],
+                        "insertionIndex": target_index
+                    }
+                }
+            ]
+        }
+
+        slides_service.presentations().batchUpdate(
+            presentationId=presentation_id,
+            body=request
+        ).execute()
+
+    print("Finished moving slides.")
+
+def get_slide_id_by_index(slides_service, presentation_id, index):
+    """
+    Returns the objectId of the slide at the given index.
+
+    Args:
+        slides_service: Authenticated Google Slides API service.
+        presentation_id (str): ID of the presentation.
+        index (int): 0-based slide index.
+
+    Returns:
+        str: The slide's objectId.
+    """
+
+    if not isinstance(index, int) or index < 0:
+        raise ValueError("Index must be a non-negative integer.")
+
+    presentation = slides_service.presentations().get(
+        presentationId=presentation_id
+    ).execute()
+
+    slides = presentation.get("slides", [])
+
+    if index >= len(slides):
+        raise IndexError(
+            f"Index {index} out of range. Presentation has {len(slides)} slides."
+        )
+
+    return slides[index]["objectId"]
+
+def replace_placeholders_on_slide(
+    slides_service,
+    presentation_id,
+    slide_id,
+    value_map
+):
+    """
+    Replaces placeholders on a single slide only.
+
+    Args:
+        slides_service: Authenticated Google Slides API service
+        presentation_id (str): ID of the presentation
+        slide_id (str): Object ID of the slide to modify
+        value_map (dict): {placeholder_text: replacement_text}
+
+    Example value_map:
+        {
+            "{COUNTRY_1}": "France",
+            "{COUNTRY_2}": "Germany"
+        }
+    """
+
+    if not value_map:
+        return
+
+    requests = []
+
+    for placeholder, new_value in value_map.items():
+        requests.append({
+            "replaceAllText": {
+                "containsText": {
+                    "text": placeholder,
+                    "matchCase": True
+                },
+                "replaceText": new_value,
+                "pageObjectIds": [slide_id]  # 🔥 restrict to this slide only
+            }
+        })
+
+    body = {"requests": requests}
+
+    slides_service.presentations().batchUpdate(
+        presentationId=presentation_id,
+        body=body
+    ).execute()
+
+def get_slide_count(slides_service, presentation_id):
+    """
+    Returns the number of slides in a Google Slides presentation.
+
+    Args:
+        slides_service: Authenticated Google Slides API service
+        presentation_id (str): ID of the presentation
+
+    Returns:
+        int: Number of slides
+    """
+
+    presentation = slides_service.presentations().get(
+        presentationId=presentation_id,
+        fields="slides(objectId)"  # only fetch slide IDs (faster)
+    ).execute()
+
+    slides = presentation.get("slides", [])
+    return len(slides)
+
+def reverse_all_slides(slides_service, presentation_id):
+    """
+    Reverses the order of all slides in a presentation.
+    """
+
+    # Get slide IDs in current order
+    presentation = slides_service.presentations().get(
+        presentationId=presentation_id,
+        fields="slides(objectId)"
+    ).execute()
+
+    slides = presentation.get("slides", [])
+    slide_ids = [slide["objectId"] for slide in slides]
+
+    if len(slide_ids) <= 1:
+        return
+
+    reversed_ids = list(reversed(slide_ids))
+
+    requests = []
+
+    # Move each slide to its new position
+    for new_index, slide_id in enumerate(reversed_ids):
+        requests.append({
+            "updateSlidesPosition": {
+                "slideObjectIds": [slide_id],
+                "insertionIndex": new_index
+            }
+        })
+
+    slides_service.presentations().batchUpdate(
+        presentationId=presentation_id,
+        body={"requests": requests}
+    ).execute()
+
+def delete_slide(slides_service, presentation_id, slide_id):
+    """
+    Deletes a slide from a presentation using its object ID.
+
+    Args:
+        slides_service: Authenticated Google Slides API service
+        presentation_id (str): ID of the presentation
+        slide_id (str): Object ID of the slide to delete
+    """
+
+    request = {
+        "requests": [
+            {
+                "deleteObject": {
+                    "objectId": slide_id
+                }
+            }
+        ]
+    }
+
+    slides_service.presentations().batchUpdate(
+        presentationId=presentation_id,
+        body=request
+    ).execute()
+

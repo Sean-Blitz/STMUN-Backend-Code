@@ -115,37 +115,36 @@ def read_columns_until_blank(spreadsheet_id, sheet_name, num_columns, service):
 
     return result
 
-def read_headers(spreadsheet_id, sheet_name, num_columns, service):
+def read_headers_until_blank(spreadsheet_id, sheet_name, service):
     """
-    Read the first row (header) from the worksheet, returning exactly `num_columns`
-    values from the leftmost columns. Pads with empty strings if needed.
+    Reads the first row (header) from the worksheet, stopping at the first blank cell.
+
+    Args:
+        spreadsheet_id (str): Google Sheet ID.
+        sheet_name (str): Worksheet/tab name.
+        service: Authenticated Google Sheets API service.
+
+    Returns:
+        List[str]: Header values from leftmost column until first blank.
     """
-
-    if not isinstance(num_columns, int) or num_columns <= 0:
-        raise ValueError("num_columns must be a positive integer")
-
-    # Convert column number to letter (A, B, C, ...)
-    last_column_letter = string.ascii_uppercase[num_columns - 1]
-
-    # Only request first row up to needed column
-    range_name = f"{sheet_name}!A1:{last_column_letter}1"
-
+    # Request the entire first row
+    range_name = f"{sheet_name}!1:1"  # row 1
     response = service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
         range=range_name
     ).execute()
 
     rows = response.get("values", [])
-
     if not rows:
-        return [""] * num_columns
+        return []
 
     header_row = rows[0]
 
+    # Collect values until first blank
     header_values = []
-    for col_idx in range(num_columns):
-        header_values.append(
-            header_row[col_idx] if col_idx < len(header_row) else ""
-        )
+    for cell in header_row:
+        if cell.strip() == "":
+            break
+        header_values.append(cell)
 
     return header_values
