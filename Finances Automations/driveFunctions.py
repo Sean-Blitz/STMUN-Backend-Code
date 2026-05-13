@@ -303,3 +303,38 @@ def list_google_sheet_ids(folder_id: str, service) -> list:
             break
 
     return sheet_ids
+
+def share_spreadsheet(service, file_id, email, role="commenter"):
+    """
+    Shares a Google Sheet/File with a specific email address.
+
+    Args:
+        service: Authenticated Drive API service instance.
+        file_id (str): The ID of the spreadsheet to share.
+        email (str): The email address of the student/user.
+        role (str): 'reader', 'commenter', or 'writer' (editor). 
+                    Defaults to 'commenter'.
+    """
+    try:
+        # Create the permission object
+        new_permission = {
+            'type': 'user',
+            'role': role,
+            'emailAddress': email
+        }
+
+        # Execute the permission creation
+        # sendNotificationEmail=True will send an email to the user letting them know
+        permission = service.permissions().create(
+            fileId=file_id,
+            body=new_permission,
+            fields='id',
+            sendNotificationEmail=True 
+        ).execute()
+
+        print(f"Successfully shared with {email} as {role}. Permission ID: {permission.get('id')}")
+        return permission
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
