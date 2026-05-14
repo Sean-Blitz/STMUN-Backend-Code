@@ -46,22 +46,21 @@ def authenticate():
 def write_cell_value(letter, number, P = None, TD = None, A = None, Att = None, F=None, awd=None, info=None, T=None):
     #P is Payment 1 or 2. TD is total due. A is for conference attendance. Att is for meeting attendance. F is for finance. T is for training attendance.
     if P != None:
-        return f'=IF(ISBLANK(IMPORTRANGE({mastersheet}, "Fundraising/Deposits!{letter}{number}")), "$0", IMPORTRANGE({mastersheet}, "Fundraising/Deposits!{letter}{number}"))'
+        return f'=IF(ISBLANK(IMPORTRANGE("{mastersheet}", "Fundraising/Deposits!{letter}{number}")), "$0", IMPORTRANGE("{mastersheet}", "Fundraising/Deposits!{letter}{number}"))'
     if TD != None:
-        return f'=IF(ISBLANK(IMPORTRANGE({mastersheet}, "Fundraising/Deposits!{letter}{number}")), "N/A", IMPORTRANGE({mastersheet}, "Fundraising/Deposits!{letter}{number}"))'
+        return f'=IF(IMPORTRANGE("{mastersheet}", "Fundraising/Deposits!{letter}{number}")="", "N/A", IMPORTRANGE("{mastersheet}", "Fundraising/Deposits!{letter}{number}"))'
     if A != None:
-        return f'=IF(ISBLANK(IMPORTRANGE({mastersheet}, "Conference Attd/Award!{letter}{number}")), FALSE, TRUE)'
+        return f'=IF(ISBLANK(IMPORTRANGE("{mastersheet}", "Conference Attd/Award!{letter}{number}")), FALSE, TRUE)'
     if Att != None:
-        return f'=IF(IMPORTRANGE({mastersheet}, "Thursday Meeting Attd!{letter}{number+1}")="", FALSE, TRUE)'
+        return f'=IF(IMPORTRANGE("{mastersheet}", "Thursday Meeting Attd!{letter}{number+1}")="", FALSE, TRUE)'
     if F != None:
-        return f'=IF(ISBLANK(IMPORTRANGE({mastersheet}, "Fundraising/Deposits!{letter}{number}")), "$-", IMPORTRANGE({mastersheet}, "Fundraising/Deposits!{letter}{number}"))'
+        return f'=IF(ISBLANK(IMPORTRANGE("{mastersheet}", "Fundraising/Deposits!{letter}{number}")), "$-", IMPORTRANGE("{mastersheet}", "Fundraising/Deposits!{letter}{number}"))'
     if awd != None:
-        return f'=IMPORTRANGE({mastersheet}, "Conference Attd/Award!{letter}{number}")'
+        return f'=IMPORTRANGE("{mastersheet}", "Conference Attd/Award!{letter}{number}")'
     if info != None:
-        return f'=IMPORTRANGE({mastersheet}, "Master Roster Contact Info (EDIT)!{letter}{number}")'
+        return f'=IMPORTRANGE("{mastersheet}", "Master Roster Contact Info (EDIT)!{letter}{number}")'
     if T != None:
-        return f'=IF(ISBLANK(IMPORTRANGE({mastersheet}, "Mock/Training Attd!{letter}{number}")), FALSE, TRUE)'
-
+        return f'=IF(ISBLANK(IMPORTRANGE("{mastersheet}", "Mock/Training Attd!{letter}{number}")), FALSE, TRUE)'
 def generate_sheet(i):
     lastname = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!A{i+4}")
     firstname = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!B{i+4}")
@@ -71,9 +70,10 @@ def generate_sheet(i):
 
     dictofvalues = {
         "B3": name,
-        "B4": write_cell_value("C", i+4, info=1),
+        "B4": write_cell_value("E", i+4, info=1),
         "E3": write_cell_value("D", i+4, info=1),
         "E4": write_cell_value("C", i+4, info=1),
+        "B5": f'=IMPORTRANGE("{mastersheet}", "Overall Total Points!D{i+4}")',
         "A9": write_cell_value("E", i+4, F=1),
         "B9": write_cell_value("F", i+4, F=1),
         "C9": write_cell_value("G", i+4, F=1),
@@ -86,6 +86,7 @@ def generate_sheet(i):
         "D13": write_cell_value("Q", i+4, TD=1),
         "B14": write_cell_value("R", i+4, P=1),
         "C14": write_cell_value("S", i+4, P=1),
+        "D14": write_cell_value("T", i+4, TD=1),
         "B15": write_cell_value("U", i+4, P=1),
         "C15": write_cell_value("V", i+4, P=1),
         "D15": write_cell_value("W", i+4, TD=1),
@@ -118,7 +119,7 @@ def generate_sheet(i):
         "C29": write_cell_value("V", i+4, awd=1),
         "C30": write_cell_value("R", i+4, awd=1),
         "C31": write_cell_value("X", i+4, awd=1),
-        "J2": write_cell_value("E", i+4, info=1),
+        "J2": write_cell_value("E", i+4, Att=1),
         "J3": write_cell_value("F", i+4, Att=1),
         "J4": write_cell_value("G", i+4, Att=1),
         "J5": write_cell_value("H", i+4, Att=1),
@@ -205,15 +206,19 @@ sheets_service = build('sheets', 'v4', credentials=authenticate())
 
 if action == "all":
     peoplecount = sheetFunctions.get_column_until_empty(sheets_service, mastersheetID, "Master Roster Contact Info (EDIT)", "A", 4)
+    sheetstoshare = {}
     for i in range(peoplecount):
         newsheet = generate_sheet(i)
-        email = sheetFunctions.read_single_cell(sheets_service, newsheet, "B4")
-        driveFunctions.share_spreadsheet(sheets_service, newsheet, email, role="commenter")
+        email = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!E{i+4}")
+        sheetstoshare[newsheet] = email
         time.sleep(5)
+    print("Please make sure you have gone through all the sheets and enabled connections!")
+    for sheet in sheetstoshare:
+        driveFunctions.share_spreadsheet(drive_service, sheet, sheetstoshare[sheet], role="commenter")
 elif action == "person":
-    number = input("Enter the person's row number: ").strip()
+    number = input("Enter the person's row number (from Master Roster Contact Info): ").strip()
     newsheet = generate_sheet(int(number)-4)
-    email = sheetFunctions.read_single_cell(sheets_service, newsheet, "B4")
-    driveFunctions.share_spreadsheet(sheets_service, newsheet, email, role="commenter")
+    email = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!E{int(number)}")
+    driveFunctions.share_spreadsheet(drive_service, newsheet, email, role="commenter")
 else:
     print("Invalid input. Please enter 'all' or 'person'.")
