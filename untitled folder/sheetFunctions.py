@@ -1,3 +1,5 @@
+import csv
+import os
 def write_values_to_sheet_from_dict(service, spreadsheet_id, cell_value_map, value_input_option="USER_ENTERED"):
     """
     Writes different values to different cells/ranges in one API call.
@@ -137,3 +139,32 @@ def get_column_until_empty(service, sheet_id, sheet_name, column_letter, start_r
         collected_data.append(row[0])
         
     return len(collected_data)
+
+def find_unassigned_schools(input_schools, csv_filepath):
+    """
+    Compares a list of incoming schools against a local CSV file of 
+    already assigned schools.
+    
+    Arguments:
+    input_schools (list): List of school names scanned from the Google Sheet.
+    csv_filepath (str): Path to the local CSV file tracking completed schools.
+    
+    Returns:
+    list: School names that are in input_schools but NOT in the CSV.
+    """
+    assigned_schools = set()
+    
+    # Failsafe: If the CSV doesn't exist yet (e.g., first run), 
+    # we treat it as an empty set.
+    if os.path.exists(csv_filepath):
+        with open(csv_filepath, mode='r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row:  # Ensure the row isn't empty
+                    # Strip whitespace to prevent matching errors due to typos
+                    assigned_schools.add(row[0].strip())
+                    
+    # Use list comprehension to find schools that aren't in our assigned set
+    unassigned = [school for school in input_schools if school.strip() not in assigned_schools]
+    
+    return unassigned

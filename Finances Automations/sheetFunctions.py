@@ -137,3 +137,31 @@ def get_column_until_empty(service, sheet_id, sheet_name, column_letter, start_r
         collected_data.append(row[0])
         
     return len(collected_data)
+
+def get_column_data_until_empty(service, sheet_id, sheet_name, column_letter, start_row):
+    """
+    Reads down a specific column in Google Sheets and returns all values 
+    until it hits an empty cell.
+    """    
+    # 2. Construct the range string (e.g., "Sheet1!A2:A" fetches to the bottom)
+    range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
+    
+    # 3. Make a single API call to fetch the data
+    sheet = service.spreadsheets()
+    result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
+    
+    # The API returns a list of lists, like [['Data1'], ['Data2'], [], ['Data4']]
+    values = result.get('values', [])
+    
+    collected_data = []
+    
+    # 4. Loop through the fetched values and stop at the first blank
+    for row in values:
+        # Google Sheets API represents an empty cell either as an empty list `[]` 
+        # or a list containing an empty string `['']`
+        if not row or not str(row[0]).strip():
+            break  # Exit the loop as soon as an empty cell is found
+            
+        collected_data.append(row[0])
+        
+    return collected_data

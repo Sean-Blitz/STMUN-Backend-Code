@@ -17,6 +17,7 @@ TOKEN_FILE = 'token.json'
 mastersheetID = "1JBLoL2TSQKqotrDhH2TFC3SJeLjeTioXbWMAXjfGOb0"
 mastersheet = f"docs.google.com/spreadsheets/d/{mastersheetID}"
 template = "16T80NITxS63Q8ZzL9dl2tVOdMfKiYHJfxGpowbQA4CA"
+
 def authenticate():
     """
     Handles OAuth login and returns valid credentials.
