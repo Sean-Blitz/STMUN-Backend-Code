@@ -140,31 +140,76 @@ def get_column_until_empty(service, sheet_id, sheet_name, column_letter, start_r
         
     return len(collected_data)
 
-def find_unassigned_schools(input_schools, csv_filepath):
+def get_column_data_until_empty(service, sheet_id, sheet_name, column_letter, start_row):
     """
-    Compares a list of incoming schools against a local CSV file of 
-    already assigned schools.
+    Reads down a specific column in Google Sheets and returns all values 
+    until it hits an empty cell.
+    """    
+    # 2. Construct the range string (e.g., "Sheet1!A2:A" fetches to the bottom)
+    range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
+    
+    # 3. Make a single API call to fetch the data
+    sheet = service.spreadsheets()
+    result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
+    
+    # The API returns a list of lists, like [['Data1'], ['Data2'], [], ['Data4']]
+    values = result.get('values', [])
+    
+    collected_data = []
+    
+    # 4. Loop through the fetched values and stop at the first blank
+    for row in values:
+        # Google Sheets API represents an empty cell either as an empty list `[]` 
+        # or a list containing an empty string `['']`
+        if not row or not str(row[0]).strip():
+            break  # Exit the loop as soon as an empty cell is found
+            
+        collected_data.append(row[0])
+        
+    return collected_data
+
+def find_row_by_string(sheet_api, spreadsheet_id, sheet_name, column_letter, search_string):
+    """
+    Searches down a specific column in Google Sheets for a string value
+    and returns its 1-indexed row number.
     
     Arguments:
-    input_schools (list): List of school names scanned from the Google Sheet.
-    csv_filepath (str): Path to the local CSV file tracking completed schools.
+    sheet_api: Your authorized Google Sheets API v4 service object.
+    spreadsheet_id (str): The unique ID of your Google Spreadsheet.
+    sheet_name (str): The name of the specific tab (e.g., 'Form Responses').
+    column_letter (str): The column to search down (e.g., 'A' or 'B').
+    search_string (str): The exact value you are looking for (e.g., a school name).
     
     Returns:
-    list: School names that are in input_schools but NOT in the CSV.
+    int: The 1-indexed row number if found.
+    None: If the string is not found in the column.
     """
-    assigned_schools = set()
+    # Define the range to read the entire column (e.g., 'Form Responses!A:A')
+    range_to_search = f"{sheet_name}!{column_letter}:{column_letter}"
     
-    # Failsafe: If the CSV doesn't exist yet (e.g., first run), 
-    # we treat it as an empty set.
-    if os.path.exists(csv_filepath):
-        with open(csv_filepath, mode='r', newline='', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if row:  # Ensure the row isn't empty
-                    # Strip whitespace to prevent matching errors due to typos
-                    assigned_schools.add(row[0].strip())
-                    
-    # Use list comprehension to find schools that aren't in our assigned set
-    unassigned = [school for school in input_schools if school.strip() not in assigned_schools]
-    
-    return unassigned
+    try:
+        # Request the column values from the API
+        request = sheet_api.values().get(
+            spreadsheetId=spreadsheet_id,
+            range=range_to_search
+        )
+        response = request.execute()
+        
+        # Extract the list of lists. Each inner list represents a row's column value.
+        column_values = response.get('values', [])
+        
+        # Loop through the rows to find a match
+        for index, row in enumerate(column_values):
+            # Check if the row has data and matches our target string (cleaned of edge spaces)
+            if row and row[0].strip().lower() == search_string.strip().lower():
+                # API indices are 0-based, so row 1 is index 0. 
+                # We add 1 to return a human-readable row number for Google Sheets.
+                return index + 1
+                
+        # If the loop finishes without hitting the return statement, the string wasn't found
+        print(f"⚠️ Warning: '{search_string}' not found in column {column_letter}.")
+        return None
+        
+    except Exception as e:
+        print(f"❌ API Error searching column {column_letter}: {e}")
+        return None

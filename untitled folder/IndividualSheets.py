@@ -1,3 +1,4 @@
+import csv
 import os
 import time
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -7,6 +8,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from typing import List, Any
 
 import driveFunctions
 import sheetFunctions
@@ -199,8 +201,38 @@ def generate_sheet(i):
     print(f"Writing values to sheet for {name}...")
     sheetFunctions.write_values_to_sheet_from_dict(sheets_service, newsheet, dictofvalues, value_input_option="USER_ENTERED")
     print(f"Finished sheet. Link: https://docs.google.com/spreadsheets/d/{newsheet}/edit")
-    return newsheet
+    return newsheet, name
 
+def export_lists_to_csv(list1: List[Any], list2: List[Any], filename: str = "output.csv") -> None:
+    """
+    Writes two lists into two separate columns of a CSV file.
+    
+    Parameters:
+    list1 (list): Data for the first column.
+    list2 (list): Data for the second column.
+    filename (str): The name of the CSV file to create.
+    """
+    # Check that the two lists are the same length
+    if len(list1) != len(list2):
+        raise ValueError(
+            f"Length mismatch: list1 has {len(list1)} items, but list2 has {len(list2)} items. "
+            "Both lists must be the same length."
+        )
+    
+    # Open the file and write the data
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        
+        # Optional: Add headers if you want them (e.g., Column 1, Column 2)
+        # writer.writerow(["Column A", "Column B"])
+        
+        # zip() pairs the elements from both lists row by row
+        for row in zip(list1, list2):
+            writer.writerow(row)
+            
+    print(f"Successfully wrote data to {filename}")
+    
+print("Warning: do not use this while the sheet is updating in ANY way!")
 action = input("Would you like to generate all sheets or add one person? (all/person): ").strip().lower()
 drive_service = driveFunctions.get_drive_service(authenticate())
 sheets_service = build('sheets', 'v4', credentials=authenticate())
@@ -208,17 +240,23 @@ sheets_service = build('sheets', 'v4', credentials=authenticate())
 if action == "all":
     peoplecount = sheetFunctions.get_column_until_empty(sheets_service, mastersheetID, "Master Roster Contact Info (EDIT)", "A", 4)
     sheetstoshare = {}
+    names = []
     for i in range(peoplecount):
-        newsheet = generate_sheet(i)
+        newsheet, name = generate_sheet(i)
         email = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!E{i+4}")
         sheetstoshare[newsheet] = email
+        names.append(name)
         time.sleep(5)
     print("Please make sure you have gone through all the sheets and enabled connections!")
     for sheet in sheetstoshare:
         driveFunctions.share_spreadsheet(drive_service, sheet, sheetstoshare[sheet], role="commenter")
+    sheeturls = []
+    for sheet in sheetstoshare:
+        sheeturls.append(f"https://docs.google.com/spreadsheets/d/{sheet}/edit")
+    export_lists_to_csv(names, sheeturls, filename="names_and_emails.csv")
 elif action == "person":
     number = input("Enter the person's row number (from Master Roster Contact Info): ").strip()
-    newsheet = generate_sheet(int(number)-4)
+    newsheet, name = generate_sheet(int(number)-4)
     email = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!E{int(number)}")
     driveFunctions.share_spreadsheet(drive_service, newsheet, email, role="commenter")
 else:

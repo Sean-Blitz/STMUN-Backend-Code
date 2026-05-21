@@ -20,6 +20,7 @@ CREDENTIALS_FILE = 'credentials.json'
 TOKEN_FILE = 'token.json'
 registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs"
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registrationSheetID}/edit"
+sheetname = "testing"
 
 def authenticate():
     """
@@ -50,9 +51,25 @@ def authenticate():
 drive_service = driveFunctions.get_drive_service(authenticate())
 sheets_service = build('sheets', 'v4', credentials=authenticate())
 
+sheetSchools = sheetFunctions.get_column_data_until_empty(sheets_service, registrationSheetID, sheetname, "A", 2)
+unassignedSchools = AssignmentsFunctions.get_unassigned_schools(sheetSchools, "assignedSchools.csv")
 
+while unassignedSchools:
+    selectedSchool = AssignmentsFunctions.select_school_to_assign(unassignedSchools)
+    row = sheetFunctions.find_row_by_string(sheets_service, registrationSheetID, sheetname, "A", selectedSchool)
+    output = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}"])
+    if len(output) == 8:  # check if all 8 cells have values
+        print("Top 5 country preferences:", output[1])
+        print("Middle Eastern Bloc:", output[2])
+        print("American Bloc:", output[3])
+        print("European Bloc:", output[4])
+        print("Asian Bloc:", output[5])
+        print("African Country Bloc:", output[6])
+        print("Pacific Country Bloc:", output[7])
+        print("Security Council interest:", output[8])
+        
 
-
-
-
-
+        unassignedSchools.remove(selectedSchool)
+    else:
+        print("Error: Not all expected cells have values. Please check the sheet for completeness.")
+    #remember to add the assigned school to the CSV!
