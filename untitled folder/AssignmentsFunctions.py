@@ -16,7 +16,7 @@ def select_school_to_assign(unassigned_schools):
     str: The name of the school chosen by the user.
     """
     if not unassigned_schools:
-        print("\n🎉 All schools have been assigned! Nothing left to process.")
+        print("\n All schools have been assigned! Nothing left to process.")
         sys.exit(0)
         
     print("\n" + "="*40)
@@ -26,7 +26,7 @@ def select_school_to_assign(unassigned_schools):
     selected = questionary.select(
         "Select a school to begin their assignment process:",
         choices=unassigned_schools,
-        pointer="👉",               
+        pointer="-->",               
         use_indicator=True          
     ).ask()
     
@@ -37,10 +37,13 @@ def get_unassigned_schools(live_schools, csv_filepath):
     assigned = set()
     if os.path.exists(csv_filepath):
         with open(csv_filepath, mode='r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if row: assigned.add(row[0].strip())
+            csvdata = csv.reader(f)
+            for row in csvdata:
+                if row: 
+                    assigned.add(row[0].strip())
     return [s for s in live_schools if s.strip() not in assigned]
+#how does this function work? Essentially, it checks if CSV exists, opens it safely, reads row by row checking first column,
+#strips whitespace, appends it to the set, and uses the fact that sets already have uniqueness to compare with live_schools.
 
 def print_historical_recommendations(school_name, past_csv_filepath):
     """Scans past years' CSV to make GA/Crisis split recommendations."""
