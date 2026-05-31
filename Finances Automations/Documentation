@@ -1,11 +1,57 @@
-Finances Automation:
-1. Initializes as variables the API token, the database ID, the name of the table (from Airtable), and time.
-2. Finds an email with the relevant gmail label, returns email ID.
-    3. Extracts a strings from those email IDs.
-4. Begins loop for the number of schools:
-    5. Looks for the record ID of that school.
-    6. Gets the relevant records of that school, stores as variables.
-    7. Asks user if the delegate is independent (checks input)
-    8. Looks for delegates count and date from the Airtable, using pre-set date frames.
-    9. If independent: based on dates, assigns variables for delegation fee.
-    
+# Code Documentation: How to use for beginners
+
+## Finances Automation
+**This file is designed to create a new invoice whenever a school registers.**
+
+Upon registration, it pulls from:
+
+Gmail - the schools that registered but have not been processed by this code
+
+Airtable - the registration data for that school
+
+This code then generates a new invoice sheets file from the correct template, fills in the right columns for Finances in Airtable,
+and fills in the new invoice sheets file. It also generates an email in Google Docs based on a template with placeholders, sharing it with SG@SCVMUN.COM
+### How to use it:
+When you get an email from Airtable, run this code on your local machine. You can run it in VScode, or a termainal.
+
+You're here for a reason! Check whatever this code generates; it will give you links to the files.
+
+Contact the SG once you're done.
+
+If something breaks (python returns an error), ask the USG of Logistics.
+
+## Copying Invoices
+**This file is designed to copy over an invoice when you move from one range to another**
+
+When run, it takes from the user inputs on what it is copying to (i.e. from Invoice 1 to 2). 
+
+Scans the attending folder for all school folders. Looks inside for folders from this year's folder.
+
+Then for each school, it finds the sheet you're copying from, and makes a new sheet based on that.
+
+Moves the cells in the new sheet based on pre-set rules with fees.
+
+Prints out a list of sheets needing edits, and sheets that it did not touch.
+
+### How to use it:
+Most of the time, the text gives you hints on what to do. Just follow instructions, click the links needed (edit things manually if necessary).
+
+Please take the time to select a few schools for result review.
+
+## Invoice Final Data
+**This one prints out a new CSV File with all invoice data**
+
+When you run it, the code scans the folder set in the script.
+
+For each sheet inside that folder, it extracts the balance, comments, and school name.
+
+Makes a new CSV with columns as Name, Balance, and Comments.
+
+### How to use it:
+Ensure that the folderID is correct inside the variable.
+
+Run it, and go to the file path it gives you for the new CSV. You can import it into Google Sheets for better viewing.
+
+This is mainly designed for right before SCVMUN, when you need to see which schools still owe you money.
+
+> -By Siyan Mu

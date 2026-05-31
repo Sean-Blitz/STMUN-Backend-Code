@@ -1,10 +1,5 @@
 import csv
 import os
-import re
-import datetime
-import requests
-import json
-import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 #Warning: this code will take a while to run because of time.sleep()
@@ -51,11 +46,11 @@ def authenticate():
 sheets_service = build('sheets', 'v4', credentials=authenticate())
 creds = authenticate()
 drive_service = driveFunctions.get_drive_service(creds)
-folderIDs = ['1HEfiWYpQKMCVeRheuj7fo0cUmZ6Rh6vA']
+folderID = ['1HEfiWYpQKMCVeRheuj7fo0cUmZ6Rh6vA']
 #Change folderIDs from year to year.
 
-for i in range(len(folderIDs)): #each folder
-    allsheetIDs = driveFunctions.list_google_sheet_ids(folderIDs[i], drive_service)
+for i in range(len(folderID)): #each folder (technically only one right now. Can modify above to scan more.)
+    allsheetIDs = driveFunctions.list_google_sheet_ids(folderID[i], drive_service)
     balance = []
     comments = []
     name = []
