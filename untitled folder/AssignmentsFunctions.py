@@ -45,24 +45,6 @@ def get_unassigned_schools(live_schools, csv_filepath):
 #how does this function work? Essentially, it checks if CSV exists, opens it safely, reads row by row checking first column,
 #strips whitespace, appends it to the set, and uses the fact that sets already have uniqueness to compare with live_schools.
 
-def print_historical_recommendations(school_name, past_csv_filepath):
-    """Scans past years' CSV to make GA/Crisis split recommendations."""
-    if not os.path.exists(past_csv_filepath):
-        return
-    
-    years_attended = 0
-    awards_won = 0
-    with open(past_csv_filepath, mode='r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row['School'] == school_name:
-                years_attended += 1
-                awards_won += int(row.get('Awards', 0))
-    
-    if years_attended >= 2 or awards_won >= 3:
-        print(f"\n [DATA-DRIVEN REC]: {school_name} has attended {years_attended} times and won {awards_won} awards.")
-        print("   -> Recommendation: Allocate a higher percentage to Crisis/Specialized committees.")
-
 def find_lowest_pct_committee(committees_data, c_type="GA", req_double=False, req_spots=1):
     """Greedy algorithm: Finds the committee of requested type with lowest % full."""
     eligible = []

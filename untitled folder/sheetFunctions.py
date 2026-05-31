@@ -1,5 +1,4 @@
-import csv
-import os
+import string
 def write_values_to_sheet_from_dict(service, spreadsheet_id, cell_value_map, value_input_option="USER_ENTERED"):
     """
     Writes different values to different cells/ranges in one API call.
@@ -207,9 +206,18 @@ def find_row_by_string(sheet_api, spreadsheet_id, sheet_name, column_letter, sea
                 return index + 1
                 
         # If the loop finishes without hitting the return statement, the string wasn't found
-        print(f"⚠️ Warning: '{search_string}' not found in column {column_letter}.")
+        print(f"Warning: '{search_string}' not found in column {column_letter}.")
         return None
         
     except Exception as e:
-        print(f"❌ API Error searching column {column_letter}: {e}")
+        print(f"API Error searching column {column_letter}: {e}")
         return None
+    
+def sheets_alphabet(n):
+    alphabet = string.ascii_uppercase
+    result = ""
+    if n >= 0 and n <= 25:
+        result = alphabet[n]
+    if n > 25:
+        result = alphabet[(n//26)-1] + alphabet[n % 26]
+    return result
