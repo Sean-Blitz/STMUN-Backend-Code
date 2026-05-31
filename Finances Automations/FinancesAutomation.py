@@ -1,9 +1,6 @@
 #If the code outputs nothing, check if there are any emails in the Finances Automation label.
 import os
-import re
 import datetime
-import requests
-import json
 import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
@@ -49,82 +46,7 @@ def authenticate():
 
     return creds
 
-
-# ----------------------- MAIN SCRIPT -----------------------
-#Below two lines only need to happen once.
-sheets_service = build('sheets', 'v4', credentials=authenticate())
-creds = authenticate()
-drive_service = driveFunctions.get_drive_service(creds)
-gmail_service = build('gmail', 'v1', credentials=creds)
-docs_service = build('docs', 'v1', credentials=creds)
-api_token = "patcikx9vfYeXF4gz.20004c29f9f7601a7bb9ee1d4474468dc46e4c4a1ebcc1105b7fd6a310933560"
-base_id = "appEySB2x9jqHy16Q"   #change this next year
-table_name = "Form Response"
-today = datetime.date.today()
-
-gmailID = gmailFunctions.find_emails_from_sender_with_label(service=gmail_service)
-
-mail_school_names = gmailFunctions.extract_strings_and_remove_label(service=gmail_service, message_ids=gmailID)
-
-i=0
-for i in range(len(mail_school_names)):
-    record_id = ATCode.get_field_by_name(search_name=mail_school_names[i], search_column="School Name")
-
-    schoolName, schoolAddress, advisorPhoneNumber, advisorEmail, delegateCount, date, datestr = ATCode.view_latest_record(record_id) #first view latest record. DO NOT USE THESE VARIABLES EXCEPT DATE.
-
-    independent = input("Independent registration? y/n. Exit to stop.")
-    exitlower = independent.lower()
-    independent = exitlower.strip()
-    if independent == "exit":
-        print("Process cancelled.")
-        continue
-    valid = ["y", "n", "exit"]
-    while not independent in valid:
-        independent = input("Invalid input. Independent registration? y/n. Exit to stop.")
-
-    if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
-        DelBox = "Initial Delegates (Early)"
-        DateBox = "Date (Early)"
-    elif date.month == 12 and date.day <= 20 or date.month == 11 and date.day >= 2: 
-        DelBox = "Initial Delegates (Regular)"
-        DateBox = "Date (Regular)"
-    elif date.month == 1 and date.day <= 26 or date.month == 12 and date.day >= 21:
-        DelBox = "Initial Delegates (Late)"
-        DateBox = "Date (Late)"
-
-    if independent == "y":
-        if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
-            number_2 = 10
-        elif date.month == 12 and date.day <= 20 or date.month == 11 and date.day >= 2: 
-            number_2 = 15
-        elif date.month == 1 and date.day <= 26 or date.month == 12 and date.day >= 21:
-            number_2 = 20
-        else:
-            print("Date error for independent registration fee.")
-            sys.exit()
-    elif independent == "n":
-        if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
-            number_2 = 40
-        elif date.month == 12 and date.day <= 20 or date.month == 11 and date.day >= 2: 
-            number_2 = 50
-        elif date.month == 1 and date.day <= 26 or date.month == 12 and date.day >= 21:
-            number_2 = 60
-        else:
-            print("Date error for school registration fee.")
-            sys.exit()
-
-    writing = ATCode.create_airtable_record(record_id, datestr, DateBox, DelBox, delegateCount, number_2, schoolName) #FYI, number_2 is the registration fee. 
-    print(writing)
-
-    keepgoing = input("Continue? y/n")
-    while not keepgoing in valid:
-        keepgoing = input("Invalid input. Continue? y/n")
-    if keepgoing != "y":
-        print("Process cancelled.")
-        sys.exit()
-
-    sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee = ATCode.search_records(record_id)
-    city, state, zipCode, DelCount = ATCode.search_formResponse(record_id)
+def statename(state):
     statetempstore = state
     stateabbreviation = {"Alabama": "AL","Alaska": "AK","Arizona": "AZ","Arkansas": "AR","California": "CA","Colorado": "CO","Connecticut": "CT","Delaware": "DE","Florida": "FL","Georgia": "GA",
         "Hawaii": "HI","Idaho": "ID","Illinois": "IL","Indiana": "IN","Iowa": "IA","Kansas": "KS","Kentucky": "KY","Louisiana": "LA","Maine": "ME","Maryland": "MD","Massachusetts": "MA","Michigan": "MI",
@@ -136,10 +58,9 @@ for i in range(len(mail_school_names)):
     if state == None:
         print("Not a US state in address. Manually check the invoice to edit address.")
         state = statetempstore
+    return state
 
-    AttendingFolderID = "1BPlHoP2G4ih7ewIRQsU0vV9ILkOSxsCv"  #change these two when years change.
-    NotAttendingFolderID = "12yoRVdgJ9U7Koo-OK-wp-09ycOMoMc_4"
-
+def folderfinding(sName):
     findfolder = driveFunctions.find_subfolder_id(
             service=drive_service,
             parent_folder_id= NotAttendingFolderID,
@@ -176,57 +97,108 @@ for i in range(len(mail_school_names)):
         )
     else:
         print("Error in finding folder.")
+        tryagain = input("Try again? y/n").lower().strip()
+        while not tryagain in ["y", "n"]:
+            tryagain = input("Invalid input. Try again? y/n").lower().strip()
+        if tryagain == "y":
+            folderfinding(sName)
+        else:            
+            print("Process cancelled.")
+            sys.exit()
+    
+    return yearfolder # type: ignore
 
-    if independent == "y":
-        if today.month == 11 and today.day == 1 or today.month == 10 or today.month == 9:
-            newInvoice = driveFunctions.copy_drive_file_with_number(
+def keepgoing():
+    keepgoing = input("Share? y/n")
+    while not keepgoing in ["y", "n"]:
+        keepgoing = input("Invalid input. Continue? y/n")
+    if keepgoing != "y":
+        print("Process cancelled.")
+        sys.exit()
+
+# ----------------------- MAIN SCRIPT -----------------------
+#Below two lines only need to happen once.
+sheets_service = build('sheets', 'v4', credentials=authenticate())
+creds = authenticate()
+drive_service = driveFunctions.get_drive_service(creds)
+gmail_service = build('gmail', 'v1', credentials=creds)
+docs_service = build('docs', 'v1', credentials=creds)
+api_token = "patcikx9vfYeXF4gz.20004c29f9f7601a7bb9ee1d4474468dc46e4c4a1ebcc1105b7fd6a310933560"
+base_id = "appEySB2x9jqHy16Q"   #change this next year
+table_name = "Form Response"
+AttendingFolderID = "1BPlHoP2G4ih7ewIRQsU0vV9ILkOSxsCv"  #change these two when years change.
+NotAttendingFolderID = "12yoRVdgJ9U7Koo-OK-wp-09ycOMoMc_4"
+template1_independent = "1nIXIxgR57DWdu6A7eopkBAoB8IiuicZgd1Y1TvQSBdk" #change these templates every year.
+template2_independent = "1JFi7uRHeQV9pYd6nAGcDl-elXs4D31tS3FqzpF3jEzc"
+template3_independent = "1plvWHfrhVu9PjRlRdJ9EPg9EkNxOB4yrRw3ySwnNIeI"
+template1_school = "1ZB17zyTXzjWeX_3xsUXVIaZIGWfEayqwU68HQ2IL3zg"
+template2_school = "1EBKQYdnZevr2sJV1fdi4S2pVtZFHtsWKowrXGzdeoCs"
+template3_school = "1Kzg_Nkdx1SdzvCADenSK_vvHkCv5qBer6_Ia-TwXXEg"
+emailtemplate = "1OB-rn-AcMMhjaeELjg2nI8IDZUb7d6jW3gJcehKqnHk"
+emailfolderID = "1SWw6PxL_ewuVRWtJwyLkS1HmKLkffdf5"
+
+today = datetime.date.today()
+
+gmailIDs = gmailFunctions.find_emails_from_sender_with_label(service=gmail_service)
+
+mail_school_names = gmailFunctions.extract_strings_and_remove_label(service=gmail_service, message_ids=gmailIDs)
+
+i=0
+for i in range(len(mail_school_names)):
+    record_id = ATCode.get_field_by_name(search_name=mail_school_names[i], search_column="School Name")
+
+    schoolName, schoolAddress, advisorPhoneNumber, advisorEmail, delegateCount, date, datestr = ATCode.view_latest_record(record_id) #first view latest record. DO NOT USE THESE VARIABLES EXCEPT DATE.
+    #This is a bug to fix. Currently it pulls date from the most recent record, but we want it from specifically that school.
+
+    sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee = ATCode.search_records(record_id)
+    city, state, zipCode, DelCount = ATCode.search_formResponse(record_id)
+    state = statename(state)
+
+    independent = input("Independent registration? y/n. Exit to stop.").lower().strip()
+    if independent == "exit":
+        print("Process cancelled.")
+        continue
+    while not independent in ["y", "n", "exit"]:
+        independent = input("Invalid input. Independent registration? y/n. Exit to stop.")
+
+    keepgoing()
+
+    yearfolder = folderfinding(sName)
+    newInvoice = lambda templateID, independent: driveFunctions.copy_drive_file_with_number(
                 service=drive_service,
-                original_file_id="1nIXIxgR57DWdu6A7eopkBAoB8IiuicZgd1Y1TvQSBdk", #Invoice 1 (independent) ID. Change every year.
+                original_file_id= templateID,
                 destination_folder_id=yearfolder,
-                new_name_template="Invoice {n} - Independent",
+                new_name_template="Invoice {n}" + (" - Independent" if independent == "y" else ""),
                 sName = sName)
-        elif today.month == 12 and today.day <= 20 or today.month == 11 and today.day >= 2: 
-            newInvoice = driveFunctions.copy_drive_file_with_number(
-                service=drive_service,
-                original_file_id="1JFi7uRHeQV9pYd6nAGcDl-elXs4D31tS3FqzpF3jEzc", #Invoice 2 (independent) ID. Change every year.
-                destination_folder_id=yearfolder,
-                new_name_template="Invoice {n} - Independent",
-                sName = sName)
-        elif today.month == 1 and today.day <= 26 or today.month == 12 and today.day >= 21:
-            newInvoice = driveFunctions.copy_drive_file_with_number(
-                service=drive_service,
-                original_file_id="1plvWHfrhVu9PjRlRdJ9EPg9EkNxOB4yrRw3ySwnNIeI", #Invoice 3 (independent) ID. Change every year.
-                destination_folder_id=yearfolder,
-                new_name_template="Invoice {n} - Independent",
-                sName = sName)
-        else:
-            print("Today's date error for independent invoice.")        
-    elif independent == "n":
-        if today.month == 11 and today.day == 1 or today.month == 10 or today.month == 9:
-            newInvoice = driveFunctions.copy_drive_file_with_number(
-                service=drive_service,
-                original_file_id="1ZB17zyTXzjWeX_3xsUXVIaZIGWfEayqwU68HQ2IL3zg", #Invoice 1 (non-independent) ID. Change every year.
-                destination_folder_id=yearfolder,
-                new_name_template="Invoice {n}",
-                sName = sName)
-        elif today.month == 12 and today.day <= 20 or today.month == 11 and today.day >= 2: 
-            newInvoice = driveFunctions.copy_drive_file_with_number(
-                service=drive_service,
-                original_file_id="1EBKQYdnZevr2sJV1fdi4S2pVtZFHtsWKowrXGzdeoCs", #Invoice 2 (non-independent) ID. Change every year.
-                destination_folder_id=yearfolder,
-                new_name_template="Invoice {n}",
-                sName = sName)
-        elif today.month == 1 and today.day <= 26 or today.month == 12 and today.day >= 21:
-            newInvoice = driveFunctions.copy_drive_file_with_number(
-                service=drive_service,
-                original_file_id="1Kzg_Nkdx1SdzvCADenSK_vvHkCv5qBer6_Ia-TwXXEg", #Invoice 3 (non-independent) ID. Change every year.
-                destination_folder_id=yearfolder,
-                new_name_template="Invoice {n}",
-                sName = sName)
-        else:
-            print("Today's date error for school invoice.")
+    
+    newrecord = lambda datebox, delbox, number: ATCode.create_airtable_record(record_id, datestr, datebox, delbox, DelegateCount, number, schoolName)
+    if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
+        DelBox = "Initial Delegates (Early)"
+        DateBox = "Date (Early)"
+        number_2 = 10 if independent == "y" else 40
+        writing = newrecord(DateBox, DelBox, number_2)
+        newInvoice = newInvoice(template1_independent if independent == "y" else template1_school, independent)
+        checkcell = "B25"
+        inputCell = "B28"
+    elif date.month == 12 and date.day <= 20 or date.month == 11 and date.day >= 2: 
+        DelBox = "Initial Delegates (Regular)"
+        DateBox = "Date (Regular)"
+        number_2 = 15 if independent == "y" else 50
+        writing = newrecord(DateBox, DelBox, number_2)
+        newInvoice = newInvoice(template2_independent if independent == "y" else template2_school, independent)
+        checkcell = "B26"
+        inputCell = "B29"
+    elif date.month == 1 and date.day <= 26 or date.month == 12 and date.day >= 21:
+        DelBox = "Initial Delegates (Late)"
+        DateBox = "Date (Late)"
+        number_2 = 20 if independent == "y" else 60
+        writing = newrecord(DateBox, DelBox, number_2)
+        newInvoice = newInvoice(template3_independent if independent == "y" else template3_school, independent)
+        checkcell = "B27"
+        inputCell = "B30"
     else:
-        print("Independent registration input error.")
+        print("Today's date error for delegate fee.")
+        sys.exit()
 
     sheetFunctions.write_values_to_sheet_from_dict(sheets_service,
         spreadsheet_id=newInvoice,
@@ -240,41 +212,16 @@ for i in range(len(mail_school_names)):
             "Purchase order!C22": datetime.date.today().strftime("%m/%d/%Y"),
         })
 
-    if independent == "y":
-        if delFee == 10:
-            CheckCell = "B25"
-            inputCell = "B28"
-        elif delFee == 15:
-            CheckCell = "B26"
-            inputCell = "B29"
-        elif delFee == 20:
-            CheckCell = "B27"
-            inputCell = "B30"
-        else:
-            print("Delegate fee error.")
-    else:
-        if delFee == 40:
-            CheckCell = "B25"
-            inputCell = "B28"
-        elif delFee == 50:
-            CheckCell = "B26"
-            inputCell = "B29"
-        elif delFee == 60:
-            CheckCell = "B27"
-            inputCell = "B30"
-        else:
-            print("Delegate fee error.")
-
     sheetFunctions.write_values_to_sheet_from_dict(sheets_service,
         spreadsheet_id=newInvoice,
         cell_value_map={
-            f"Purchase order!{CheckCell}": "true",
+            f"Purchase order!{checkcell}": "true",
             f"Purchase order!{inputCell}": DelCount,
         })
 
     SheetTotal = sheetFunctions.read_single_cell(service=sheets_service, spreadsheet_id=newInvoice, cell_range="Purchase order!H36")
 
-    if int(float(SheetTotal.replace("$", "").replace(",", "").strip())) != Balance:
+    if int(float(SheetTotal.replace("$", "").replace(",", "").strip()) if SheetTotal != None else 0) != Balance:
         print("Subtotal mismatch error.")
 
     sheeturl = "https://docs.google.com/spreadsheets/d/" + newInvoice
@@ -282,8 +229,8 @@ for i in range(len(mail_school_names)):
 
     docID = driveFunctions.copy_drive_file(
         service=drive_service,
-        file_id="1OB-rn-AcMMhjaeELjg2nI8IDZUb7d6jW3gJcehKqnHk", #Document template ID
-        destination_folder_id="1SWw6PxL_ewuVRWtJwyLkS1HmKLkffdf5",
+        file_id=emailtemplate,
+        destination_folder_id=emailfolderID,
         new_name=f"{sName} Email"
     )
 
@@ -294,14 +241,9 @@ for i in range(len(mail_school_names)):
         schoolName = sName,
         sheeturl = sheeturl)
 
-    valid = ["y", "n"]
     print("Email draft created.")
-    keepgoing = input("Share? y/n")
-    while not keepgoing in valid:
-        keepgoing = input("Invalid input. Continue? y/n")
-    if keepgoing != "y":
-        print("Process cancelled.")
-        sys.exit()
+
+    keepgoing()
 
     driveFunctions.share_doc_with_user(
         drive_service=drive_service,

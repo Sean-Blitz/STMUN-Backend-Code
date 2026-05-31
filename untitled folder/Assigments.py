@@ -57,19 +57,46 @@ unassignedSchools = AssignmentsFunctions.get_unassigned_schools(sheetSchools, "a
 while unassignedSchools:
     selectedSchool = AssignmentsFunctions.select_school_to_assign(unassignedSchools)
     row = sheetFunctions.find_row_by_string(sheets_service, registrationSheetID, sheetname, "A", selectedSchool)
-    output = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}"])
-    if len(output) == 8:  # check if all 8 cells have values
-        print("Top 5 country preferences:", output[1])
-        print("Middle Eastern Bloc:", output[2])
-        print("American Bloc:", output[3])
-        print("European Bloc:", output[4])
-        print("Asian Bloc:", output[5])
-        print("African Country Bloc:", output[6])
-        print("Pacific Country Bloc:", output[7])
-        print("Security Council interest:", output[8])
-        
+    output = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
+    CountryPrefs = output[0]
+    MiddleEasternBloc = output[1]
+    AmericanBloc = output[2]
+    EuropeanBloc = output[3]
+    AsianBloc = output[4]
+    AfricanBloc = output[5]
+    PacificBloc = output[6]
+    SecurityCouncil = output[7]
+    numdels = output[8]
+    if len(output) == 9:  # check if all 9 cells have values
+        print("Top 5 country preferences:", CountryPrefs)
+        print("Middle Eastern Bloc:", MiddleEasternBloc)
+        print("American Bloc:", AmericanBloc)
+        print("European Bloc:", EuropeanBloc)
+        print("Asian Bloc:", AsianBloc)
+        print("African Country Bloc:", AfricanBloc)
+        print("Pacific Country Bloc:", PacificBloc)
+        print("Security Council interest:", SecurityCouncil)
+        nextrow = sheetFunctions.get_column_until_empty(sheets_service, registrationSheetID, "Assignments", "A", 1) + 1
+        cells_map = {}
+        for i in range(numdels):
+            cells_map["Assignments!"+sheetFunctions.sheets_alphabet(i+1)+str(nextrow)] = f"{selectedSchool} - #{i+1}"
+        sheetFunctions.write_values_to_sheet_from_dict(sheets_service, registrationSheetID, cells_map)
 
+        GA = int(input("How many delegates to put in GA?"))
+        Specialized = int(input("How many delegates to put in Specialized?"))
+        if GA + Specialized > numdels:
+            print("Error: The total number of delegates does not match the expected count.")
+        else:
+            Crisis = numdels - GA - Specialized
+            print("\033[F", end="")
+            print("\033[F", end="")
+            print("\033[K", end="")
+            print("\033[K", end="")
+            print(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
         unassignedSchools.remove(selectedSchool)
+
+        time.sleep(5) #pause for sheet to register changes, then check.
+        #CSV add this school after checking!
     else:
         print("Error: Not all expected cells have values. Please check the sheet for completeness.")
     #remember to add the assigned school to the CSV!

@@ -1,0 +1,11 @@
+Finances Automation:
+1. Initializes as variables the API token, the database ID, the name of the table (from Airtable), and time.
+2. Finds an email with the relevant gmail label, returns email ID.
+    3. Extracts a strings from those email IDs.
+4. Begins loop for the number of schools:
+    5. Looks for the record ID of that school.
+    6. Gets the relevant records of that school, stores as variables.
+    7. Asks user if the delegate is independent (checks input)
+    8. Looks for delegates count and date from the Airtable, using pre-set date frames.
+    9. If independent: based on dates, assigns variables for delegation fee.
+    
