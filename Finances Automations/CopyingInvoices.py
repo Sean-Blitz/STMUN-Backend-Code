@@ -12,6 +12,11 @@ import driveFunctions
 import sheetFunctions
 import FinancesAutomation
 
+def inputcheck(input, valid):
+    while input not in valid:
+        input = input("Invalid input. " + "Continue? y/n")
+    return input
+
 #if modifying scopes, go to FinancesAutomation.py and change there.
 creds = FinancesAutomation.authenticate()
 sheets_service = build('sheets', 'v4', credentials=creds)
@@ -40,34 +45,37 @@ for i in range(len(names)):
     else:
         yearfolderids.append(yearfolder)
 
-if stop == 1:
+if stop >= 1:
     print("Process cancelled due to missing year folders.")
     sys.exit()
 
 if Final != "y":
     for i in range(len(FolderIDs)):
         yearfolder = yearfolderids[i]
-        proceed = input(f"Copy for this school? {names[i]} (y/n)")
-        if proceed == "n":
-            continue
-        correctinput = {"y", "n"}
-        while proceed not in correctinput:
-            proceed = input("Invalid input. Copy for this school? y/n")
-        fromsheetID = driveFunctions.find_sheet_id_by_name_contains(drive_service, yearfolder, f"Invoice {From}")
+        inputcheck(input(f"Processing {names[i]}... Continue? y/n"), ["y", "n"])
+        fromsheetID = driveFunctions.find_sheet_id_by_name_contains(drive_service, yearfolder, f"Invoice {From}") #type: ignore
         if fromsheetID is None:
             print("Could not find source sheet.")
             continue
 
-        if Final != "y":
+        payments = sheetFunctions.read_single_unformatted_cell(sheets_service, fromsheetID, "Purchase order!H33")
+        balance = sheetFunctions.read_single_unformatted_cell(sheets_service, fromsheetID, "Purchase order!H36")
+        if not balance is None and not payments is None:
+            balance = int(balance)
+            payments = int(payments)
+
+        if Final != "y": #not final invoice, regular copying.
+            From = int(input("Invoice number that you are copying from?"))
+            To = int(input("Invoice number that you are copying to?"))
+            
+            if From == To or To > 3 or From > 2: #error checking.
+                print ("Input error.")
+                sys.exit()
+            
             tosheetID = driveFunctions.copy_drive_file(drive_service, fromsheetID, yearfolder, f"Invoice {To} - {names[i]}")
-
-        payments = int(sheetFunctions.read_single_unformatted_cell(sheets_service, fromsheetID, "Purchase order!H33"))
-        balance = int(sheetFunctions.read_single_unformatted_cell(sheets_service, fromsheetID, "Purchase order!H36"))
-
-        if final != "y":
-            if payments == 0:
+            if payments == 0: #unpaid.
                 if From == 1 and To == 2:
-                    earlydelegates = int(sheetFunctions.read_single_cell(sheets_service, fromsheetID, "Purchase order!B28"))
+                    earlydelegates = int(sheetFunctions.read_single_cell(sheets_service, fromsheetID, "Purchase order!B28")) #type: ignore
                     sheetFunctions.write_values_to_sheet_from_dict(
                         sheets_service,
                         tosheetID,
@@ -79,8 +87,8 @@ if Final != "y":
                         }
                     )
                 elif From == 2 and To == 3:
-                    earlydelegates = int(sheetFunctions.read_single_cell(sheets_service, fromsheetID, "Purchase order!B28"))
-                    regulardelegates = int(sheetFunctions.read_single_cell(sheets_service, fromsheetID, "Purchase order!B29"))
+                    earlydelegates = int(sheetFunctions.read_single_cell(sheets_service, fromsheetID, "Purchase order!B28")) #type: ignore
+                    regulardelegates = int(sheetFunctions.read_single_cell(sheets_service, fromsheetID, "Purchase order!B29")) #type: ignore
                     sheetFunctions.write_values_to_sheet_from_dict(
                         sheets_service,
                         tosheetID,
@@ -92,7 +100,7 @@ if Final != "y":
                             "Purchase order!A10": f"Invoice {To}",
                         }
                     )
-            elif payments != 0 and balance != 0:
+            elif payments != 0 and balance != 0: #partially paid.
                 toeditsheets[names[i]] = tosheetID
                 sheetFunctions.write_values_to_sheet_from_dict(
                     sheets_service,
@@ -101,7 +109,7 @@ if Final != "y":
                         "Purchase order!C22": datetime.datetime.now().strftime("%m/%d/%Y"),
                         "Purchase order!A10": f"Invoice {To}",
                     })
-            elif payments != 0 and balance == 0:
+            elif payments != 0 and balance == 0: #fully paid
                 paidschoolsheets[names[i]] = tosheetID
                 sheetFunctions.write_values_to_sheet_from_dict(
                     sheets_service,
@@ -113,7 +121,6 @@ if Final != "y":
             print("Here is the new invoice: https://docs.google.com/spreadsheets/d/" + tosheetID )
 
 
-    n=0
     forfunctionlist = list(toeditsheets.keys())
     print("You should manually edit these sheets:")
     for n in range (len(toeditsheets)):
@@ -122,7 +129,7 @@ if Final != "y":
     print() #for readability
     forfunctionlist2 = list(paidschoolsheets.keys())
     print("These schools have paid in full:")
-    i=0
+
     for i in range(len(paidschoolsheets)):
         print(forfunctionlist2[i] + " - " + str(paidschoolsheets[forfunctionlist2[i]]))
 
@@ -137,8 +144,8 @@ elif Final == "y":
             print("Could not find source sheet.")
             continue
 
-        payments = int(sheetFunctions.read_single_unformatted_cell(sheets_service, fromsheetID, "Purchase order!H33"))
-        balance = int(sheetFunctions.read_single_unformatted_cell(sheets_service, fromsheetID, "Purchase order!H36"))
+        payments = int(sheetFunctions.read_single_unformatted_cell(sheets_service, fromsheetID, "Purchase order!H33")) #type: ignore
+        balance = int(sheetFunctions.read_single_unformatted_cell(sheets_service, fromsheetID, "Purchase order!H36")) #type: ignore
 
         if payments != 0 and balance == 0:
             tosheetID = driveFunctions.copy_drive_file(drive_service, fromsheetID, "1lpF-H-EhDMQWBOK6xgqlhYE00E0wWiUt", f"Final Invoice - {names[i]}")

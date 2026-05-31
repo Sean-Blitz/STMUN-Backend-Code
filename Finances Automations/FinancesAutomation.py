@@ -164,7 +164,7 @@ for i in range(len(mail_school_names)):
     keepgoing()
 
     yearfolder = folderfinding(sName)
-    newInvoice = lambda templateID, independent: driveFunctions.copy_drive_file_with_number(
+    CreateInvoice = lambda templateID, independent: driveFunctions.copy_drive_file_with_number(
                 service=drive_service,
                 original_file_id= templateID,
                 destination_folder_id=yearfolder,
@@ -177,7 +177,7 @@ for i in range(len(mail_school_names)):
         DateBox = "Date (Early)"
         number_2 = 10 if independent == "y" else 40
         writing = newrecord(DateBox, DelBox, number_2)
-        newInvoice = newInvoice(template1_independent if independent == "y" else template1_school, independent)
+        newInvoice = CreateInvoice(template1_independent if independent == "y" else template1_school, independent)
         checkcell = "B25"
         inputCell = "B28"
     elif date.month == 12 and date.day <= 20 or date.month == 11 and date.day >= 2: 
@@ -185,7 +185,7 @@ for i in range(len(mail_school_names)):
         DateBox = "Date (Regular)"
         number_2 = 15 if independent == "y" else 50
         writing = newrecord(DateBox, DelBox, number_2)
-        newInvoice = newInvoice(template2_independent if independent == "y" else template2_school, independent)
+        newInvoice = CreateInvoice(template2_independent if independent == "y" else template2_school, independent)
         checkcell = "B26"
         inputCell = "B29"
     elif date.month == 1 and date.day <= 26 or date.month == 12 and date.day >= 21:
@@ -193,7 +193,7 @@ for i in range(len(mail_school_names)):
         DateBox = "Date (Late)"
         number_2 = 20 if independent == "y" else 60
         writing = newrecord(DateBox, DelBox, number_2)
-        newInvoice = newInvoice(template3_independent if independent == "y" else template3_school, independent)
+        newInvoice = CreateInvoice(template3_independent if independent == "y" else template3_school, independent)
         checkcell = "B27"
         inputCell = "B30"
     else:
