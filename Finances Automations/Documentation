@@ -12,7 +12,7 @@ Airtable - the registration data for that school
 This code then generates a new invoice sheets file from the correct template, fills in the right columns for Finances in Airtable,
 and fills in the new invoice sheets file. It also generates an email in Google Docs based on a template with placeholders, sharing it with SG@SCVMUN.COM
 ### How to use it:
-When you get an email from Airtable, run this code on your local machine. You can run it in VScode, or a termainal.
+When you get an email from Airtable, run this code on your local machine. You can run it in VScode, or a termainal. Do specify if it is an independent delegate (use your own discretion)
 
 You're here for a reason! Check whatever this code generates; it will give you links to the files.
 
