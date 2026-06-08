@@ -11,14 +11,15 @@ import AuthenticationFunctions
 
 drive_service, sheets_service, slides_service, docs_service, gmail_service = AuthenticationFunctions.authenticate()
 
-schoolNames = sheetFunctions.read_headers_until_blank("1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs", "Badges Automation", sheets_service)
+fileID = "1HRvv77Ud9K1GsmNzs8-g1OtB7A2112qOkKbO_RHWmoo"
+schoolNames = sheetFunctions.read_headers_until_blank(fileID, "Badges Automation", sheets_service)
 columnscount = len(schoolNames)
 while "Committee" in schoolNames:
     schoolNames.remove("Committee")
 
 schoolCount = len(schoolNames)
 
-dictionaryofbadges = sheetFunctions.read_columns_until_blank("1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs", "Badges Automation", columnscount, sheets_service)
+dictionaryofbadges = sheetFunctions.read_columns_until_blank(fileID, "Badges Automation", columnscount, sheets_service)
 
 committeeAssignments = []
 countryAssignments = []

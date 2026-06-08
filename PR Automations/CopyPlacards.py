@@ -9,12 +9,13 @@ import SlidesFunctions
 import sheetFunctions
 import AuthenticationFunctions
 
+fileID = "1HRvv77Ud9K1GsmNzs8-g1OtB7A2112qOkKbO_RHWmoo"
 drive_service, sheets_service, slides_service, docs_service, gmail_service = AuthenticationFunctions.authenticate()
 
-committeenames = sheetFunctions.read_headers_until_blank("1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs", "Placards Automation", sheets_service)
+committeenames = sheetFunctions.read_headers_until_blank(fileID, "Placards Automation", sheets_service)
 committeescount = len(committeenames)
 
-dictionaryofplacards = sheetFunctions.read_columns_until_blank("1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs", "Placards Automation", committeescount, sheets_service)
+dictionaryofplacards = sheetFunctions.read_columns_until_blank(fileID, "Placards Automation", committeescount, sheets_service)
 
 
 newslidesURL = []
