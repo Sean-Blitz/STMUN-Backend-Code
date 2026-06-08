@@ -214,6 +214,9 @@ def find_row_by_string(sheet_api, spreadsheet_id, sheet_name, column_letter, sea
         return None
     
 def sheets_alphabet(n):
+    """
+    Takes a number as input and returns the corresponding column letter.
+    """
     alphabet = string.ascii_uppercase
     result = ""
     if n >= 0 and n <= 25:
@@ -221,3 +224,43 @@ def sheets_alphabet(n):
     if n > 25:
         result = alphabet[(n//26)-1] + alphabet[n % 26]
     return result
+
+def get_column_odd_cells(service, sheet_id, sheet_name, column_letter, start_row):
+    """
+    Reads down a specific column in Google Sheets and returns all values 
+    until it hits an empty odd cell.
+    """    
+    range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
+    
+    sheet = service.spreadsheets()
+    result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
+    
+    values = result.get('values', [])
+    collected_data = []
+    
+    for i in range(len(values)):
+        # Calculate the actual physical spreadsheet row number
+        current_spreadsheet_row = start_row + i
+        
+        # Safe check: first see if the row list is completely empty
+        is_empty = False
+        if not values[i] or len(values[i]) == 0:
+            is_empty = True
+        elif not str(values[i][0]).strip():
+            is_empty = True
+            
+        # If it's empty, check if the PHYSICAL spreadsheet row is odd
+        if is_empty:
+            if current_spreadsheet_row % 2 != 0:
+                break  # Stop tracking immediately if it's an empty odd row!
+            else:
+                # If it's an empty EVEN row, your rules say keep going.
+                # We append a blank placeholder string so your index matches up.
+                collected_data.append("")
+                continue
+
+        # If it's not empty, grab the cell data safely
+        collected_data.append(values[i][0])
+        
+    return len(collected_data)
+
