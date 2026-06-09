@@ -188,7 +188,7 @@ def find_row_by_string(sheet_api, spreadsheet_id, sheet_name, column_letter, sea
     
     try:
         # Request the column values from the API
-        request = sheet_api.values().get(
+        request = sheet_api.spreadsheets().values().get(
             spreadsheetId=spreadsheet_id,
             range=range_to_search
         )

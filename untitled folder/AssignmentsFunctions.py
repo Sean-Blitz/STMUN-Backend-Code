@@ -2,7 +2,6 @@ import questionary
 import sys
 import sheetFunctions
 import csv
-import time
 import os
 
 def select_school_to_assign(unassigned_schools):
@@ -77,7 +76,13 @@ def confirm_committees(finalassignments, names):
 
         # 3. Parse the delegate name back out of the selected string
         # Split by the colon to isolate "School - #1"
-        delegate_key = selected_choice.split(":")[0].replace("#", "").strip()
+        #delegate_key = selected_choice.split("-")[1].replace("#", "").strip()
+        delegate_key = selected_choice.split(":")[0].strip() # This gets the "#1" part, but we want "School - #1"
+        if delegate_key.startswith('#'):
+        # Check if the hashtag belongs there (like the delegate number) 
+        # or if it's an accidental duplicate/prefix on the school name.
+        # If it's a prefix on the whole string, remove it:
+            delegate_key = delegate_key[1:]
         current_assignment = finalassignments[delegate_key][0]
 
         # 4. Trigger the manual overwrite prompt
