@@ -58,15 +58,9 @@ while unassignedSchools:
     selectedSchool = AssignmentsFunctions.select_school_to_assign(unassignedSchools)
     row = sheetFunctions.find_row_by_string(sheets_service, registrationSheetID, sheetname, "C", selectedSchool)
     output = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
-    CountryPrefs = output[0] # can compress into one line.
-    MiddleEasternBloc = output[1]
-    AmericanBloc = output[2]
-    EuropeanBloc = output[3]
-    AsianBloc = output[4]
-    AfricanBloc = output[5]
-    PacificBloc = output[6]
-    SecurityCouncil = output[7]
-    numdels = int(output[8])
+    CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output
+    numdels = int(numdels)
+    
     if len(output) == 9:  # check if all 9 cells have values
         names = sheetFunctions.get_column_data_until_empty(sheets_service, registrationSheetID, "Overview", "A", 2) # Use this function to also detect number of committees
         percentages = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
