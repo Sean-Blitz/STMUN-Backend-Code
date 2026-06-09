@@ -60,7 +60,7 @@ while unassignedSchools:
     output = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
     CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output
     numdels = int(numdels)
-    
+
     if len(output) == 9:  # check if all 9 cells have values
         names = sheetFunctions.get_column_data_until_empty(sheets_service, registrationSheetID, "Overview", "A", 2) # Use this function to also detect number of committees
         percentages = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
@@ -221,6 +221,10 @@ while unassignedSchools:
             CurrentRow = sheetFunctions.get_column_odd_cells(sheets_service, registrationSheetID, "Assignments", "A", 1) + 2
             finalassignments, remaining_cell_map, SchoolAssignmentsCells = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow) #, country suggestions list) #here you can add the later data science things for suggestions.
 
+        cont = input("Finished building cell maps. Push?")
+        while cont.lower() not in {"yes", "no"}:
+            cont = input("Finished building cell maps. Push?")
+            
         #writing to the sheet the cell maps.
         sheetFunctions.write_values_to_sheet_from_dict(sheets_service, registrationSheetID, remaining_cell_map)
         sheetFunctions.write_values_to_sheet_from_dict(sheets_service, registrationSheetID, SchoolAssignmentsCells)
