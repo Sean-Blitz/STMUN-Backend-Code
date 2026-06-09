@@ -45,7 +45,7 @@ def get_unassigned_schools(live_schools, csv_filepath):
 #how does this function work? Essentially, it checks if CSV exists, opens it safely, reads row by row checking first column,
 #strips whitespace, appends it to the set, and uses the fact that sets already have uniqueness to compare with live_schools.
 
-def confirm_committees(finalassignments, names):
+def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names):
     """
     Launches an interactive Questionary interface allowing users to browse 
     delegates and overwrite their committee assignments in RAM.
@@ -92,8 +92,15 @@ def confirm_committees(finalassignments, names):
         ).ask()
 
         # 5. Update the master dictionary state in RAM
-        if new_committee and new_committee.strip() != current_assignment and new_committee in names:
-            finalassignments[delegate_key][0] = new_committee.strip()
+        if new_committee and new_committee.strip() != current_assignment:
+            if new_committee in GA_Names and finalassignments[delegate_key][1].lower() == "ga":
+                finalassignments[delegate_key][0] = new_committee.strip()
+            elif new_committee in Spec_Names and finalassignments[delegate_key][1].lower() == "specialized":
+                finalassignments[delegate_key][0] = new_committee.strip()
+            elif new_committee in Crisis_Names and finalassignments[delegate_key][1].lower() == "crisis":
+                finalassignments[delegate_key][0] = new_committee.strip()
+            else:
+                print("Your selected assignment is not the correct committee type. Please try again.")
             print(f"Updated {delegate_key} to {new_committee.strip()}")
         else:
             print("No changes made or invalid committee name entered. Please try again.")

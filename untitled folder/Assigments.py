@@ -217,14 +217,26 @@ while unassignedSchools:
             print("\033[K", end="")
             print("Assignments for this school:")
             
-            finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, names)
+            GA_Names = [] ; Spec_Names = [] ; Crisis_Names = []
+            for i in range(len(names)):
+                if i in GaIndices:
+                    GA_Names.append(names[i])
+                elif i in SpecIndices:
+                    Spec_Names.append(names[i])
+                elif i in CrisisIndices:
+                    Crisis_Names.append(names[i])
+                else:
+                    print("There is a committee name error.")
+                    sys.exit()
+
+            finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names)
             CurrentRow = sheetFunctions.get_column_odd_cells(sheets_service, registrationSheetID, "Assignments", "A", 1) + 2
             finalassignments, remaining_cell_map, SchoolAssignmentsCells = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow) #, country suggestions list) #here you can add the later data science things for suggestions.
 
         cont = input("Finished building cell maps. Push?")
         while cont.lower() not in {"yes", "no"}:
             cont = input("Finished building cell maps. Push?")
-            
+
         #writing to the sheet the cell maps.
         sheetFunctions.write_values_to_sheet_from_dict(sheets_service, registrationSheetID, remaining_cell_map)
         sheetFunctions.write_values_to_sheet_from_dict(sheets_service, registrationSheetID, SchoolAssignmentsCells)
