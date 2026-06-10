@@ -217,7 +217,8 @@ while unassignedSchools:
             print("\033[K", end="")
             print("Assignments for this school:")
             
-            GA_Names = [] ; Spec_Names = [] ; Crisis_Names = []
+            GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
+            singleIndicies = CrisisIndices + GaIndices + SpecIndices
             for i in range(len(names)):
                 if i in GaIndices:
                     GA_Names.append(names[i])
@@ -228,8 +229,10 @@ while unassignedSchools:
                 else:
                     print("There is a committee name error.")
                     sys.exit()
+                if not i in singleIndicies:
+                    Double_Committees.add(names[i])
 
-            finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names)
+            finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
             CurrentRow = sheetFunctions.get_column_odd_cells(sheets_service, registrationSheetID, "Assignments", "A", 1) + 2
             finalassignments, remaining_cell_map, SchoolAssignmentsCells = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow) #, country suggestions list) #here you can add the later data science things for suggestions.
 
@@ -260,7 +263,6 @@ while unassignedSchools:
 
         """
         Additional improvements:
-        inside the function confirm committees, you should verify that the new committee is actually a GA/Spec/Crisis by passing the variable of the filtered lists into the function.
         At the same time, recognize double delegation committees to change them together.
         Do not let committees past 100%!!! 
         Fix twin linking logic for assignments.
