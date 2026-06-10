@@ -62,15 +62,7 @@ while unassignedSchools:
     numdels = int(numdels)
 
     if len(output) == 9:  # check if all 9 cells have values
-        names = sheetFunctions.get_column_data_until_empty(sheets_service, registrationSheetID, "Overview", "A", 2) # Use this function to also detect number of committees
-        percentages = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
-        percentages = [float(p.strip('%')) for p in percentages] # Convert "45%" to 45.0
-        spots = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!C{i+2}" for i in range(len(names))])
-        spots = [int(s) for s in spots] # Convert spot counts to integers
-        double = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!E{i+2}" for i in range(len(names))])
-        type = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!F{i+2}" for i in range(len(names))])
-        ranges = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!H{i+2}" for i in range(len(names))])
-        ranges = {names[i]: ranges[i] for i in range(len(names))}
+        names, percentages, spots, double, type, ranges = AssignmentsFunctions.read_overview(sheets_service, registrationSheetID)
 
         #pulls from Remaining Assignments for checking and pushing back later.
         availableCountries = AssignmentsFunctions.pull_sheet_data(sheets_service, registrationSheetID, "Remaining Assignments", ranges)

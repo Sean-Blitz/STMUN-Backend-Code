@@ -454,6 +454,18 @@ def check_doubles(current_assignment: str, Double_Committees: set, new_committee
     else:
         print(f"Updated {delegate_key} to {new_committee.strip()}")
 
+def read_overview(sheets_service, registrationSheetID):
+    names = sheetFunctions.get_column_data_until_empty(sheets_service, registrationSheetID, "Overview", "A", 2) # Use this function to also detect number of committees
+    percentages = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
+    percentages = [float(p.strip('%')) for p in percentages] # Convert "45%" to 45.0
+    spots = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!C{i+2}" for i in range(len(names))])
+    spots = [int(s) for s in spots] # Convert spot counts to integers
+    double = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!E{i+2}" for i in range(len(names))])
+    type = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!F{i+2}" for i in range(len(names))])
+    ranges = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!H{i+2}" for i in range(len(names))])
+    ranges = {names[i]: ranges[i] for i in range(len(names))}
+    return names, percentages, spots, double, type, ranges
+
 #testing = {"1": ["DISEC", "GA", ""], "2": ["SOCHUM", "GA", ""], "3": ["UNHRC", "Specialized", ""]}
 #add_assignments(testing, suggestions_matrix=[["USA", "China", "Russia"], ["Germany", "France", "UK"], ["Saudi Arabia", "South Africa", "Brazil"]])
 #add_assignments(testing)
