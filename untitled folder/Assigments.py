@@ -234,7 +234,7 @@ while unassignedSchools:
 
             finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
             CurrentRow = sheetFunctions.get_column_odd_cells(sheets_service, registrationSheetID, "Assignments", "A", 1) + 2
-            finalassignments, remaining_cell_map, SchoolAssignmentsCells = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow) #, country suggestions list) #here you can add the later data science things for suggestions.
+            finalassignments, remaining_cell_map, SchoolAssignmentsCells = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
 
         cont = input("Finished building cell maps. Push?")
         while cont.lower() not in {"yes", "no"}:
@@ -263,7 +263,5 @@ while unassignedSchools:
 
         """
         Additional improvements:
-        At the same time, recognize double delegation committees to change them together.
-        Do not let committees past 100%!!! 
         Fix twin linking logic for assignments.
         """

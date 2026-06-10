@@ -126,7 +126,7 @@ def backup_sheet_to_csv(sheet_api, spreadsheet_id, range_name, filename="unassig
     
     print(f"Backup successfully saved to {filename}")
 
-def add_assignments_and_map_cells(finalassignments, availableCountries, currentRow, suggestions_matrix=None):
+def add_assignments_and_map_cells(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix=None):
     """
     Launches an interactive interface to browse and add country assignments.
     Uses true numeric shortcut mappings via text prompts.
@@ -247,40 +247,46 @@ def add_assignments_and_map_cells(finalassignments, availableCountries, currentR
                 except ValueError:
                     print("Please type a valid number or menu shortcut character.")
 
-        # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
-        if new_country:
-            current_comm_type = finalassignments[delegate_key][1]
-
-            # 1. Update the selected delegate
-            if len(finalassignments[delegate_key]) > 2:
-                finalassignments[delegate_key][2] = new_country
-            else:
-                finalassignments[delegate_key].append(new_country)
-                
-            print(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
-
-            # 2. AUTOMATIC TWIN LINKING LOGIC FOR DOUBLE DELEGATIONS
-            # Adjust the string comparison ("double") to match exactly how it's typed in your sheet
-            if current_comm_type.strip().lower() == "double":
-                twin_count = 0
-                
-                # Scan the dict for the other partner delegate in the exact same committee
-                for other_delegate, details in finalassignments.items():
-                    # Skip the one we literally just manually updated
-                    if other_delegate == delegate_key:
-                        continue
-                        
-                    # If it's the same committee, copy the country over!
-                    if details[0] == current_comm:
-                        if len(finalassignments[other_delegate]) > 2:
-                            finalassignments[other_delegate][2] = new_country
-                        else:
-                            finalassignments[other_delegate].append(new_country)
-                        twin_count += 1
-                
-                if twin_count > 0:
-                    print(f"\033[K 🔗 Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
+        finalassignments = update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees)
     
+    finalassignments, cell_map, assigned_cell_map = map_cells(finalassignments, availableCountries, currentRow)
+
+    return finalassignments, cell_map, assigned_cell_map
+
+def update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees):
+    # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
+    if new_country:
+        # 1. Update the selected delegate
+        if len(finalassignments[delegate_key]) > 2:
+            finalassignments[delegate_key][2] = new_country
+        else:
+            finalassignments[delegate_key].append(new_country)
+            
+        print(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
+
+        # 2. AUTOMATIC TWIN LINKING LOGIC FOR DOUBLE DELEGATIONS
+        if finalassignments[delegate_key][1] in Double_Committees:
+            twin_count = 0
+            
+            # Scan the dict for the other partner delegate in the exact same committee
+            for other_delegate, details in finalassignments.items():
+                # Skip the one we literally just manually updated
+                if other_delegate == delegate_key:
+                    continue
+                    
+                # If it's the same committee, copy the country over!
+                if details[0] == current_comm:
+                    if len(finalassignments[other_delegate]) > 2:
+                        finalassignments[other_delegate][2] = new_country
+                    else:
+                        finalassignments[other_delegate].append(new_country)
+                    twin_count += 1
+            
+            if twin_count > 0:
+                print(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
+    return finalassignments
+
+def map_cells(finalassignments: dict, availableCountries, currentRow):
     cell_map = {}
     assigned_cell_map = {}
     checkingSet = set()
@@ -300,7 +306,6 @@ def add_assignments_and_map_cells(finalassignments, availableCountries, currentR
             cell_map[coordinate] = ""
         elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
             cell_map[coordinate] = country
-
     return finalassignments, cell_map, assigned_cell_map
 
 def pull_sheet_data(sheet_service, sheet_id, sheet_name, ranges):
