@@ -340,7 +340,7 @@ def assign_committee(CommitteeTypeSelection, indices: dict, data: tuple, finalas
     else:
         print("Error in making committees for GA at values of i and iterator:", i, iterator)
         i = i + 1
-    return finalassignments, i, percentages
+    return finalassignments, i, percentages, iterator
 
 def map_cells(finalassignments: dict, availableCountries, currentRow):
     cell_map = {}
