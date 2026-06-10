@@ -341,3 +341,25 @@ class SheetAPI(GoogleAPIs):
                     availability_map[(committee_name, country_name)] = absolute_coordinate
 
         return availability_map
+    
+    def map_cells(self, finalassignments: dict, availableCountries, currentRow):
+        cell_map = {}
+        assigned_cell_map = {}
+        checkingSet = set()
+        j = 0
+        for delegate, vals in finalassignments.items():
+            if len(vals) == 3:
+                committee = vals[0]
+                country = vals[2]
+                checkingSet.add(f"{committee.lower()}, {country.lower()}")
+
+                #construct school assignments cells
+                assigned_cell_map[f"Assignments!{self.sheets_alphabet(j+1)}{currentRow}" if j <= 29 else f"Assignments!{self.sheets_alphabet(j-29)}{currentRow + 1}"] = f"{country} ({committee})"
+            j += 1
+        for (committee, country), coordinate in availableCountries.items():
+            if (f"{committee.lower()}, {country.lower()}") in checkingSet:
+                #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
+                cell_map[coordinate] = ""
+            elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
+                cell_map[coordinate] = country
+        return finalassignments, cell_map, assigned_cell_map

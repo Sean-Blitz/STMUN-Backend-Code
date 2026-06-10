@@ -7,7 +7,7 @@ from Infrastructure.GoogleAPIs import SheetAPI
 import AssignmentsFunctions
 
 # ---------- CONTROLS -----------
-registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs"
+registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" #link to your registration Sheet
 sheetname = "Responses"
 # -------------------------------
 
@@ -103,16 +103,16 @@ def main():
 
                 finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
                 CurrentRow = SheetsAPI.get_column_odd_cells( registrationSheetID, "Assignments", "A", 1) + 2
-                finalassignments, remaining_cell_map, SchoolAssignmentsCells = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
-
+                finalassignments, availableCountries, currentRow = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
+                finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
             cont = input("Finished building cell maps. Push?")
             while cont.lower() not in {"yes", "no"}:
                 cont = input("Finished building cell maps. Push?")
 
             #writing to the sheet the cell maps.
-            SheetsAPI.write_values_to_sheet_from_dict( registrationSheetID, remaining_cell_map)
-            SheetsAPI.write_values_to_sheet_from_dict( registrationSheetID, SchoolAssignmentsCells)
-            SheetsAPI.write_values_to_sheet_from_dict( registrationSheetID, {f"Assignments!A{CurrentRow}": selectedSchool})
+            SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, remaining_cell_map)
+            SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, SchoolAssignmentsCells)
+            SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, {f"Assignments!A{CurrentRow}": selectedSchool})
 
             #counting local percentages.
             

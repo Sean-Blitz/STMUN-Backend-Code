@@ -1,6 +1,5 @@
 import questionary
 import sys
-import sheetFunctions
 import csv
 import os
 
@@ -126,6 +125,120 @@ def backup_sheet_to_csv(sheet_api, spreadsheet_id, range_name, filename="unassig
     
     print(f"Backup successfully saved to {filename}")
 
+def update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees):
+    # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
+    if new_country:
+        # 1. Update the selected delegate
+        if len(finalassignments[delegate_key]) > 2:
+            finalassignments[delegate_key][2] = new_country
+        else:
+            finalassignments[delegate_key].append(new_country)
+            
+        print(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
+
+        # 2. AUTOMATIC TWIN LINKING LOGIC FOR DOUBLE DELEGATIONS
+        if finalassignments[delegate_key][1] in Double_Committees:
+            twin_count = 0
+            
+            # Scan the dict for the other partner delegate in the exact same committee
+            for other_delegate, details in finalassignments.items():
+                # Skip the one we literally just manually updated
+                if other_delegate == delegate_key:
+                    continue
+                    
+                # If it's the same committee, copy the country over!
+                if details[0] == current_comm:
+                    if len(finalassignments[other_delegate]) > 2:
+                        finalassignments[other_delegate][2] = new_country
+                    else:
+                        finalassignments[other_delegate].append(new_country)
+                    twin_count += 1
+            
+            if twin_count > 0:
+                print(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
+    return finalassignments
+
+def assign_committee(CommitteeTypeSelection, indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
+    """
+    Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
+    """
+
+    #sets up variables
+    if CommitteeTypeSelection == "GA":
+        Indices = indices["ga"]
+        singleIndices = singleIndices["ga"]
+        committeeCount = committeeCount[0]
+    elif CommitteeTypeSelection == "Specialized":
+        Indices = indices["specialized"]
+        singleIndices = singleIndices["specialized"]
+        committeeCount = committeeCount[1]
+    elif CommitteeTypeSelection == "Crisis":
+        Indices = indices["crisis"]
+        singleIndices = singleIndices["crisis"]
+        committeeCount = committeeCount[2]
+    else:
+        print("Error in Committee Type Selection.")
+        return
+    names, percentages, double, spots = data
+
+    row = min(Indices, key = lambda x: percentages[x]) #find the lowest percentage GA committee
+    committee = names[row]
+    if double[row].lower() == "true" and committeeCount - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
+        finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, type[row], ""]
+        percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
+        i = i + 2 #skip the next delegate since we just assigned it.
+        iterator = iterator + 2
+    elif double[row].lower() == "true" and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
+        row = min(singleIndices, key = lambda x: percentages[x]) #only scans single del GA's
+        committee = names[row]
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
+        percentages[names.index(committee)] += (100/spots[names.index(committee)])
+        i = i +1
+        iterator = iterator + 1
+    elif double[row].lower() == "false": #if single delegate committee
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
+        percentages[row] += (100/spots[row])
+        i = i + 1
+        iterator = iterator + 1
+    elif iterator == 0:
+        print("\033[K", end="")
+        print("Error in assignment logic.")
+        if input("Continue? (y/n)") == "y":
+            i = i + 1
+            iterator = iterator + 1
+        elif input("Continue? (y/n)") == "n":
+            sys.exit(0)
+    else:
+        print("Error in making committees for GA at values of i and iterator:", i, iterator)
+        i = i + 1
+    return finalassignments, i, percentages, iterator
+
+def append_to_csv(filename, row_data):
+    """
+    Appends a single row of data to a specified CSV file.
+    Automatically handles comma-escaping and structural formatting.
+    
+    Parameters:
+    filename (str): The name or path of the CSV file (e.g., 'assignments_log.csv').
+    row_data (list): A list of items representing the cells of the row (e.g., ['School A - #1', 'DISEC', 'Bolivia']).
+    """
+    # Opening with mode='a' enables appending without wiping existing data.
+    # newline='' prevents standard Windows/Unix double-spacing bugs.
+    with open(filename, mode='a', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(row_data)
+
+def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
+    if current_assignment in Double_Committees and new_committee in Double_Committees:
+        print("The old committee was a double committee, and so is the new one. Change the other delegate!")
+    elif new_committee in Double_Committees:
+        print("The new committee is a double committee. You should find a pair for this delegate, if possible.")
+    elif current_assignment in Double_Committees:
+        print("The old committee was a double committee. Make sure pairings are still correct!")
+    else:
+        print(f"Updated {delegate_key} to {new_committee.strip()}")
+
 def add_assignments_and_map_cells(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix=None):
     """
     Launches an interactive interface to browse and add country assignments.
@@ -248,146 +361,8 @@ def add_assignments_and_map_cells(finalassignments, availableCountries, currentR
                     print("Please type a valid number or menu shortcut character.")
 
         finalassignments = update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees)
-    
-    finalassignments, cell_map, assigned_cell_map = map_cells(finalassignments, availableCountries, currentRow)
 
-    return finalassignments, cell_map, assigned_cell_map
-
-def update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees):
-    # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
-    if new_country:
-        # 1. Update the selected delegate
-        if len(finalassignments[delegate_key]) > 2:
-            finalassignments[delegate_key][2] = new_country
-        else:
-            finalassignments[delegate_key].append(new_country)
-            
-        print(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
-
-        # 2. AUTOMATIC TWIN LINKING LOGIC FOR DOUBLE DELEGATIONS
-        if finalassignments[delegate_key][1] in Double_Committees:
-            twin_count = 0
-            
-            # Scan the dict for the other partner delegate in the exact same committee
-            for other_delegate, details in finalassignments.items():
-                # Skip the one we literally just manually updated
-                if other_delegate == delegate_key:
-                    continue
-                    
-                # If it's the same committee, copy the country over!
-                if details[0] == current_comm:
-                    if len(finalassignments[other_delegate]) > 2:
-                        finalassignments[other_delegate][2] = new_country
-                    else:
-                        finalassignments[other_delegate].append(new_country)
-                    twin_count += 1
-            
-            if twin_count > 0:
-                print(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
-    return finalassignments
-
-def assign_committee(CommitteeTypeSelection, indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
-    """
-    Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
-    """
-
-    #sets up variables
-    if CommitteeTypeSelection == "GA":
-        Indices = indices["ga"]
-        singleIndices = singleIndices["ga"]
-        committeeCount = committeeCount[0]
-    elif CommitteeTypeSelection == "Specialized":
-        Indices = indices["specialized"]
-        singleIndices = singleIndices["specialized"]
-        committeeCount = committeeCount[1]
-    elif CommitteeTypeSelection == "Crisis":
-        Indices = indices["crisis"]
-        singleIndices = singleIndices["crisis"]
-        committeeCount = committeeCount[2]
-    else:
-        print("Error in Committee Type Selection.")
-        return
-    names, percentages, double, spots = data
-
-    row = min(Indices, key = lambda x: percentages[x]) #find the lowest percentage GA committee
-    committee = names[row]
-    if double[row].lower() == "true" and committeeCount - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-        finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, type[row], ""]
-        percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
-        i = i + 2 #skip the next delegate since we just assigned it.
-        iterator = iterator + 2
-    elif double[row].lower() == "true" and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
-        row = min(singleIndices, key = lambda x: percentages[x]) #only scans single del GA's
-        committee = names[row]
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-        percentages[names.index(committee)] += (100/spots[names.index(committee)])
-        i = i +1
-        iterator = iterator + 1
-    elif double[row].lower() == "false": #if single delegate committee
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-        percentages[row] += (100/spots[row])
-        i = i + 1
-        iterator = iterator + 1
-    elif iterator == 0:
-        print("\033[K", end="")
-        print("Error in assignment logic.")
-        if input("Continue? (y/n)") == "y":
-            i = i + 1
-            iterator = iterator + 1
-        elif input("Continue? (y/n)") == "n":
-            sys.exit(0)
-    else:
-        print("Error in making committees for GA at values of i and iterator:", i, iterator)
-        i = i + 1
-    return finalassignments, i, percentages, iterator
-
-def map_cells(finalassignments: dict, availableCountries, currentRow):
-    cell_map = {}
-    assigned_cell_map = {}
-    checkingSet = set()
-    j = 0
-    for delegate, vals in finalassignments.items():
-        if len(vals) == 3:
-            committee = vals[0]
-            country = vals[2]
-            checkingSet.add(f"{committee.lower()}, {country.lower()}")
-
-            #construct school assignments cells
-            assigned_cell_map[f"Assignments!{sheetFunctions.sheets_alphabet(j+1)}{currentRow}" if j <= 29 else f"Assignments!{sheetFunctions.sheets_alphabet(j-29)}{currentRow + 1}"] = f"{country} ({committee})"
-        j += 1
-    for (committee, country), coordinate in availableCountries.items():
-        if (f"{committee.lower()}, {country.lower()}") in checkingSet:
-            #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
-            cell_map[coordinate] = ""
-        elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
-            cell_map[coordinate] = country
-    return finalassignments, cell_map, assigned_cell_map
-
-def append_to_csv(filename, row_data):
-    """
-    Appends a single row of data to a specified CSV file.
-    Automatically handles comma-escaping and structural formatting.
-    
-    Parameters:
-    filename (str): The name or path of the CSV file (e.g., 'assignments_log.csv').
-    row_data (list): A list of items representing the cells of the row (e.g., ['School A - #1', 'DISEC', 'Bolivia']).
-    """
-    # Opening with mode='a' enables appending without wiping existing data.
-    # newline='' prevents standard Windows/Unix double-spacing bugs.
-    with open(filename, mode='a', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        writer.writerow(row_data)
-
-def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
-    if current_assignment in Double_Committees and new_committee in Double_Committees:
-        print("The old committee was a double committee, and so is the new one. Change the other delegate!")
-    elif new_committee in Double_Committees:
-        print("The new committee is a double committee. You should find a pair for this delegate, if possible.")
-    elif current_assignment in Double_Committees:
-        print("The old committee was a double committee. Make sure pairings are still correct!")
-    else:
-        print(f"Updated {delegate_key} to {new_committee.strip()}")
+    return finalassignments, availableCountries, currentRow
 
 #testing = {"1": ["DISEC", "GA", ""], "2": ["SOCHUM", "GA", ""], "3": ["UNHRC", "Specialized", ""]}
 #add_assignments(testing, suggestions_matrix=[["USA", "China", "Russia"], ["Germany", "France", "UK"], ["Saudi Arabia", "South Africa", "Brazil"]])
