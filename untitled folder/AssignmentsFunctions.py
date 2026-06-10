@@ -45,7 +45,7 @@ def get_unassigned_schools(live_schools, csv_filepath):
 #how does this function work? Essentially, it checks if CSV exists, opens it safely, reads row by row checking first column,
 #strips whitespace, appends it to the set, and uses the fact that sets already have uniqueness to compare with live_schools.
 
-def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names):
+def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees):
     """
     Launches an interactive Questionary interface allowing users to browse 
     delegates and overwrite their committee assignments in RAM.
@@ -101,7 +101,9 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names):
                 finalassignments[delegate_key][0] = new_committee.strip()
             else:
                 print("Your selected assignment is not the correct committee type. Please try again.")
-            print(f"Updated {delegate_key} to {new_committee.strip()}")
+
+            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+
         else:
             print("No changes made or invalid committee name entered. Please try again.")
     return finalassignments
@@ -381,6 +383,15 @@ def append_to_csv(filename, row_data):
         writer = csv.writer(file)
         writer.writerow(row_data)
 
+def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
+    if current_assignment in Double_Committees and new_committee in Double_Committees:
+        print("The old committee was a double committee, and so is the new one. Change the other delegate!")
+    elif new_committee in Double_Committees:
+        print("The new committee is a double committee. You should find a pair for this delegate, if possible.")
+    elif current_assignment in Double_Committees:
+        print("The old committee was a double committee. Make sure pairings are still correct!")
+    else:
+        print(f"Updated {delegate_key} to {new_committee.strip()}")
 
 #testing = {"1": ["DISEC", "GA", ""], "2": ["SOCHUM", "GA", ""], "3": ["UNHRC", "Specialized", ""]}
 #add_assignments(testing, suggestions_matrix=[["USA", "China", "Russia"], ["Germany", "France", "UK"], ["Saudi Arabia", "South Africa", "Brazil"]])
