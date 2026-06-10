@@ -1,50 +1,20 @@
 import csv
 import os
 import time
+from typing import List, Any
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
+from Infrastructure.GoogleAPIs import SheetAPI
+from Infrastructure.GoogleAPIs import DriveAPI
 
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from typing import List, Any
+GDriveAPI = DriveAPI()
+SheetsAPI = SheetAPI()
 
-import driveFunctions
-import sheetFunctions
-
-SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents']
-CREDENTIALS_FILE = 'credentials.json'
-TOKEN_FILE = 'token.json'
+#-------------- Controls ------------
 mastersheetID = "1JBLoL2TSQKqotrDhH2TFC3SJeLjeTioXbWMAXjfGOb0"
 mastersheet = f"docs.google.com/spreadsheets/d/{mastersheetID}"
 template = "16T80NITxS63Q8ZzL9dl2tVOdMfKiYHJfxGpowbQA4CA"
-
-def authenticate():
-    """
-    Handles OAuth login and returns valid credentials.
-    """
-    creds = None
-
-    # Load existing token
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-
-    # If no valid credentials, log in
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CREDENTIALS_FILE, SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-
-        # Save token for next run
-        with open(TOKEN_FILE, 'w') as token:
-            token.write(creds.to_json())
-
-    return creds
+#------------------------------------
 
 def write_cell_value(letter, number, P = None, TD = None, A = None, Att = None, F=None, awd=None, info=None, T=None):
     #P is Payment 1 or 2. TD is total due. A is for conference attendance. Att is for meeting attendance. F is for finance. T is for training attendance.
@@ -64,12 +34,13 @@ def write_cell_value(letter, number, P = None, TD = None, A = None, Att = None, 
         return f'=IMPORTRANGE("{mastersheet}", "Master Roster Contact Info (EDIT)!{letter}{number}")'
     if T != None:
         return f'=IF(ISBLANK(IMPORTRANGE("{mastersheet}", "Mock/Training Attd!{letter}{number}")), FALSE, TRUE)'
+
 def generate_sheet(i):
-    lastname = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!A{i+4}")
-    firstname = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!B{i+4}")
+    lastname = SheetsAPI.read_single_cell(mastersheetID, f"Master Roster Contact Info (EDIT)!A{i+4}")
+    firstname = SheetsAPI.read_single_cell(mastersheetID, f"Master Roster Contact Info (EDIT)!B{i+4}")
     name = f"{firstname} {lastname}"
     print(f"Generating sheet for {name}...")
-    newsheet = driveFunctions.copy_drive_file(drive_service, template, new_name=f"{name} - Individualized Dashboard")
+    newsheet = GDriveAPI.copy_drive_file(template, new_name=f"{name} - Individualized Dashboard")
 
     dictofvalues = {
         "B3": name,
@@ -199,7 +170,7 @@ def generate_sheet(i):
         "M38": write_cell_value("AM", i+4, T=1),
     }
     print(f"Writing values to sheet for {name}...")
-    sheetFunctions.write_values_to_sheet_from_dict(sheets_service, newsheet, dictofvalues, value_input_option="USER_ENTERED")
+    SheetsAPI.write_values_to_sheet_from_dict(newsheet, dictofvalues, value_input_option="USER_ENTERED")
     print(f"Finished sheet. Link: https://docs.google.com/spreadsheets/d/{newsheet}/edit")
     return newsheet, name
 
@@ -231,33 +202,35 @@ def export_lists_to_csv(list1: List[Any], list2: List[Any], filename: str = "out
             writer.writerow(row)
             
     print(f"Successfully wrote data to {filename}")
-    
-print("Warning: do not use this while the sheet is updating in ANY way!")
-action = input("Would you like to generate all sheets or add one person? (all/person): ").strip().lower()
-drive_service = driveFunctions.get_drive_service(authenticate())
-sheets_service = build('sheets', 'v4', credentials=authenticate())
 
-if action == "all":
-    peoplecount = sheetFunctions.get_column_until_empty(sheets_service, mastersheetID, "Master Roster Contact Info (EDIT)", "A", 4)
-    sheetstoshare = {}
-    names = []
-    for i in range(peoplecount):
-        newsheet, name = generate_sheet(i)
-        email = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!E{i+4}")
-        sheetstoshare[newsheet] = email
-        names.append(name)
-        time.sleep(5)
-    print("Please make sure you have gone through all the sheets and enabled connections!")
-    for sheet in sheetstoshare:
-        driveFunctions.share_spreadsheet(drive_service, sheet, sheetstoshare[sheet], role="commenter")
-    sheeturls = []
-    for sheet in sheetstoshare:
-        sheeturls.append(f"https://docs.google.com/spreadsheets/d/{sheet}/edit")
-    export_lists_to_csv(names, sheeturls, filename="names_and_emails.csv")
-elif action == "person":
-    number = input("Enter the person's row number (from Master Roster Contact Info): ").strip()
-    newsheet, name = generate_sheet(int(number)-4)
-    email = sheetFunctions.read_single_cell(sheets_service, mastersheetID, f"Master Roster Contact Info (EDIT)!E{int(number)}")
-    driveFunctions.share_spreadsheet(drive_service, newsheet, email, role="commenter")
-else:
-    print("Invalid input. Please enter 'all' or 'person'.")
+def main():
+    print("Warning: do not use this while the sheet is updating in ANY way!")
+    action = input("Would you like to generate all sheets or add one person? (all/person): ").strip().lower()
+
+    if action == "all":
+        peoplecount = SheetsAPI.get_column_until_empty(mastersheetID, "Master Roster Contact Info (EDIT)", "A", 4)
+        sheetstoshare = {}
+        names = []
+        for i in range(peoplecount):
+            newsheet, name = generate_sheet(i)
+            email = SheetsAPI.read_single_cell(mastersheetID, f"Master Roster Contact Info (EDIT)!E{i+4}")
+            sheetstoshare[newsheet] = email
+            names.append(name)
+            time.sleep(5)
+        print("Please make sure you have gone through all the sheets and enabled connections!")
+        for sheet in sheetstoshare:
+            GDriveAPI.share_spreadsheet(sheet, sheetstoshare[sheet], role="commenter")
+        sheeturls = []
+        for sheet in sheetstoshare:
+            sheeturls.append(f"https://docs.google.com/spreadsheets/d/{sheet}/edit")
+        export_lists_to_csv(names, sheeturls, filename="names_and_emails.csv")
+    elif action == "person":
+        number = input("Enter the person's row number (from Master Roster Contact Info): ").strip()
+        newsheet, name = generate_sheet(int(number)-4)
+        email = SheetsAPI.read_single_cell(mastersheetID, f"Master Roster Contact Info (EDIT)!E{int(number)}")
+        GDriveAPI.share_spreadsheet(newsheet, email, role="commenter")
+    else:
+        print("Invalid input. Please enter 'all' or 'person'.")
+
+if __name__ == "__main__":
+    main()
