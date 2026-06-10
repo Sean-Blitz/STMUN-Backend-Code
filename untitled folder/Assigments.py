@@ -115,105 +115,18 @@ while unassignedSchools:
             singleCrisisIndices = single_indices["crisis"]
             i = 0
             iterator = 0
+            committeeCount = (GA, Specialized, Crisis)
             while iterator < GA:
-                row = min(GaIndices, key = lambda x: percentages[x]) #find the lowest percentage GA committee
-                committee = names[row]
-                if double[row].lower() == "true" and GA - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, type[row], ""]
-                    percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
-                    i = i + 2 #skip the next delegate since we just assigned it.
-                    iterator = iterator + 2
-                elif double[row].lower() == "true" and GA - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
-                    row = min(singleGAIndices, key = lambda x: percentages[x]) #only scans single del GA's
-                    committee = names[row]
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    percentages[names.index(committee)] += (100/spots[names.index(committee)])
-                    i = i +1
-                    iterator = iterator + 1
-                elif double[row].lower() == "false": #if single delegate committee
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    percentages[row] += (100/spots[row])
-                    i = i + 1
-                    iterator = iterator + 1
-                elif iterator == 0:
-                    print("\033[K", end="")
-                    print("Error in assignment logic.")
-                    if input("Continue? (y/n)") == "y":
-                        i = i + 1
-                        iterator = iterator + 1
-                    elif input("Continue? (y/n)") == "n":
-                        sys.exit(0)
-                else:
-                    print("Error in making committees for GA at values of i and iterator:", i, iterator)
-                    i = i + 1
+                data = (names, percentages, double, spots)
+                finalassignments, i, percentages = AssignmentsFunctions.assign_committee("GA", indices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount)
             iterator = 0
             while iterator < Specialized:
-                row = min(SpecIndices, key = lambda x: percentages[x]) #find the lowest percentage Specialized committee
-                committee = names[row]
-                if double[row].lower() == "true" and Specialized - iterator > 1: #if double delegate committee and enough Specialized spots left.
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, type[row], ""]
-                    percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
-                    i = i + 2 #skip the next delegate since we just assigned it.
-                    iterator = iterator + 2
-                elif double[row].lower() == "true" and Specialized - iterator == 1: #if double delegate commmittee and not enough Specialized spots left
-                    row = min(singleSpecIndices, key = lambda x: percentages[x]) #only scans single del Specialized's
-                    committee = names[row]
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    percentages[names.index(committee)] += (100/spots[names.index(committee)])
-                    i = i +1
-                    iterator = iterator + 1
-                elif double[row].lower() == "false": #if single delegate committee
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    percentages[row] += (100/spots[row])
-                    i = i + 1
-                    iterator = iterator + 1
-                elif iterator == 0:
-                    print("\033[K", end="")
-                    print("Error in assignment logic.")
-                    if input("Continue? (y/n)") == "y":
-                        i = i + 1
-                        iterator = iterator + 1
-                    elif input("Continue? (y/n)") == "n":
-                        sys.exit(0)
-                else:
-                    print("Error in making committees for Specialized at values of i and iterator:", i, iterator)
-                    i = i+1
+                data = (names, percentages, double, spots)
+                finalassignments, i, percentages = AssignmentsFunctions.assign_committee("Specialized", indices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount)
             iterator = 0
             while iterator < Crisis:
-                row = min(CrisisIndices, key = lambda x: percentages[x]) if SecurityCouncil.lower() == "yes" else min(CrisisIndices, key = lambda x: percentages[x] if names[x] != "Historical Crisis" and names[x] != "Security Council" else 110.0) #find the lowest percentage Crisis committee
-                #takes into account user selection of "yes" and "no" for SC and Historical Crisis.
-                committee = names[row]
-                if double[row].lower() == "true" and Crisis - iterator > 1: #if double delegate committee and enough Crisis spots left.
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, type[row], ""]
-                    percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
-                    iterator = iterator + 2
-                    i = i + 2 #skip the next delegate since we just assigned it.
-                elif double[row].lower() == "true" and Crisis - iterator == 1: #if double delegate commmittee and not enough Crisis spots left
-                    row = min(singleCrisisIndices, key = lambda x: percentages[x]) #only scans single del Crisis's
-                    committee = names[row]
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    percentages[names.index(committee)] += (100/spots[names.index(committee)])
-                    i = i +1
-                    iterator = iterator + 1
-                elif double[row].lower() == "false": #if single delegate committee
-                    finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-                    percentages[row] += (100/spots[row])
-                    i = i + 1
-                    iterator = iterator + 1
-                elif iterator == 0:
-                    print("\033[K", end="")
-                    print("Error in assignment logic.")
-                    if input("Continue? (y/n)") == "y":
-                        i = i + 1
-                        iterator = iterator + 1
-                    elif input("Continue? (y/n)") == "n":
-                        sys.exit(0)
-                else:
-                    print("Error in making committees for Crisis at values of i and iterator:", i, iterator)
-                    i = i+1
+                data = (names, percentages, double, spots)
+                finalassignments, i, percentages = AssignmentsFunctions.assign_committee("Crisis", indices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount)
             print("\033[K", end="")
             print("Assignments for this school:")
             
@@ -263,5 +176,5 @@ while unassignedSchools:
 
         """
         Additional improvements:
-        Fix twin linking logic for assignments.
+        Put things into functions, especially the while statements above.
         """

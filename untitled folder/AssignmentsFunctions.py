@@ -286,6 +286,62 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
                 print(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
     return finalassignments
 
+def assign_committee(CommitteeTypeSelection, indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
+    """
+    Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
+    """
+
+    #sets up variables
+    if CommitteeTypeSelection == "GA":
+        Indices = indices["ga"]
+        singleIndices = singleIndices["ga"]
+        committeeCount = committeeCount[0]
+    elif CommitteeTypeSelection == "Specialized":
+        Indices = indices["specialized"]
+        singleIndices = singleIndices["specialized"]
+        committeeCount = committeeCount[1]
+    elif CommitteeTypeSelection == "Crisis":
+        Indices = indices["crisis"]
+        singleIndices = singleIndices["crisis"]
+        committeeCount = committeeCount[2]
+    else:
+        print("Error in Committee Type Selection.")
+        return
+    names, percentages, double, spots = data
+
+    row = min(Indices, key = lambda x: percentages[x]) #find the lowest percentage GA committee
+    committee = names[row]
+    if double[row].lower() == "true" and committeeCount - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
+        finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, type[row], ""]
+        percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
+        i = i + 2 #skip the next delegate since we just assigned it.
+        iterator = iterator + 2
+    elif double[row].lower() == "true" and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
+        row = min(singleIndices, key = lambda x: percentages[x]) #only scans single del GA's
+        committee = names[row]
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
+        percentages[names.index(committee)] += (100/spots[names.index(committee)])
+        i = i +1
+        iterator = iterator + 1
+    elif double[row].lower() == "false": #if single delegate committee
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
+        percentages[row] += (100/spots[row])
+        i = i + 1
+        iterator = iterator + 1
+    elif iterator == 0:
+        print("\033[K", end="")
+        print("Error in assignment logic.")
+        if input("Continue? (y/n)") == "y":
+            i = i + 1
+            iterator = iterator + 1
+        elif input("Continue? (y/n)") == "n":
+            sys.exit(0)
+    else:
+        print("Error in making committees for GA at values of i and iterator:", i, iterator)
+        i = i + 1
+    return finalassignments, i, percentages
+
 def map_cells(finalassignments: dict, availableCountries, currentRow):
     cell_map = {}
     assigned_cell_map = {}
