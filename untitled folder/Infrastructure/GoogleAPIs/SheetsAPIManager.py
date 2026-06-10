@@ -1,8 +1,11 @@
 import string
 from googleapiclient.discovery import build
+from GoogleAPIsManager import GoogleAPIs
 
-class SheetAPI:
-    def __init__(self, creds):
+class SheetAPI(GoogleAPIs):
+    def __init__(self):
+        super().__init__(CREDENTIALS_FILE="credentials.json", TOKEN_FILE = "token.json", SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents'])
+        creds = self.authenticate()
         self.service = build('sheets', 'v4', credentials=creds)
     
     def write_values_to_sheet_from_dict(self, spreadsheet_id, cell_value_map, value_input_option="USER_ENTERED"):
@@ -261,3 +264,80 @@ class SheetAPI:
             collected_data.append(values[i][0])
             
         return len(collected_data)
+    
+    def read_overview(self, registrationSheetID):
+        names = self.get_column_data_until_empty(registrationSheetID, "Overview", "A", 2) # Use this function to also detect number of committees
+        percentages = self.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
+        percentages = [float(p.strip('%')) for p in percentages] # Convert "45%" to 45.0
+        spots = self.read_cells(registrationSheetID, [f"Overview!C{i+2}" for i in range(len(names))])
+        spots = [int(s) for s in spots] # Convert spot counts to integers
+        double = self.read_cells(registrationSheetID, [f"Overview!E{i+2}" for i in range(len(names))])
+        type = self.read_cells(registrationSheetID, [f"Overview!F{i+2}" for i in range(len(names))])
+        ranges = self.read_cells(registrationSheetID, [f"Overview!H{i+2}" for i in range(len(names))])
+        ranges = {names[i]: ranges[i] for i in range(len(names))}
+        return names, percentages, spots, double, type, ranges
+    
+    def pull_sheet_data(self, sheet_id, sheet_name, ranges):
+        """
+        Pulls all data from Remaining Assignments sheet into RAM.
+        Assumes each range contains only a pile of country names.
+        Maps (committee, country_name) -> absolute_coordinate in a dictionary.
+        """
+        full_ranges = [f"{sheet_name}!{r}" for r in ranges.values()]
+        
+        # Execute ONE bulk network pull for all grid blocks
+        result = self.service.spreadsheets().values().batchGet(
+            spreadsheetId=sheet_id,
+            ranges=full_ranges
+        ).execute()
+        
+        value_ranges = result.get('valueRanges', [])
+        availability_map = {}
+        
+        # Helper to convert column indexes back to Excel letters
+        def col_to_letter(col_idx):
+            letter = ""
+            while col_idx >= 0:
+                letter = chr(col_idx % 26 + 65) + letter
+                col_idx = (col_idx // 26) - 1
+            return letter
+
+        # Process each committee block
+        for (committee_name, raw_range_str), value_range_obj in zip(ranges.items(), value_ranges):
+            
+            rows = value_range_obj.get('values', [])
+            if not rows:
+                continue
+                
+            # Parse the top-left starting corner of this specific bounding box
+            start_cell = raw_range_str.split(':')[0]
+            start_col_str = ''.join([c for c in start_cell if c.isalpha()]).upper()
+            start_row_num = int(''.join([c for c in start_cell if c.isdigit()]))
+            
+            # Convert start column letter to a base-0 index
+            start_col_idx = 0
+            for char in start_col_str:
+                start_col_idx = start_col_idx * 26 + (ord(char) - ord('A') + 1)
+            start_col_idx -= 1 
+
+            # Loop through every cell in the returned matrix
+            for row_offset, row in enumerate(rows):
+                for col_offset, cell_value in enumerate(row):
+                    
+                    # Strip and read the text
+                    country_name = cell_value.strip()
+                    
+                    # Ignore empty cells or placeholders
+                    if not country_name or country_name.lower() in ["", "unassigned"]:
+                        continue
+                        
+                    # Calculate the exact row and column for THIS specific cell
+                    current_row_abs = start_row_num + row_offset
+                    current_col_abs_letter = col_to_letter(start_col_idx + col_offset)
+                    
+                    absolute_coordinate = f"{sheet_name}!{current_col_abs_letter}{current_row_abs}"
+                    
+                    # Save to your validation lookup map
+                    availability_map[(committee_name, country_name)] = absolute_coordinate
+
+        return availability_map

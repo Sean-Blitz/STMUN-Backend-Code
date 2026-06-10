@@ -3,41 +3,32 @@ import sys
 import time
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
-
-from googleapiclient.discovery import build
-from Infrastructure.GoogleAPIs import GoogleAPIs
 from Infrastructure.GoogleAPIs import SheetAPI
-
-import driveFunctions
-import sheetFunctions
 import AssignmentsFunctions
 
+# ---------- CONTROLS -----------
 registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs"
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registrationSheetID}/edit"
 sheetname = "Responses"
+# -------------------------------
 
-GoogleAPI = GoogleAPIs()
-creds = GoogleAPI.authenticate()
-SheetsAPI = SheetAPI(creds)
-drive_service = driveFunctions.get_drive_service(creds)
-sheets_service = build('sheets', 'v4', credentials=creds)
+SheetsAPI = SheetAPI()
 
-sheetSchools = sheetFunctions.get_column_data_until_empty(sheets_service, registrationSheetID, sheetname, "C", 2)
+sheetSchools = SheetsAPI.get_column_data_until_empty(registrationSheetID, sheetname, "C", 2)
 unassignedSchools = AssignmentsFunctions.get_unassigned_schools(sheetSchools, "assignedSchools.csv")
-#you should import the entire unassigned positions sheet before the loop, and finish pushing back after all schools are done.
 
 while unassignedSchools:
     selectedSchool = AssignmentsFunctions.select_school_to_assign(unassignedSchools)
-    row = sheetFunctions.find_row_by_string(sheets_service, registrationSheetID, sheetname, "C", selectedSchool)
-    output = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
+    row = SheetsAPI.find_row_by_string(registrationSheetID, sheetname, "C", selectedSchool)
+    output = SheetsAPI.read_cells(registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
     CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output
     numdels = int(numdels)
 
     if len(output) == 9:  # check if all 9 cells have values
-        names, percentages, spots, double, type, ranges = AssignmentsFunctions.read_overview(sheets_service, registrationSheetID)
+        names, percentages, spots, double, type, ranges = SheetsAPI.read_overview(registrationSheetID)
 
         #pulls from Remaining Assignments for checking and pushing back later.
-        availableCountries = AssignmentsFunctions.pull_sheet_data(sheets_service, registrationSheetID, "Remaining Assignments", ranges)
+        availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
 
         print("Top 5 country preferences:", "\033[1m" + CountryPrefs + "\033[0m") #print country preferences in bold for visibility.
         print("Middle Eastern Bloc:", "\033[1m" + MiddleEasternBloc + "\033[0m")
@@ -110,7 +101,7 @@ while unassignedSchools:
                     Double_Committees.add(names[i])
 
             finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
-            CurrentRow = sheetFunctions.get_column_odd_cells(sheets_service, registrationSheetID, "Assignments", "A", 1) + 2
+            CurrentRow = SheetsAPI.get_column_odd_cells( registrationSheetID, "Assignments", "A", 1) + 2
             finalassignments, remaining_cell_map, SchoolAssignmentsCells = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
 
         cont = input("Finished building cell maps. Push?")
@@ -118,14 +109,14 @@ while unassignedSchools:
             cont = input("Finished building cell maps. Push?")
 
         #writing to the sheet the cell maps.
-        sheetFunctions.write_values_to_sheet_from_dict(sheets_service, registrationSheetID, remaining_cell_map)
-        sheetFunctions.write_values_to_sheet_from_dict(sheets_service, registrationSheetID, SchoolAssignmentsCells)
-        sheetFunctions.write_values_to_sheet_from_dict(sheets_service, registrationSheetID, {f"Assignments!A{CurrentRow}": selectedSchool})
+        SheetsAPI.write_values_to_sheet_from_dict( registrationSheetID, remaining_cell_map)
+        SheetsAPI.write_values_to_sheet_from_dict( registrationSheetID, SchoolAssignmentsCells)
+        SheetsAPI.write_values_to_sheet_from_dict( registrationSheetID, {f"Assignments!A{CurrentRow}": selectedSchool})
 
         #counting local percentages.
         
         time.sleep(5); print("Checking sheet for changes...") #pause for sheet to register changes.
-        percentagesChecking = sheetFunctions.read_cells(sheets_service, registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
+        percentagesChecking = SheetsAPI.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
         percentagesChecking = [float(p.strip('%')) for p in percentagesChecking] # Convert "45%" to 45.0
         if percentagesChecking == percentages:
             print("Percentages are correct. Moving on to next school, and placing name in CSV.")
@@ -140,5 +131,4 @@ while unassignedSchools:
 
         """
         Additional improvements:
-        Put things into functions, especially the while statements above.
         """
