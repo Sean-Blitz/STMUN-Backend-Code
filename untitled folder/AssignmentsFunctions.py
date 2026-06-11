@@ -56,7 +56,7 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
         for delegate, details in finalassignments.items():
             current_committee = details[0]
             committee_type = details[1]
-            choice_text = f"#{delegate}: {current_committee} ({committee_type})"
+            choice_text = f"{delegate}: {current_committee} ({committee_type})"
             menu_choices.append(choice_text)
             
         # Add a clear exit option at the bottom of the list
@@ -77,11 +77,6 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
         # Split by the colon to isolate "School - #1"
         #delegate_key = selected_choice.split("-")[1].replace("#", "").strip()
         delegate_key = selected_choice.split(":")[0].strip() # This gets the "#1" part, but we want "School - #1"
-        if delegate_key.startswith('#'):
-        # Check if the hashtag belongs there (like the delegate number) 
-        # or if it's an accidental duplicate/prefix on the school name.
-        # If it's a prefix on the whole string, remove it:
-            delegate_key = delegate_key[1:]
         current_assignment = finalassignments[delegate_key][0]
 
         # 4. Trigger the manual overwrite prompt
@@ -179,25 +174,25 @@ def assign_committee(CommitteeTypeSelection, indices: dict, data: tuple, finalas
     else:
         print("Error in Committee Type Selection.")
         return
-    names, percentages, double, spots = data
+    names, percentages, double, spots, Committeetype = data
 
     row = min(Indices, key = lambda x: percentages[x]) #find the lowest percentage GA committee
     committee = names[row]
     if double[row].lower() == "true" and committeeCount - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
-        finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, type[row], ""]
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
+        finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, Committeetype[row], ""]
         percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
         i = i + 2 #skip the next delegate since we just assigned it.
         iterator = iterator + 2
     elif double[row].lower() == "true" and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
         row = min(singleIndices, key = lambda x: percentages[x]) #only scans single del GA's
         committee = names[row]
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
         percentages[names.index(committee)] += (100/spots[names.index(committee)])
         i = i +1
         iterator = iterator + 1
     elif double[row].lower() == "false": #if single delegate committee
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, type[row], ""]
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
         percentages[row] += (100/spots[row])
         i = i + 1
         iterator = iterator + 1

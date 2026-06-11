@@ -1,5 +1,5 @@
 import base64
-from GoogleAPIsManager import GoogleAPIs
+from .GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
 
 class GmailAPI(GoogleAPIs):
