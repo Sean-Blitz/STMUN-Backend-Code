@@ -1,6 +1,6 @@
 from googleapiclient.discovery import build
 import re
-from GoogleAPIsManager import GoogleAPIs
+from .GoogleAPIsManager import GoogleAPIs
 
 class DriveAPI(GoogleAPIs):
     def __init__(self):

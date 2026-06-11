@@ -1,6 +1,6 @@
 import string
 from googleapiclient.discovery import build
-from GoogleAPIsManager import GoogleAPIs
+from .GoogleAPIsManager import GoogleAPIs
 
 class SheetAPI(GoogleAPIs):
     def __init__(self):

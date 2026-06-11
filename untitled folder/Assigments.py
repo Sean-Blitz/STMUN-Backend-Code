@@ -9,10 +9,32 @@ import AssignmentsFunctions
 # ---------- CONTROLS -----------
 registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" #link to your registration Sheet
 sheetname = "Responses"
+DoubleGAs = "no" #type yes or no, depending on if there are double delegate GA's this year.
 # -------------------------------
 
 SheetsAPI = SheetAPI()
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registrationSheetID}/edit"
+
+def verify_input(GA, Specialized):
+    if '\x1b' in GA:
+        # keeps only the actual digits typed
+        GA = ''.join(c for c in GA if c.isdigit())
+    if '\x1b' in Specialized:
+        # keeps only the actual digits typed; ignores letters and ANSI escape sequences.
+        Specialized = ''.join(c for c in Specialized if c.isdigit())
+    GA = int(GA); Specialized = int(Specialized)
+    while DoubleGAs == "no" and GA % 2 != 0: #if no double delegate GAs and the input is odd
+        GA = input("How many delegates to put in GA? Input must be even.")
+        Specialized = input("How many delegates to put in Specialized?")
+        if '\x1b' in Specialized:
+            # keeps only the actual digits typed; ignores letters and ANSI escape sequences.
+            Specialized = ''.join(c for c in Specialized if c.isdigit())
+        if '\x1b' in GA:
+            # keeps only the actual digits typed
+            GA = ''.join(c for c in GA if c.isdigit())
+        GA = int(GA)
+        Specialized = int(Specialized)
+    return GA, Specialized
 
 def main():
     sheetSchools = SheetsAPI.get_column_data_until_empty(registrationSheetID, sheetname, "C", 2)
@@ -26,7 +48,7 @@ def main():
         numdels = int(numdels)
 
         if len(output) == 9:  # check if all 9 cells have values
-            names, percentages, spots, double, type, ranges = SheetsAPI.read_overview(registrationSheetID)
+            names, percentages, spots, double, Committeetype, ranges = SheetsAPI.read_overview(registrationSheetID)
 
             #pulls from Remaining Assignments for checking and pushing back later.
             availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
@@ -40,9 +62,11 @@ def main():
             print("Pacific Country Bloc:", "\033[1m" + PacificBloc + "\033[0m")
             print("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
             print("\033[1m" + str(numdels) + "\033[0m", "delegates to assign for this school.")
+            
+            GA = input("How many delegates to put in GA?")
+            Specialized = input("How many delegates to put in Specialized?")
+            GA, Specialized = verify_input(GA, Specialized)
 
-            GA = int(input("How many delegates to put in GA?"))
-            Specialized = int(input("How many delegates to put in Specialized?"))
             if GA + Specialized > numdels:
                 print("Error: The total number of delegates does not match the expected count.")
                 sys.exit()
@@ -54,7 +78,7 @@ def main():
 
                 indices = {"ga": [], "specialized": [], "crisis": []}
                 single_indices = {"ga": [], "specialized": [], "crisis": []}
-                for index, (kind, is_double) in enumerate(zip(type, double)):
+                for index, (kind, is_double) in enumerate(zip(Committeetype, double)):
                     kind = kind.lower().replace(".", "").strip()  # Normalize the committee type string
 
                     if kind in indices:
@@ -69,11 +93,10 @@ def main():
                 singleGAIndices = single_indices["ga"]
                 singleSpecIndices = single_indices["specialized"]
                 singleCrisisIndices = single_indices["crisis"]
-                i = 0
-                iterator = 0
+                i = 0; iterator = 0
                 committeeCount = (GA, Specialized, Crisis)
                 while iterator < GA:
-                    data = (names, percentages, double, spots)
+                    data = (names, percentages, double, spots, Committeetype)
                     finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", indices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount)
                 iterator = 0
                 while iterator < Specialized:
@@ -87,8 +110,8 @@ def main():
                 print("Assignments for this school:")
                 
                 GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
-                singleIndicies = singleCrisisIndices + singleGAIndices + singleSpecIndices
-                for i in range(len(names)):
+                singleIndices = singleCrisisIndices + singleGAIndices + singleSpecIndices
+                for i in range(len(names)): #build the lists above to pass into functions for verification.
                     if i in GaIndices:
                         GA_Names.append(names[i])
                     elif i in SpecIndices:
@@ -98,7 +121,7 @@ def main():
                     else:
                         print("There is a committee name error.")
                         sys.exit()
-                    if not i in singleIndicies:
+                    if not i in singleIndices:
                         Double_Committees.add(names[i])
 
                 finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
@@ -130,5 +153,5 @@ def main():
             print("Error: Not all expected cells have values. Please check the sheet for completeness.")
             sys.exit()
     
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()
