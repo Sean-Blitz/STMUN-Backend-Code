@@ -63,6 +63,7 @@ def main():
             print("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
             print("\033[1m" + str(numdels) + "\033[0m", "delegates to assign for this school.")
             
+            #data science: school awards from past
             GA = input("How many delegates to put in GA?")
             Specialized = input("How many delegates to put in Specialized?")
             GA, Specialized = verify_input(GA, Specialized)
@@ -97,15 +98,17 @@ def main():
                 committeeCount = (GA, Specialized, Crisis)
                 while iterator < GA:
                     data = (names, percentages, double, spots, Committeetype)
-                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", indices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount)
+                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
                 iterator = 0
                 while iterator < Specialized:
-                    data = (names, percentages, double, spots)
-                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", indices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount)
+                    data = (names, percentages, double, spots, Committeetype)
+                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
                 iterator = 0
+                if SecurityCouncil.lower() != "yes":
+                    CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
                 while iterator < Crisis:
-                    data = (names, percentages, double, spots)
-                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", indices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount)
+                    data = (names, percentages, double, spots, Committeetype)
+                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
                 print("\033[K", end="")
                 print("Assignments for this school:")
                 
@@ -126,9 +129,9 @@ def main():
 
                 finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
                 CurrentRow = SheetsAPI.get_column_odd_cells( registrationSheetID, "Assignments", "A", 1) + 2
-                finalassignments, availableCountries, currentRow = AssignmentsFunctions.add_assignments_and_map_cells(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
+                finalassignments, availableCountries, currentRow = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
                 finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
-            cont = input("Finished building cell maps. Push?")
+            cont = input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
                 cont = input("Finished building cell maps. Push?")
 
@@ -155,3 +158,10 @@ def main():
     
 if __name__ == "__main__":
     main()
+
+"""
+Improvements:
+twin linking logic for country assignment still does not work
+Put business logic in main
+Split up main function into smaller parts
+"""

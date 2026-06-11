@@ -2,6 +2,7 @@ import questionary
 import sys
 import csv
 import os
+import time
 
 def select_school_to_assign(unassigned_schools):
     """
@@ -19,7 +20,7 @@ def select_school_to_assign(unassigned_schools):
         sys.exit(0)
         
     print("\n" + "="*40)
-    print("  SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
+    print("SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
     print("="*40)
     
     selected = questionary.select(
@@ -89,14 +90,15 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
         if new_committee and new_committee.strip() != current_assignment:
             if new_committee in GA_Names and finalassignments[delegate_key][1].lower() == "ga":
                 finalassignments[delegate_key][0] = new_committee.strip()
+                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
             elif new_committee in Spec_Names and finalassignments[delegate_key][1].lower() == "specialized":
                 finalassignments[delegate_key][0] = new_committee.strip()
+                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
             elif new_committee in Crisis_Names and finalassignments[delegate_key][1].lower() == "crisis":
                 finalassignments[delegate_key][0] = new_committee.strip()
+                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
             else:
-                print("Your selected assignment is not the correct committee type. Please try again.")
-
-            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+                print("Your selected assignment is not the correct committee type or is not a committee name. Please try again.")
 
         else:
             print("No changes made or invalid committee name entered. Please try again.")
@@ -130,9 +132,9 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
             finalassignments[delegate_key].append(new_country)
             
         print(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
-
-        # 2. AUTOMATIC TWIN LINKING LOGIC FOR DOUBLE DELEGATIONS
-        if finalassignments[delegate_key][1] in Double_Committees:
+    
+            # 2. AUTOMATIC TWIN LINKING LOGIC FOR DOUBLE DELEGATIONS
+        if finalassignments[delegate_key][0] in Double_Committees:
             twin_count = 0
             
             # Scan the dict for the other partner delegate in the exact same committee
@@ -151,24 +153,22 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
             
             if twin_count > 0:
                 print(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
+                time.sleep(1)
+
     return finalassignments
 
-def assign_committee(CommitteeTypeSelection, indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
+def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
     """
     Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
     """
-
     #sets up variables
     if CommitteeTypeSelection == "GA":
-        Indices = indices["ga"]
         singleIndices = singleIndices["ga"]
         committeeCount = committeeCount[0]
     elif CommitteeTypeSelection == "Specialized":
-        Indices = indices["specialized"]
         singleIndices = singleIndices["specialized"]
         committeeCount = committeeCount[1]
     elif CommitteeTypeSelection == "Crisis":
-        Indices = indices["crisis"]
         singleIndices = singleIndices["crisis"]
         committeeCount = committeeCount[2]
     else:
@@ -234,7 +234,7 @@ def check_doubles(current_assignment: str, Double_Committees: set, new_committee
     else:
         print(f"Updated {delegate_key} to {new_committee.strip()}")
 
-def add_assignments_and_map_cells(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix=None):
+def add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix=None):
     """
     Launches an interactive interface to browse and add country assignments.
     Uses true numeric shortcut mappings via text prompts.
