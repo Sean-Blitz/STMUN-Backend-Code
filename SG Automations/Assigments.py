@@ -161,7 +161,12 @@ if __name__ == "__main__":
 
 """
 Improvements:
-twin linking logic for country assignment still does not work
 Put business logic in main
 Split up main function into smaller parts
+Fix percentage error
+Single Del GA's ?? Allow for single del assignment (user confirmation before twin logic if odd number goes into GA)
+System for drops and additions? -- Leave to Sahaj? -- Start with a questionary prompt for adding schools, dropping delegates, adding delegates.
+Split up questionary logic. Questionary function should only receive a list and return the selection. No knowledge of business logic. Make it a generator to preserve while loop?
+Link assignments up to sheets provided to schools
+
 """
