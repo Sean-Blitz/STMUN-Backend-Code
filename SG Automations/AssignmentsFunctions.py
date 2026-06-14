@@ -45,65 +45,6 @@ def get_unassigned_schools(live_schools, csv_filepath):
 #how does this function work? Essentially, it checks if CSV exists, opens it safely, reads row by row checking first column,
 #strips whitespace, appends it to the set, and uses the fact that sets already have uniqueness to compare with live_schools.
 
-def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees):
-    """
-    Launches an interactive Questionary interface allowing users to browse 
-    delegates and overwrite their committee assignments in RAM.
-    """
-    while True:
-        # 1. Construct a clean list of choices for Questionary
-        # format: "#1: DISEC (GA)"
-        menu_choices = []
-        for delegate, details in finalassignments.items():
-            current_committee = details[0]
-            committee_type = details[1]
-            choice_text = f"{delegate}: {current_committee} ({committee_type})"
-            menu_choices.append(choice_text)
-            
-        # Add a clear exit option at the bottom of the list
-        menu_choices.append("Save and Exit")
-
-        # 2. Render the primary navigation menu
-        selected_choice = questionary.select(
-            "Select a delegate to modify their assignment:",
-            choices=menu_choices
-        ).ask()
-
-        # Handle the break condition
-        if selected_choice == "Save and Exit" or selected_choice is None:
-            print("Exiting modification menu...")
-            break
-
-        # 3. Parse the delegate name back out of the selected string
-        # Split by the colon to isolate "School - #1"
-        #delegate_key = selected_choice.split("-")[1].replace("#", "").strip()
-        delegate_key = selected_choice.split(":")[0].strip() # This gets the "#1" part, but we want "School - #1"
-        current_assignment = finalassignments[delegate_key][0]
-
-        # 4. Trigger the manual overwrite prompt
-        new_committee = questionary.text(
-            f"Enter new committee for {delegate_key} (Current: {current_assignment}):",
-            default=current_assignment # Pre-fills the line so they can type over it
-        ).ask()
-
-        # 5. Update the master dictionary state in RAM
-        if new_committee and new_committee.strip() != current_assignment:
-            if new_committee in GA_Names and finalassignments[delegate_key][1].lower() == "ga":
-                finalassignments[delegate_key][0] = new_committee.strip()
-                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-            elif new_committee in Spec_Names and finalassignments[delegate_key][1].lower() == "specialized":
-                finalassignments[delegate_key][0] = new_committee.strip()
-                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-            elif new_committee in Crisis_Names and finalassignments[delegate_key][1].lower() == "crisis":
-                finalassignments[delegate_key][0] = new_committee.strip()
-                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-            else:
-                print("Your selected assignment is not the correct committee type or is not a committee name. Please try again.")
-
-        else:
-            print("No changes made or invalid committee name entered. Please try again.")
-    return finalassignments
-
 def backup_sheet_to_csv(sheet_api, spreadsheet_id, range_name, filename="unassigned_backup.csv"):
     """
     Downloads a specific range from Google Sheets to a local CSV for safety 
@@ -223,16 +164,6 @@ def append_to_csv(filename, row_data):
     with open(filename, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(row_data)
-
-def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
-    if current_assignment in Double_Committees and new_committee in Double_Committees:
-        print("The old committee was a double committee, and so is the new one. Change the other delegate!")
-    elif new_committee in Double_Committees:
-        print("The new committee is a double committee. You should find a pair for this delegate, if possible.")
-    elif current_assignment in Double_Committees:
-        print("The old committee was a double committee. Make sure pairings are still correct!")
-    else:
-        print(f"Updated {delegate_key} to {new_committee.strip()}")
 
 def add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix=None):
     """
