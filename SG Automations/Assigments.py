@@ -3,7 +3,8 @@ import sys
 import time
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
-from Infrastructure.GoogleAPIs import SheetAPI
+from Infrastructure import SheetAPI
+from Infrastructure import QuestionaryClass
 import AssignmentsFunctions
 
 # ---------- CONTROLS -----------
@@ -13,6 +14,7 @@ DoubleGAs = "no" #type yes or no, depending on if there are double delegate GA's
 # -------------------------------
 
 SheetsAPI = SheetAPI()
+Display = QuestionaryClass()
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registrationSheetID}/edit"
 
 def verify_input(GA, Specialized):
@@ -35,6 +37,51 @@ def verify_input(GA, Specialized):
         GA = int(GA)
         Specialized = int(Specialized)
     return GA, Specialized
+
+def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees):
+    menu_choices = []
+    for delegate, details in finalassignments.items():
+        current_committee = details[0]
+        committee_type = details[1]
+        choice_text = f"{delegate}: {current_committee} ({committee_type})"
+        menu_choices.append(choice_text)
+    selected_choice = Display.display_list(menu_choices)
+
+    if selected_choice == "exit":
+        return "exit", None
+
+    delegate_key = selected_choice.split(":")[0].strip() #read result
+    current_assignment = finalassignments[delegate_key][0]
+    new_committee = Display.typing_with_pre_fill(f"Enter new committee for {delegate_key} (Current: {current_assignment}):", current_assignment)
+
+    #Helper function to check double committees.
+    def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
+        if current_assignment in Double_Committees and new_committee in Double_Committees:
+            print("The old committee was a double committee, and so is the new one. Change the other delegate!")
+        elif new_committee in Double_Committees:
+            print("The new committee is a double committee. You should find a pair for this delegate, if possible.")
+        elif current_assignment in Double_Committees:
+            print("The old committee was a double committee. Make sure pairings are still correct!")
+        else:
+            print(f"Updated {delegate_key} to {new_committee.strip()}")
+    #------------------------------------------------------------------
+
+    #update dictionary with new choice
+    if new_committee and new_committee.strip() != current_assignment:
+        if new_committee in GA_Names and finalassignments[delegate_key][1].lower() == "ga":
+            finalassignments[delegate_key][0] = new_committee.strip()
+            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+        elif new_committee in Spec_Names and finalassignments[delegate_key][1].lower() == "specialized":
+            finalassignments[delegate_key][0] = new_committee.strip()
+            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+        elif new_committee in Crisis_Names and finalassignments[delegate_key][1].lower() == "crisis":
+            finalassignments[delegate_key][0] = new_committee.strip()
+            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+        else:
+            print("Your selected assignment is not the correct committee type or is not a committee name. Please try again.")
+    else:
+        print("No changes made or invalid committee name entered. Please try again.")
+    return selected_choice, finalassignments
 
 def main():
     sheetSchools = SheetsAPI.get_column_data_until_empty(registrationSheetID, sheetname, "C", 2)
@@ -127,7 +174,11 @@ def main():
                     if not i in singleIndices:
                         Double_Committees.add(names[i])
 
-                finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
+                while True:
+                    selected_choice, finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
+                    #a business logic function that calls display functions.
+                    if selected_choice == "exit":
+                        break
                 CurrentRow = SheetsAPI.get_column_odd_cells( registrationSheetID, "Assignments", "A", 1) + 2
                 finalassignments, availableCountries, currentRow = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
                 finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
