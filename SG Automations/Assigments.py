@@ -45,7 +45,7 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
         committee_type = details[1]
         choice_text = f"{delegate}: {current_committee} ({committee_type})"
         menu_choices.append(choice_text)
-    selected_choice = Display.display_list(menu_choices)
+    selected_choice = Display.display_list(menu_choices, "Select a delegate to modify committee (if desired)", "Save and Exit")
 
     if selected_choice == "exit":
         return "exit", None
@@ -82,6 +82,153 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
     else:
         print("No changes made or invalid committee name entered. Please try again.")
     return selected_choice, finalassignments
+
+def update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees):
+    # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
+    if new_country:
+        # 1. Update the selected delegate
+        if len(finalassignments[delegate_key]) > 2:
+            finalassignments[delegate_key][2] = new_country
+        else:
+            finalassignments[delegate_key].append(new_country)
+            
+        print(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
+    
+            # 2. TWIN LINKING LOGIC FOR DOUBLE DELEGATION COMMITTEES
+        if finalassignments[delegate_key][0] in Double_Committees:
+            twin_count = 0
+            
+            # Scan the dict for the other partner delegate in the exact same committee
+            for other_delegate, details in finalassignments.items():
+                # Skip the one we literally just manually updated
+                if other_delegate == delegate_key:
+                    continue
+                    
+                # If it's the same committee, copy the country over!
+                if details[0] == current_comm:
+                    if len(finalassignments[other_delegate]) > 2:
+                        finalassignments[other_delegate][2] = new_country
+                    else:
+                        finalassignments[other_delegate].append(new_country)
+                    twin_count += 1
+            
+            if twin_count > 0:
+                print(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
+                time.sleep(1)
+
+    return finalassignments
+
+
+def add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix=None):
+    """
+    Launches an interactive interface to browse and add country assignments.
+    Uses true numeric shortcut mappings via text prompts.
+    Uses finalassignments inside the function to check with the availability map. Checks after every new assignment input from user with set logic.
+    If in availability map, edit finalassignments.
+    Passes back finalassignments, and edits the global availability dictionary. 
+    finalassignments is formatted: {"School - #": ["committee", "type", "country"]}
+    availableCountries is formatted: {("committee", "country_name"): "sheet_coordinate"}
+    Finally, creates cell maps at the very end for assigned and unassigned.
+    """
+    delegate_keys = list(finalassignments.keys())
+
+    while True:
+        menu_choices = []
+        for delegate in delegate_keys:
+            current_comm = finalassignments[delegate][0]
+            comm_type = finalassignments[delegate][1]
+            current_country = finalassignments[delegate][2] if len(finalassignments[delegate]) > 2 else "Unassigned"
+            menu_choices.append(f"{delegate} │ {current_comm} ({comm_type}) - {current_country}")
+            
+        selected_choice = Display.display_list(menu_choices, "Select a delegate to give assignments", "Confirm Assignments")
+
+        if selected_choice == "exit" or selected_choice is None:
+            print("\033[K Exiting and saving changes...")
+            break
+
+        delegate_key = selected_choice.split(" │ ")[0].strip()
+        delegate_index = delegate_keys.index(delegate_key)
+        current_comm = finalassignments[delegate_key][0]
+
+        current_suggestions = []
+        if suggestions_matrix and delegate_index < len(suggestions_matrix):
+            current_suggestions = suggestions_matrix[delegate_index]
+
+        new_country = None
+
+        # ─── CASE 1: NO SUGGESTIONS MATRIX EXISTS ─────────────────────────────────────
+        if not current_suggestions:
+            print("\033[F\033[K", end="") 
+            input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
+
+            while not (current_comm, input.strip()) in availableCountries:
+                print("Entered country is not in the list of available countries. Try checking spelling or capitalization.")
+                input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
+
+            new_country = input.strip()
+
+        # ─── CASE 2: SUGGESTIONS MATRIX EXISTS (THE SHORTCUT ENGINE) ──────────────────
+        else:
+            print("\033[F\033[K", end="") # Wipe the previous select prompt line
+            
+            # 1. Print out the available options as a clear text menu block
+            print(f"Suggestions for {delegate_key} ({current_comm}):")
+            for i, country in enumerate(current_suggestions):
+                print(f"  [{i + 1}] {country}")
+            print("  [M] Type a custom country manually")
+            print("  [B] Go back to main menu")
+
+            # 2. Collect a single clean text input instead of a selection menu
+            user_input = Display.typing_with_pre_fill("Select an option number/shortcut:", "")
+
+            # Clean up the printed list block from the terminal to keep things immaculate
+            # (clears the prompt + your options + the header line)
+            for i in range(len(current_suggestions) + 3):
+                print("\033[F\033[K", end="")
+
+            if not user_input:
+                continue
+
+            user_input = user_input.strip().lower()
+
+            # 3. Route the shortcut command
+            if user_input == 'b':
+                continue
+                
+            elif user_input == 'm': #manual input
+                while True:
+                    raw_input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
+
+                    lookup_pair = (current_comm.strip(), raw_input.strip())
+                    if lookup_pair in availableCountries:
+                        new_country = raw_input.strip()
+                        break
+                    else:
+                        print("Country not available. Check spelling/capitalization.")
+                    
+            else:
+                # Validate if the user actually typed a valid option integer
+                try:
+                    selection_idx = int(user_input) - 1
+                    if 0 <= selection_idx < len(current_suggestions):
+                        suggested_name = current_suggestions[selection_idx]
+                        lookup_pair = (current_comm.strip(), suggested_name.strip())
+                        
+                        # FIXED: Tuple evaluation instead of zip()
+                        if lookup_pair in availableCountries: 
+                            new_country = suggested_name
+                        else:
+                            print("Selected country is no longer available. Please try again.")
+                            Display.press_any_key_to_continue()
+                    else:
+                        print("Invalid suggestion option number.")
+                        Display.press_any_key_to_continue()
+                except ValueError:
+                    print("Please type a valid number or menu shortcut character.")
+
+        finalassignments = update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees)
+
+    return finalassignments, availableCountries, currentRow
 
 def main():
     sheetSchools = SheetsAPI.get_column_data_until_empty(registrationSheetID, sheetname, "C", 2)
@@ -179,8 +326,8 @@ def main():
                     #a business logic function that calls display functions.
                     if selected_choice == "exit":
                         break
-                CurrentRow = SheetsAPI.get_column_odd_cells( registrationSheetID, "Assignments", "A", 1) + 2
-                finalassignments, availableCountries, currentRow = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
+                CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
+                finalassignments, availableCountries, currentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
                 finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
             cont = input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
