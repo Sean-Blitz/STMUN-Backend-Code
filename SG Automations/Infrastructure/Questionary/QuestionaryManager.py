@@ -1,4 +1,5 @@
 import questionary
+import sys
 
 class QuestionaryClass:
     def __init__(self) -> None:
@@ -30,3 +31,31 @@ class QuestionaryClass:
     
     def press_any_key_to_continue(self):
         questionary.press_any_key_to_continue().ask()
+
+    def select_option_with_pointer(self, options, promptText, Title):
+        """
+        Takes a list of options and prompts the user to select one
+        using an interactive arrow-key CLI menu.
+        
+        Arguments:
+        options (list): List of options
+        
+        Returns:
+        str: The name of the school chosen by the user.
+        """
+        if not options:
+            print("\n All schools have been assigned! Nothing left to process.")
+            sys.exit(0)
+            
+        print("\n" + "="*40)
+        print(Title)
+        print("="*40)
+        
+        selected = questionary.select(
+            promptText,
+            choices=options,
+            pointer="-->",               
+            use_indicator=True          
+        ).ask()
+        
+        return selected

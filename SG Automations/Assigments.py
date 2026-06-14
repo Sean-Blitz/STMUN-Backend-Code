@@ -5,6 +5,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 from Infrastructure import SheetAPI
 from Infrastructure import QuestionaryClass
+from Infrastructure import CSV
 import AssignmentsFunctions
 
 # ---------- CONTROLS -----------
@@ -15,6 +16,7 @@ DoubleGAs = "no" #type yes or no, depending on if there are double delegate GA's
 
 SheetsAPI = SheetAPI()
 Display = QuestionaryClass()
+Storage = CSV()
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registrationSheetID}/edit"
 
 def verify_input(GA, Specialized):
@@ -37,6 +39,58 @@ def verify_input(GA, Specialized):
         GA = int(GA)
         Specialized = int(Specialized)
     return GA, Specialized
+
+def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
+    """
+    Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
+    """
+    #sets up variables
+    if CommitteeTypeSelection == "GA":
+        singleIndices = singleIndices["ga"]
+        committeeCount = committeeCount[0]
+    elif CommitteeTypeSelection == "Specialized":
+        singleIndices = singleIndices["specialized"]
+        committeeCount = committeeCount[1]
+    elif CommitteeTypeSelection == "Crisis":
+        singleIndices = singleIndices["crisis"]
+        committeeCount = committeeCount[2]
+    else:
+        print("Error in Committee Type Selection.")
+        return
+    names, percentages, double, spots, Committeetype = data
+
+    row = min(Indices, key = lambda x: percentages[x]) #find the lowest percentage GA committee
+    committee = names[row]
+    if double[row].lower() == "true" and committeeCount - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
+        finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, Committeetype[row], ""]
+        percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
+        i = i + 2 #skip the next delegate since we just assigned it.
+        iterator = iterator + 2
+    elif double[row].lower() == "true" and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
+        row = min(singleIndices, key = lambda x: percentages[x]) #only scans single del GA's
+        committee = names[row]
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
+        percentages[names.index(committee)] += (100/spots[names.index(committee)])
+        i = i +1
+        iterator = iterator + 1
+    elif double[row].lower() == "false": #if single delegate committee
+        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
+        percentages[row] += (100/spots[row])
+        i = i + 1
+        iterator = iterator + 1
+    elif iterator == 0:
+        print("\033[K", end="")
+        print("Error in assignment logic.")
+        if input("Continue? (y/n)") == "y":
+            i = i + 1
+            iterator = iterator + 1
+        elif input("Continue? (y/n)") == "n":
+            sys.exit(0)
+    else:
+        print("Error in making committees for GA at values of i and iterator:", i, iterator)
+        i = i + 1
+    return finalassignments, i, percentages, iterator
 
 def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees):
     menu_choices = []
@@ -117,7 +171,6 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
                 time.sleep(1)
 
     return finalassignments
-
 
 def add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix=None):
     """
@@ -232,10 +285,10 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
 
 def main():
     sheetSchools = SheetsAPI.get_column_data_until_empty(registrationSheetID, sheetname, "C", 2)
-    unassignedSchools = AssignmentsFunctions.get_unassigned_schools(sheetSchools, "assignedSchools.csv")
+    unassignedSchools = Storage.find_non_overlap_string(sheetSchools, "assignedSchools.csv")
 
     while unassignedSchools:
-        selectedSchool = AssignmentsFunctions.select_school_to_assign(unassignedSchools)
+        selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
         row = SheetsAPI.find_row_by_string(registrationSheetID, sheetname, "C", selectedSchool)
         output = SheetsAPI.read_cells(registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
         CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output
@@ -292,17 +345,17 @@ def main():
                 committeeCount = (GA, Specialized, Crisis)
                 while iterator < GA:
                     data = (names, percentages, double, spots, Committeetype)
-                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+                    finalassignments, i, percentages, iterator = assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
                 iterator = 0
                 while iterator < Specialized:
                     data = (names, percentages, double, spots, Committeetype)
-                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+                    finalassignments, i, percentages, iterator = assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
                 iterator = 0
                 if SecurityCouncil.lower() != "yes":
                     CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
                 while iterator < Crisis:
                     data = (names, percentages, double, spots, Committeetype)
-                    finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+                    finalassignments, i, percentages, iterator = assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
                 print("\033[K", end="")
                 print("Assignments for this school:")
                 
@@ -337,8 +390,6 @@ def main():
             SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, remaining_cell_map)
             SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, SchoolAssignmentsCells)
             SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, {f"Assignments!A{CurrentRow}": selectedSchool})
-
-            #counting local percentages.
             
             time.sleep(5); print("Checking sheet for changes...") #pause for sheet to register changes.
             percentagesChecking = SheetsAPI.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
@@ -348,7 +399,7 @@ def main():
             else:
                 print("Percentage error. Please check the sheet!")
                 print(registrationSheetURL)
-            AssignmentsFunctions.append_to_csv("assignedSchools.csv", [selectedSchool])
+            Storage.append_to_csv("assignedSchools.csv", [selectedSchool])
             unassignedSchools.remove(selectedSchool)
         else:
             print("Error: Not all expected cells have values. Please check the sheet for completeness.")
