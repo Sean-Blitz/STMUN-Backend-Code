@@ -133,7 +133,7 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
             
         print(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
     
-            # 2. AUTOMATIC TWIN LINKING LOGIC FOR DOUBLE DELEGATIONS
+            # 2. TWIN LINKING LOGIC FOR DOUBLE DELEGATION COMMITTEES
         if finalassignments[delegate_key][0] in Double_Committees:
             twin_count = 0
             
