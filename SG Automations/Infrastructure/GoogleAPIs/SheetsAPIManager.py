@@ -265,18 +265,6 @@ class SheetAPI(GoogleAPIs):
             
         return len(collected_data)
     
-    def read_overview(self, registrationSheetID):
-        names = self.get_column_data_until_empty(registrationSheetID, "Overview", "A", 2) # Use this function to also detect number of committees
-        percentages = self.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
-        percentages = [float(p.strip('%')) for p in percentages] # Convert "45%" to 45.0
-        spots = self.read_cells(registrationSheetID, [f"Overview!C{i+2}" for i in range(len(names))])
-        spots = [int(s) for s in spots] # Convert spot counts to integers
-        double = self.read_cells(registrationSheetID, [f"Overview!E{i+2}" for i in range(len(names))])
-        type = self.read_cells(registrationSheetID, [f"Overview!F{i+2}" for i in range(len(names))])
-        ranges = self.read_cells(registrationSheetID, [f"Overview!H{i+2}" for i in range(len(names))])
-        ranges = {names[i]: ranges[i] for i in range(len(names))}
-        return names, percentages, spots, double, type, ranges
-    
     def pull_sheet_data(self, sheet_id, sheet_name, ranges):
         """
         Pulls all data from Remaining Assignments sheet into RAM.
