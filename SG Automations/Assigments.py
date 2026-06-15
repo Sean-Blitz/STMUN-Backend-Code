@@ -104,49 +104,50 @@ def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalas
     return finalassignments, i, percentages, iterator
 
 def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees):
-    menu_choices = []
-    for delegate, details in finalassignments.items():
-        current_committee = details[0]
-        committee_type = details[1]
-        choice_text = f"{delegate}: {current_committee} ({committee_type})"
-        menu_choices.append(choice_text)
-    selected_choice = Display.display_list(menu_choices, "Select a delegate to modify committee (if desired)", "Save and Exit")
+    while True:
+        menu_choices = []
+        for delegate, details in finalassignments.items():
+            current_committee = details[0]
+            committee_type = details[1]
+            choice_text = f"{delegate}: {current_committee} ({committee_type})"
+            menu_choices.append(choice_text)
+        selected_choice = Display.display_list(menu_choices, "Select a delegate to modify committee (if desired)", "Save and Exit")
 
-    if selected_choice == "exit":
-        return "exit", None
+        if selected_choice == "exit":
+            break
 
-    delegate_key = selected_choice.split(":")[0].strip() #read result
-    current_assignment = finalassignments[delegate_key][0]
-    new_committee = Display.typing_with_pre_fill(f"Enter new committee for {delegate_key} (Current: {current_assignment}):", current_assignment)
+        delegate_key = selected_choice.split(":")[0].strip() #read result
+        current_assignment = finalassignments[delegate_key][0]
+        new_committee = Display.typing_with_pre_fill(f"Enter new committee for {delegate_key} (Current: {current_assignment}):", current_assignment)
 
-    #Helper function to check double committees.
-    def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
-        if current_assignment in Double_Committees and new_committee in Double_Committees:
-            print("The old committee was a double committee, and so is the new one. Change the other delegate!")
-        elif new_committee in Double_Committees:
-            print("The new committee is a double committee. You should find a pair for this delegate, if possible.")
-        elif current_assignment in Double_Committees:
-            print("The old committee was a double committee. Make sure pairings are still correct!")
+        #Helper function to check double committees.
+        def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
+            if current_assignment in Double_Committees and new_committee in Double_Committees:
+                print("The old committee was a double committee, and so is the new one. Change the other delegate!")
+            elif new_committee in Double_Committees:
+                print("The new committee is a double committee. You should find a pair for this delegate, if possible.")
+            elif current_assignment in Double_Committees:
+                print("The old committee was a double committee. Make sure pairings are still correct!")
+            else:
+                print(f"Updated {delegate_key} to {new_committee.strip()}")
+        #------------------------------------------------------------------
+
+        #update dictionary with new choice
+        if new_committee and new_committee.strip() != current_assignment:
+            if new_committee in GA_Names and finalassignments[delegate_key][1].lower() == "ga":
+                finalassignments[delegate_key][0] = new_committee.strip()
+                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+            elif new_committee in Spec_Names and finalassignments[delegate_key][1].lower() == "specialized":
+                finalassignments[delegate_key][0] = new_committee.strip()
+                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+            elif new_committee in Crisis_Names and finalassignments[delegate_key][1].lower() == "crisis":
+                finalassignments[delegate_key][0] = new_committee.strip()
+                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+            else:
+                print("Your selected assignment is not the correct committee type or is not a committee name. Please try again.")
         else:
-            print(f"Updated {delegate_key} to {new_committee.strip()}")
-    #------------------------------------------------------------------
-
-    #update dictionary with new choice
-    if new_committee and new_committee.strip() != current_assignment:
-        if new_committee in GA_Names and finalassignments[delegate_key][1].lower() == "ga":
-            finalassignments[delegate_key][0] = new_committee.strip()
-            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-        elif new_committee in Spec_Names and finalassignments[delegate_key][1].lower() == "specialized":
-            finalassignments[delegate_key][0] = new_committee.strip()
-            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-        elif new_committee in Crisis_Names and finalassignments[delegate_key][1].lower() == "crisis":
-            finalassignments[delegate_key][0] = new_committee.strip()
-            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-        else:
-            print("Your selected assignment is not the correct committee type or is not a committee name. Please try again.")
-    else:
-        print("No changes made or invalid committee name entered. Please try again.")
-    return selected_choice, finalassignments
+            print("No changes made or invalid committee name entered. Please try again.")
+    return finalassignments
 
 def update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees):
     # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
@@ -289,8 +290,13 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
                         Display.press_any_key_to_continue()
                 except ValueError:
                     print("Please type a valid number or menu shortcut character.")
-
         finalassignments = update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees)
+    valueslist = list(finalassignments.values())
+    for i in range(len(valueslist)):
+        if valueslist[i][2] == "" or valueslist[i][2] == None:
+            print("ERROR: You have not fulfilled all assignments yet!!!")
+            add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix)
+
 
     return finalassignments, availableCountries, currentRow
 
@@ -363,6 +369,8 @@ def assign_new_schools():
                 iterator = 0
                 if SecurityCouncil.lower() != "yes":
                     CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
+                else:
+                    CrisisInd = CrisisIndices
                 while iterator < Crisis:
                     data = (names, percentages, double, spots, Committeetype)
                     finalassignments, i, percentages, iterator = assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
@@ -384,17 +392,16 @@ def assign_new_schools():
                     if not i in singleIndices:
                         Double_Committees.add(names[i])
 
-                while True:
-                    selected_choice, finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
-                    #a business logic function that calls display functions.
-                    if selected_choice == "exit":
-                        break
+                finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
+                #a business logic function that calls display functions.
                 CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
                 finalassignments, availableCountries, currentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
                 finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
             cont = input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
                 cont = input("Finished building cell maps. Push?")
+            if cont != "yes":
+                sys.exit()
 
             #writing to the sheet the cell maps.
             SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, remaining_cell_map)
@@ -439,9 +446,7 @@ if __name__ == "__main__":
 Improvements:
 Split up main function into smaller parts
 Fix percentage error
-Single Del GA's ?? Allow for single del assignment (user confirmation before twin logic if odd number goes into GA)
-System for drops and additions? -- Leave to Sahaj? -- Start with a questionary prompt for adding schools, dropping delegates, adding delegates.
-Split up questionary logic. Questionary function should only receive a list and return the selection. No knowledge of business logic. Make it a generator to preserve while loop?
+System for drops and additions? Start with a questionary prompt for adding schools, dropping delegates, adding delegates.
 Link assignments up to sheets provided to schools
 Code a reusable function that reads headers and returns column value from sheets, to allow for database-like reading?
 
