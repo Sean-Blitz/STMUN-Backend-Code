@@ -6,7 +6,6 @@ sys.path.append(current_dir)
 from Infrastructure import SheetAPI
 from Infrastructure import QuestionaryClass
 from Infrastructure import CSV
-import AssignmentsFunctions
 
 # ---------- CONTROLS -----------
 registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" #link to your registration Sheet
@@ -40,6 +39,18 @@ def verify_input(GA, Specialized):
         Specialized = int(Specialized)
     return GA, Specialized
 
+def read_overview(registrationSheetID):
+    names = SheetsAPI.get_column_data_until_empty(registrationSheetID, "Overview", "A", 2) # Use this function to also detect number of committees
+    percentages = SheetsAPI.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
+    percentages = [float(p.strip('%')) for p in percentages] # Convert "45%" to 45.0
+    spots = SheetsAPI.read_cells(registrationSheetID, [f"Overview!C{i+2}" for i in range(len(names))])
+    spots = [int(s) for s in spots] # Convert spot counts to integers
+    double = SheetsAPI.read_cells(registrationSheetID, [f"Overview!E{i+2}" for i in range(len(names))])
+    type = SheetsAPI.read_cells(registrationSheetID, [f"Overview!F{i+2}" for i in range(len(names))])
+    ranges = SheetsAPI.read_cells(registrationSheetID, [f"Overview!H{i+2}" for i in range(len(names))])
+    ranges = {names[i]: ranges[i] for i in range(len(names))}
+    return names, percentages, spots, double, type, ranges
+    
 def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
     """
     Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
@@ -283,10 +294,9 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
 
     return finalassignments, availableCountries, currentRow
 
-def main():
+def assign_new_schools():
     sheetSchools = SheetsAPI.get_column_data_until_empty(registrationSheetID, sheetname, "C", 2)
     unassignedSchools = Storage.find_non_overlap_string(sheetSchools, "assignedSchools.csv")
-
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
         row = SheetsAPI.find_row_by_string(registrationSheetID, sheetname, "C", selectedSchool)
@@ -295,7 +305,7 @@ def main():
         numdels = int(numdels)
 
         if len(output) == 9:  # check if all 9 cells have values
-            names, percentages, spots, double, Committeetype, ranges = SheetsAPI.read_overview(registrationSheetID)
+            names, percentages, spots, double, Committeetype, ranges = read_overview(registrationSheetID)
 
             #pulls from Remaining Assignments for checking and pushing back later.
             availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
@@ -404,18 +414,35 @@ def main():
         else:
             print("Error: Not all expected cells have values. Please check the sheet for completeness.")
             sys.exit()
+
+def add_delegates():
+    pass
+def drop_delegates():
+    pass
+
+def main():
+    options = ["Assign New Schools", "Add Delegates to a School", "Drop Delegates from a School"]
+    action = Display.select_option_with_pointer(options, "Hello SG! What do you want to do today?", "SCVMUN ASSIGNMENT ENGINE")
     
+    if action == "Assign New Schools":
+        assign_new_schools()
+    elif action == "Add Delegates to a School":
+        add_delegates()
+    elif action == "Drop Delegates from a School":
+        drop_delegates()
+
+
 if __name__ == "__main__":
     main()
 
 """
 Improvements:
-Put business logic in main
 Split up main function into smaller parts
 Fix percentage error
 Single Del GA's ?? Allow for single del assignment (user confirmation before twin logic if odd number goes into GA)
 System for drops and additions? -- Leave to Sahaj? -- Start with a questionary prompt for adding schools, dropping delegates, adding delegates.
 Split up questionary logic. Questionary function should only receive a list and return the selection. No knowledge of business logic. Make it a generator to preserve while loop?
 Link assignments up to sheets provided to schools
+Code a reusable function that reads headers and returns column value from sheets, to allow for database-like reading?
 
 """
