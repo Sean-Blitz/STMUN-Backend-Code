@@ -4,8 +4,8 @@ import time
 from typing import List, Any
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
-from Infrastructure.GoogleAPIs import SheetAPI
-from Infrastructure.GoogleAPIs import DriveAPI
+from ..Infrastructure import SheetAPI
+from ..Infrastructure import DriveAPI
 
 GDriveAPI = DriveAPI()
 SheetsAPI = SheetAPI()

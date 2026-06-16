@@ -5,46 +5,21 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
+from ..Infrastructure import GmailAPI
+from ..Infrastructure import DriveAPI
+from ..Infrastructure import SheetAPI
+from ..Infrastructure import DocAPI
 #These four are other .py files with the proper functions called here.
-import ATCode
-import gmailFunctions
-import driveFunctions
-import sheetFunctions
-import docFunctions
+
+mailAPI = GmailAPI()
+CloudStorageAPI = DriveAPI()
+Sheets = SheetAPI()
+Document = DocAPI()
+import ATCode #put this into infrastructure later
 
 SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents']
 CREDENTIALS_FILE = 'credentials.json'
 TOKEN_FILE = 'token.json'
-
-def authenticate():
-    """
-    Handles OAuth login and returns valid credentials.
-    """
-    creds = None
-
-    # Load existing token
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-
-    # If no valid credentials, log in
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CREDENTIALS_FILE, SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-
-        # Save token for next run
-        with open(TOKEN_FILE, 'w') as token:
-            token.write(creds.to_json())
-
-    return creds
 
 def statename(state):
     statetempstore = state
@@ -61,36 +36,31 @@ def statename(state):
     return state
 
 def folderfinding(sName):
-    findfolder = driveFunctions.find_subfolder_id(
-            service=drive_service,
+    findfolder = CloudStorageAPI.find_subfolder_id(
             parent_folder_id= NotAttendingFolderID,
             search_string= sName.replace("High School","").replace("School","").strip()
         )
 
     if findfolder != None:
-        movedfolder = driveFunctions.move_drive_folder(
-            service=drive_service,
+        movedfolder = CloudStorageAPI.move_drive_folder(
             folder_id=findfolder,
             new_parent_folder_id= AttendingFolderID
         )
         print("Folder moved successfully. Check name regardless.")
-        yearfolder = driveFunctions.create_drive_folder(
-            service=drive_service,
+        yearfolder = CloudStorageAPI.create_drive_folder(
             name='SCVMUN LV (2026)', #this is what you should change every year.
             mime_type='application/vnd.google-apps.folder',
             parent_id=movedfolder
         )
 
     elif findfolder == None:
-        createdfolder = driveFunctions.create_drive_folder(
-            service=drive_service,
+        createdfolder = CloudStorageAPI.create_drive_folder(
             name= sName,
             mime_type='application/vnd.google-apps.folder',
             parent_id=AttendingFolderID
         )
         print("Folder created successfully. Check name regardless.")
-        yearfolder = driveFunctions.create_drive_folder(
-            service=drive_service,
+        yearfolder = CloudStorageAPI.create_drive_folder(
             name='SCVMUN LV (2026)', #this is what you should change every year.
             mime_type='application/vnd.google-apps.folder',
             parent_id=createdfolder
@@ -116,13 +86,7 @@ def keepgoing():
         print("Process cancelled.")
         sys.exit()
 
-# ----------------------- MAIN SCRIPT -----------------------
-#Below two lines only need to happen once.
-sheets_service = build('sheets', 'v4', credentials=authenticate())
-creds = authenticate()
-drive_service = driveFunctions.get_drive_service(creds)
-gmail_service = build('gmail', 'v1', credentials=creds)
-docs_service = build('docs', 'v1', credentials=creds)
+# ----------------------- Controls -----------------------
 api_token = "patcikx9vfYeXF4gz.20004c29f9f7601a7bb9ee1d4474468dc46e4c4a1ebcc1105b7fd6a310933560"
 base_id = "appEySB2x9jqHy16Q"   #change this next year
 table_name = "Form Response"
@@ -136,12 +100,13 @@ template2_school = "1EBKQYdnZevr2sJV1fdi4S2pVtZFHtsWKowrXGzdeoCs"
 template3_school = "1Kzg_Nkdx1SdzvCADenSK_vvHkCv5qBer6_Ia-TwXXEg"
 emailtemplate = "1OB-rn-AcMMhjaeELjg2nI8IDZUb7d6jW3gJcehKqnHk"
 emailfolderID = "1SWw6PxL_ewuVRWtJwyLkS1HmKLkffdf5"
+# -------------------------------------------------------
 
 today = datetime.date.today()
 
-gmailIDs = gmailFunctions.find_emails_from_sender_with_label(service=gmail_service)
+gmailIDs = mailAPI.find_emails_from_sender_with_label()
 
-mail_school_names = gmailFunctions.extract_strings_and_remove_label(service=gmail_service, message_ids=gmailIDs)
+mail_school_names = mailAPI.extract_strings_and_remove_label(message_ids=gmailIDs)
 
 i=0
 for i in range(len(mail_school_names)):
@@ -164,8 +129,8 @@ for i in range(len(mail_school_names)):
     keepgoing()
 
     yearfolder = folderfinding(sName)
-    CreateInvoice = lambda templateID, independent: driveFunctions.copy_drive_file_with_number(
-                service=drive_service,
+    CreateInvoice = lambda templateID, independent: CloudStorageAPI.copy_drive_file_with_number(
+                
                 original_file_id= templateID,
                 destination_folder_id=yearfolder,
                 new_name_template="Invoice {n}" + (" - Independent" if independent == "y" else ""),
@@ -200,7 +165,7 @@ for i in range(len(mail_school_names)):
         print("Today's date error for delegate fee.")
         sys.exit()
 
-    sheetFunctions.write_values_to_sheet_from_dict(sheets_service,
+    Sheets.write_values_to_sheet_from_dict(
         spreadsheet_id=newInvoice,
         cell_value_map={
             "Purchase order!C16": sName,
@@ -212,14 +177,14 @@ for i in range(len(mail_school_names)):
             "Purchase order!C22": datetime.date.today().strftime("%m/%d/%Y"),
         })
 
-    sheetFunctions.write_values_to_sheet_from_dict(sheets_service,
+    Sheets.write_values_to_sheet_from_dict(
         spreadsheet_id=newInvoice,
         cell_value_map={
             f"Purchase order!{checkcell}": "true",
             f"Purchase order!{inputCell}": DelCount,
         })
 
-    SheetTotal = sheetFunctions.read_single_cell(service=sheets_service, spreadsheet_id=newInvoice, cell_range="Purchase order!H36")
+    SheetTotal = Sheets.read_single_cell(spreadsheet_id=newInvoice, cell_range="Purchase order!H36")
 
     if int(float(SheetTotal.replace("$", "").replace(",", "").strip()) if SheetTotal != None else 0) != Balance:
         print("Subtotal mismatch error.")
@@ -227,15 +192,14 @@ for i in range(len(mail_school_names)):
     sheeturl = "https://docs.google.com/spreadsheets/d/" + newInvoice
     print(sheeturl)
 
-    docID = driveFunctions.copy_drive_file(
-        service=drive_service,
+    docID = CloudStorageAPI.copy_drive_file(
+        
         file_id=emailtemplate,
         destination_folder_id=emailfolderID,
         new_name=f"{sName} Email"
     )
 
-    docFunctions.fill_doc_placeholders(
-        docs_service=docs_service,
+    Document.fill_doc_placeholders(
         document_id=docID,
         aEmail = aEmail,
         schoolName = sName,
@@ -245,8 +209,7 @@ for i in range(len(mail_school_names)):
 
     keepgoing()
 
-    driveFunctions.share_doc_with_user(
-        drive_service=drive_service,
+    CloudStorageAPI.share_doc_with_user(
         document_id=docID,
         email="sg@scvmun.com",
         role="writer")
