@@ -294,4 +294,51 @@ class DriveAPI(GoogleAPIs):
             print(f"An error occurred: {e}")
             return None
 
+    def copy_drive_file_with_number(self, original_file_id, destination_folder_id, new_name_template, sName):
+        """
+        Copies a Drive file and extracts a number from the original file name.
+
+        Args:
+            service: Authenticated Drive service
+            original_file_id (str): ID of the source file
+            destination_folder_id (str): Destination folder ID
+            new_name_template (str): f-string-style template, e.g. "Invoice Copy {n}"
+            sName (str): School name to append to the new file name
+
+        Returns:
+            tuple: (new_file_id (str), extracted_number (str or None))
+        """
+        # 1. Get original file name
+        file = self.service.files().get(
+            fileId=original_file_id,
+            fields="name"
+        ).execute()
+
+        original_name = file["name"]
+
+        # 2. Extract first number from name
+        match = re.search(r"\d+", original_name)
+        extracted_number = match.group() if match else None
+
+        # 3. Build new name
+        if extracted_number:
+            new_name = new_name_template.format(n=extracted_number)
+            new_name = new_name + f" - {sName}"
+        else:
+            new_name = new_name_template.format(n="")
+
+        # 4. Copy file
+        metadata = {
+            "name": new_name,
+            "parents": [destination_folder_id]
+        }
+
+        copied_file = self.service.files().copy(
+            fileId=original_file_id,
+            body=metadata,
+            fields="id"
+        ).execute()
+
+        return copied_file["id"]
+
 
