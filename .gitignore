@@ -6,3 +6,4 @@ PR Automations/token.json
 .DS_Store
 SG Automations/credentials.json
 SG Automations/.vscode/launch.json
+*.json

@@ -3,9 +3,9 @@ import sys
 import time
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
-from Infrastructure import SheetAPI
-from Infrastructure import QuestionaryClass
-from Infrastructure import CSV
+from ..Infrastructure import SheetAPI
+from ..Infrastructure import QuestionaryClass
+from ..Infrastructure import CSV
 
 # ---------- CONTROLS -----------
 registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" #link to your registration Sheet
