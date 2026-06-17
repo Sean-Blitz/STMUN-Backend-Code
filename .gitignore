@@ -7,3 +7,4 @@ PR Automations/token.json
 SG Automations/credentials.json
 SG Automations/.vscode/launch.json
 *.json
+Infrastructure/Airtable/.env

@@ -1,7 +1,6 @@
 import os
 import datetime
 import sys
-from typing import final
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 from googleapiclient.discovery import build
