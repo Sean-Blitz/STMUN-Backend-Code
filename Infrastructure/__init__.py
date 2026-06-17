@@ -7,3 +7,5 @@ from .GoogleAPIs.DocsAPIManager import DocAPI
 from .Questionary.QuestionaryManager import QuestionaryClass
 
 from .CSV.CSVManager import CSV
+
+from .Airtable.AirtableAPIManager import AirtableAPI

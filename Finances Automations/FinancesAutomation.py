@@ -9,17 +9,14 @@ from ..Infrastructure import GmailAPI
 from ..Infrastructure import DriveAPI
 from ..Infrastructure import SheetAPI
 from ..Infrastructure import DocAPI
+from ..Infrastructure import AirtableAPI
 #These four are other .py files with the proper functions called here.
 
 mailAPI = GmailAPI()
 CloudStorageAPI = DriveAPI()
 Sheets = SheetAPI()
 Document = DocAPI()
-import ATCode #put this into infrastructure later
-
-SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents']
-CREDENTIALS_FILE = 'credentials.json'
-TOKEN_FILE = 'token.json'
+Database = AirtableAPI()
 
 def statename(state):
     statetempstore = state
@@ -87,8 +84,6 @@ def keepgoing():
         sys.exit()
 
 # ----------------------- Controls -----------------------
-api_token = "patcikx9vfYeXF4gz.20004c29f9f7601a7bb9ee1d4474468dc46e4c4a1ebcc1105b7fd6a310933560"
-base_id = "appEySB2x9jqHy16Q"   #change this next year
 table_name = "Form Response"
 AttendingFolderID = "1BPlHoP2G4ih7ewIRQsU0vV9ILkOSxsCv"  #change these two when years change.
 NotAttendingFolderID = "12yoRVdgJ9U7Koo-OK-wp-09ycOMoMc_4"
@@ -110,13 +105,13 @@ mail_school_names = mailAPI.extract_strings_and_remove_label(message_ids=gmailID
 
 i=0
 for i in range(len(mail_school_names)):
-    record_id = ATCode.get_field_by_name(search_name=mail_school_names[i], search_column="School Name")
+    record_id = Database.get_field_by_name(search_name=mail_school_names[i], search_column="School Name")
 
-    schoolName, schoolAddress, advisorPhoneNumber, advisorEmail, delegateCount, date, datestr = ATCode.view_latest_record(record_id) #first view latest record. DO NOT USE THESE VARIABLES EXCEPT DATE.
+    schoolName, schoolAddress, advisorPhoneNumber, advisorEmail, delegateCount, date, datestr = Database.view_latest_record(record_id) #first view latest record. DO NOT USE THESE VARIABLES EXCEPT DATE.
     #This is a bug to fix. Currently it pulls date from the most recent record, but we want it from specifically that school.
 
-    sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee = ATCode.search_records(record_id)
-    city, state, zipCode, DelCount = ATCode.search_formResponse(record_id)
+    sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee = Database.search_records(record_id)
+    city, state, zipCode, DelCount = Database.search_formResponse(record_id)
     state = statename(state)
 
     independent = input("Independent registration? y/n. Exit to stop.").lower().strip()
@@ -136,7 +131,7 @@ for i in range(len(mail_school_names)):
                 new_name_template="Invoice {n}" + (" - Independent" if independent == "y" else ""),
                 sName = sName)
     
-    newrecord = lambda datebox, delbox, number: ATCode.create_airtable_record(record_id, datestr, datebox, delbox, DelegateCount, number, schoolName)
+    newrecord = lambda datebox, delbox, number: Database.create_airtable_record(record_id, datestr, datebox, delbox, DelegateCount, number, schoolName)
     if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
         DelBox = "Initial Delegates (Early)"
         DateBox = "Date (Early)"
