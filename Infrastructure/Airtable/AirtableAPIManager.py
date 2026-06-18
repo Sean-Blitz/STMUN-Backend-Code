@@ -4,7 +4,7 @@ import datetime
 import os
 
 class AirtableAPI:
-    def __init__(self, api_token):
+    def __init__(self):
         self.api_token = self.load_env_file(".env")["API_KEY"]
 
     def load_env_file(self, relative_path: str) -> dict:

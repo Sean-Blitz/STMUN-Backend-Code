@@ -3,23 +3,27 @@ import sys
 import time
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
-from typing import List, Union, Dict
-import driveFunctions
-import SlidesFunctions
-import sheetFunctions
-import AuthenticationFunctions
 
-drive_service, sheets_service, slides_service, docs_service, gmail_service = AuthenticationFunctions.authenticate()
+from ..Infrastructure import DriveAPI
+from ..Infrastructure import SlideAPI
+from ..Infrastructure import SheetAPI
 
+BadgesPaper = SlideAPI()
+CloudStorage = DriveAPI()
+Spreadsheet = SheetAPI()
+
+#------------- Controls ---------------
 fileID = "1HRvv77Ud9K1GsmNzs8-g1OtB7A2112qOkKbO_RHWmoo"
-schoolNames = sheetFunctions.read_headers_until_blank(fileID, "Badges Automation", sheets_service)
+sheetName = "Badges Automation"
+#--------------------------------------
+schoolNames = Spreadsheet.read_headers_until_blank(fileID, sheetName)
 columnscount = len(schoolNames)
 while "Committee" in schoolNames:
     schoolNames.remove("Committee")
 
 schoolCount = len(schoolNames)
 
-dictionaryofbadges = sheetFunctions.read_columns_until_blank(fileID, "Badges Automation", columnscount, sheets_service)
+dictionaryofbadges = Spreadsheet.read_columns_until_blank(fileID, sheetName, columnscount)
 
 committeeAssignments = []
 countryAssignments = []
@@ -35,10 +39,10 @@ for i in range(len(dictionaryofbadges)):
     else:
         print("Error: column index out of expected range.")
 
-copied_slide_id = driveFunctions.copy_drive_file(drive_service, "1HRvv77Ud9K1GsmNzs8-g1OtB7A2112qOkKbO_RHWmoo", new_name="SCVMUN 2027 Badges")
+copied_slide_id = CloudStorage.copy_drive_file("1HRvv77Ud9K1GsmNzs8-g1OtB7A2112qOkKbO_RHWmoo", new_name="SCVMUN 2027 Badges")
 
-firstslideID = SlidesFunctions.get_first_slide_id(slides_service,copied_slide_id)
-backsideID = SlidesFunctions.get_slide_id_by_index(slides_service,copied_slide_id,1)
+firstslideID = BadgesPaper.get_first_slide_id(copied_slide_id)
+backsideID = BadgesPaper.get_slide_id_by_index(copied_slide_id,1)
 pagesCreated = 0
 badgesDone = 0  # total badges across all schools
 current_slideID = None  # will point to the slide being filled
@@ -70,8 +74,7 @@ for i in range(schoolCount):
 
         # If no current slide yet or current slide is full, duplicate a new slide from template
         if current_slideID is None or (badgesDone % 8) == 0:
-            new_slide = SlidesFunctions.duplicate_slide(
-                slides_service,
+            new_slide = BadgesPaper.duplicate_slide(
                 copied_slide_id,
                 firstslideID  # always duplicate the pristine template
             )
@@ -83,8 +86,7 @@ for i in range(schoolCount):
                 else:
                     begin_text = f"{total_badges} placards for {schoolname}"
             # Place "Begin_X" marker at the next available placeholder on the new slide
-                SlidesFunctions.replace_placeholders_on_slide(
-                    slides_service,
+                BadgesPaper.replace_placeholders_on_slide(
                     copied_slide_id,
                     current_slideID if (badgesDone % 8) != 0 else new_slide,
                     {f"{{Begin_{(badgesDone % 8) + 1}}}": begin_text})
@@ -103,16 +105,14 @@ for i in range(schoolCount):
             badge_global_index += 1
             badgesDone += 1
 
-        SlidesFunctions.replace_placeholders_on_slide(
-            slides_service,
+        BadgesPaper.replace_placeholders_on_slide(
             copied_slide_id,
             current_slideID,
             placeholders
         )
 
     # Place "End_X" marker on the last badge of this school
-    SlidesFunctions.replace_placeholders_on_slide(
-        slides_service,
+    BadgesPaper.replace_placeholders_on_slide(
         copied_slide_id,
         current_slideID,
         {f"{{Begin_{(badgesDone - 1) % 8 + 1}}}": f"{schoolname} ends."}
@@ -121,25 +121,24 @@ for i in range(schoolCount):
 
 print("Reorganizing...")
 time.sleep(5) #to avoid hitting API rate limits. Adjust as needed.
-SlidesFunctions.delete_slide(slides_service, copied_slide_id, firstslideID)
-SlidesFunctions.move_slides_to_indexes(slides_service, copied_slide_id, [backsideID], [0]) #move backside to very front before reversing, so that it ends up at the very end after reversing
-SlidesFunctions.reverse_all_slides(slides_service, copied_slide_id)
-SlidesFunctions.replace_placeholders(slides_service, copied_slide_id, {r"{Begin_1}": "", r"{Begin_2}": "", r"{Begin_3}": "", r"{Begin_4}": "", r"{Begin_5}": "", r"{Begin_6}": "", r"{Begin_7}": "", r"{Begin_8}": ""})
+BadgesPaper.delete_slide(copied_slide_id, firstslideID)
+BadgesPaper.move_slides_to_indexes(copied_slide_id, [backsideID], [0]) #move backside to very front before reversing, so that it ends up at the very end after reversing
+BadgesPaper.reverse_all_slides(copied_slide_id)
+BadgesPaper.replace_placeholders(copied_slide_id, {r"{Begin_1}": "", r"{Begin_2}": "", r"{Begin_3}": "", r"{Begin_4}": "", r"{Begin_5}": "", r"{Begin_6}": "", r"{Begin_7}": "", r"{Begin_8}": ""})
 placementlist = []
-numofslides = SlidesFunctions.get_slide_count(slides_service, copied_slide_id)
+numofslides = BadgesPaper.get_slide_count(copied_slide_id)
 
-numofslidescreated, createdslideIDs = SlidesFunctions.create_slide_copies(slides_service, copied_slide_id, backsideID, numofslides-1)
+numofslidescreated, createdslideIDs = BadgesPaper.create_slide_copies(copied_slide_id, backsideID, numofslides-1)
 
-SlidesFunctions.delete_slide(slides_service, copied_slide_id, backsideID)
+BadgesPaper.delete_slide(copied_slide_id, backsideID)
 
-currentSlideCount = SlidesFunctions.get_slide_count(slides_service, copied_slide_id)
+currentSlideCount = BadgesPaper.get_slide_count(copied_slide_id)
 
 front_count = len(createdslideIDs)
 
 placementlist = [i for i in range(1, front_count * 2, 2)]
 
-SlidesFunctions.move_slides_to_indexes(
-    slides_service,
+BadgesPaper.move_slides_to_indexes(
     copied_slide_id,
     createdslideIDs,
     placementlist
