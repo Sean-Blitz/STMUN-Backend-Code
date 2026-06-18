@@ -351,3 +351,77 @@ class SheetAPI(GoogleAPIs):
             elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
                 cell_map[coordinate] = country
         return finalassignments, cell_map, assigned_cell_map
+    
+    def read_headers_until_blank(self, spreadsheet_id, sheet_name):
+        """
+        Reads the first row (header) from the worksheet, stopping at the first blank cell.
+
+        Args:
+            spreadsheet_id (str): Google Sheet ID.
+            sheet_name (str): Worksheet/tab name.
+            service: Authenticated Google Sheets API service.
+
+        Returns:
+            List[str]: Header values from leftmost column until first blank.
+        """
+        # Request the entire first row
+        range_name = f"{sheet_name}!1:1"  # row 1
+        response = self.service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=range_name
+        ).execute()
+
+        rows = response.get("values", [])
+        if not rows:
+            return []
+
+        header_row = rows[0]
+
+        # Collect values until first blank
+        header_values = []
+        for cell in header_row:
+            if cell.strip() == "":
+                break
+            header_values.append(cell)
+
+        return header_values
+    
+    def read_columns_until_blank(self, spreadsheet_id, sheet_name, num_columns):
+        """
+        Read values from the leftmost `num_columns` columns of a Google Sheet worksheet,
+        skipping the first row (header), stopping at first blank cell in each column.
+
+        Returns:
+            {1: [...], 2: [...], ...}
+        """
+
+        if not isinstance(num_columns, int) or num_columns <= 0:
+            raise ValueError("num_columns must be a positive integer")
+
+        # Request entire sheet (safe unless extremely large)
+        range_name = f"{sheet_name}"
+
+        response = self.service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=range_name
+        ).execute()
+
+        all_rows = response.get("values", [])
+
+        result = {}
+
+        for col_idx in range(num_columns):
+            values = []
+
+            # Skip header row (row index 0)
+            for row in all_rows[1:]:
+                cell = row[col_idx] if col_idx < len(row) else ""
+
+                if not cell:  # Stops at first blank
+                    break
+
+                values.append(cell)
+
+            result[col_idx + 1] = values
+
+        return result
