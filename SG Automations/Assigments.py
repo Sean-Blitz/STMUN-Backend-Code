@@ -300,6 +300,45 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
 
     return finalassignments, availableCountries, currentRow
 
+def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels):
+    print("Top 5 country preferences:", "\033[1m" + CountryPrefs + "\033[0m") #print country preferences in bold for visibility.
+    print("Middle Eastern Bloc:", "\033[1m" + MiddleEasternBloc + "\033[0m")
+    print("American Bloc:", "\033[1m" + AmericanBloc + "\033[0m")
+    print("European Bloc:", "\033[1m" + EuropeanBloc + "\033[0m")
+    print("Asian Bloc:", "\033[1m" + AsianBloc + "\033[0m")
+    print("African Country Bloc:", "\033[1m" + AfricanBloc + "\033[0m")
+    print("Pacific Country Bloc:", "\033[1m" + PacificBloc + "\033[0m")
+    print("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
+    print("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
+
+    #data science: school awards from past
+    GA = input("How many delegates to put in GA?")
+    Specialized = input("How many delegates to put in Specialized?")
+    GA, Specialized = verify_input(GA, Specialized)
+    Crisis = numdels - GA - Specialized
+    return GA, Specialized, Crisis
+
+def read_committees_settings(GA, Specialized, Crisis, Committeetype, double):
+    print("\033[F", end=""); print("\033[F", end=""); print("\033[K", end=""); print("\033[K", end="") #goes 2 lines up and deletes previous 2 lines.
+    print(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
+
+    indices = {"ga": [], "specialized": [], "crisis": []}
+    single_indices = {"ga": [], "specialized": [], "crisis": []}
+    for index, (kind, is_double) in enumerate(zip(Committeetype, double)):
+        kind = kind.lower().replace(".", "").strip()  # Normalize the committee type string
+
+        if kind in indices:
+            indices[kind].append(index)
+
+            if is_double.lower() == "false":
+                single_indices[kind].append(index)
+
+    GaIndices = indices["ga"]
+    SpecIndices = indices["specialized"]
+    CrisisIndices = indices["crisis"]
+
+    return single_indices, GaIndices, SpecIndices, CrisisIndices
+
 def assign_new_schools():
     sheetSchools = SheetsAPI.get_column_data_until_empty(registrationSheetID, sheetname, "C", 2)
     unassignedSchools = Storage.find_non_overlap_string(sheetSchools, "assignedSchools.csv")
@@ -310,93 +349,59 @@ def assign_new_schools():
         CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output
         numdels = int(numdels)
 
-        if len(output) == 9:  # check if all 9 cells have values
+
+        #pulls from Remaining Assignments for checking and pushing back later.
+
+        GA, Specialized, Crisis= print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels)
+
+        if GA + Specialized > numdels:
+            print("Error: The total number of delegates does not match the expected count.")
+            sys.exit()
+        else:
             names, percentages, spots, double, Committeetype, ranges = read_overview(registrationSheetID)
-
-            #pulls from Remaining Assignments for checking and pushing back later.
             availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
-
-            print("Top 5 country preferences:", "\033[1m" + CountryPrefs + "\033[0m") #print country preferences in bold for visibility.
-            print("Middle Eastern Bloc:", "\033[1m" + MiddleEasternBloc + "\033[0m")
-            print("American Bloc:", "\033[1m" + AmericanBloc + "\033[0m")
-            print("European Bloc:", "\033[1m" + EuropeanBloc + "\033[0m")
-            print("Asian Bloc:", "\033[1m" + AsianBloc + "\033[0m")
-            print("African Country Bloc:", "\033[1m" + AfricanBloc + "\033[0m")
-            print("Pacific Country Bloc:", "\033[1m" + PacificBloc + "\033[0m")
-            print("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
-            print("\033[1m" + str(numdels) + "\033[0m", "delegates to assign for this school.")
+            single_indices, GaIndices, SpecIndices, CrisisIndices = read_committees_settings(GA, Specialized, Crisis, Committeetype, double)
             
-            #data science: school awards from past
-            GA = input("How many delegates to put in GA?")
-            Specialized = input("How many delegates to put in Specialized?")
-            GA, Specialized = verify_input(GA, Specialized)
-
-            if GA + Specialized > numdels:
-                print("Error: The total number of delegates does not match the expected count.")
-                sys.exit()
+            i = 0; iterator = 0
+            finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
+            committeeCount = (GA, Specialized, Crisis)
+            while iterator < GA:
+                data = (names, percentages, double, spots, Committeetype)
+                finalassignments, i, percentages, iterator = assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+            iterator = 0
+            while iterator < Specialized:
+                data = (names, percentages, double, spots, Committeetype)
+                finalassignments, i, percentages, iterator = assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+            iterator = 0
+            if SecurityCouncil.lower() != "yes":
+                CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
             else:
-                finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
-                Crisis = numdels - GA - Specialized
-                print("\033[F", end=""); print("\033[F", end=""); print("\033[K", end=""); print("\033[K", end="") #goes 2 lines up and deletes previous 2 lines.
-                print(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
-
-                indices = {"ga": [], "specialized": [], "crisis": []}
-                single_indices = {"ga": [], "specialized": [], "crisis": []}
-                for index, (kind, is_double) in enumerate(zip(Committeetype, double)):
-                    kind = kind.lower().replace(".", "").strip()  # Normalize the committee type string
-
-                    if kind in indices:
-                        indices[kind].append(index)
-
-                        if is_double.lower() == "false":
-                            single_indices[kind].append(index)
-
-                GaIndices = indices["ga"]
-                SpecIndices = indices["specialized"]
-                CrisisIndices = indices["crisis"]
-                singleGAIndices = single_indices["ga"]
-                singleSpecIndices = single_indices["specialized"]
-                singleCrisisIndices = single_indices["crisis"]
-                i = 0; iterator = 0
-                committeeCount = (GA, Specialized, Crisis)
-                while iterator < GA:
-                    data = (names, percentages, double, spots, Committeetype)
-                    finalassignments, i, percentages, iterator = assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
-                iterator = 0
-                while iterator < Specialized:
-                    data = (names, percentages, double, spots, Committeetype)
-                    finalassignments, i, percentages, iterator = assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
-                iterator = 0
-                if SecurityCouncil.lower() != "yes":
-                    CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
+                CrisisInd = CrisisIndices
+            while iterator < Crisis:
+                data = (names, percentages, double, spots, Committeetype)
+                finalassignments, i, percentages, iterator = assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+            
+            GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
+            for i in range(len(names)): #build the lists above to pass into functions for verification.
+                if i in GaIndices:
+                    GA_Names.append(names[i])
+                elif i in SpecIndices:
+                    Spec_Names.append(names[i])
+                elif i in CrisisIndices:
+                    Crisis_Names.append(names[i])
                 else:
-                    CrisisInd = CrisisIndices
-                while iterator < Crisis:
-                    data = (names, percentages, double, spots, Committeetype)
-                    finalassignments, i, percentages, iterator = assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
-                print("\033[K", end="")
-                print("Assignments for this school:")
-                
-                GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
-                singleIndices = singleCrisisIndices + singleGAIndices + singleSpecIndices
-                for i in range(len(names)): #build the lists above to pass into functions for verification.
-                    if i in GaIndices:
-                        GA_Names.append(names[i])
-                    elif i in SpecIndices:
-                        Spec_Names.append(names[i])
-                    elif i in CrisisIndices:
-                        Crisis_Names.append(names[i])
-                    else:
-                        print("There is a committee name error.")
-                        sys.exit()
-                    if not i in singleIndices:
-                        Double_Committees.add(names[i])
+                    print("There is a committee name error.")
+                    sys.exit()
+                if not i in single_indices:
+                    Double_Committees.add(names[i])
 
-                finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
-                #a business logic function that calls display functions.
-                CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
-                finalassignments, availableCountries, currentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
-                finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
+            print("\033[K", end="")
+            print("Assignments for this school:")
+            finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
+            # a business logic function that calls display functions.
+            CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
+            finalassignments, availableCountries, currentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
+            finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
             cont = input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
                 cont = input("Finished building cell maps. Push?")
@@ -418,9 +423,6 @@ def assign_new_schools():
                 print(registrationSheetURL)
             Storage.append_to_csv("assignedSchools.csv", [selectedSchool])
             unassignedSchools.remove(selectedSchool)
-        else:
-            print("Error: Not all expected cells have values. Please check the sheet for completeness.")
-            sys.exit()
 
 def add_delegates():
     pass

@@ -11,7 +11,7 @@ GDriveAPI = DriveAPI()
 SheetsAPI = SheetAPI()
 
 #-------------- Controls ------------
-mastersheetID = "1JBLoL2TSQKqotrDhH2TFC3SJeLjeTioXbWMAXjfGOb0"
+mastersheetID = input("What is the master sheet ID? Find it in the Google URL.")
 mastersheet = f"docs.google.com/spreadsheets/d/{mastersheetID}"
 template = "16T80NITxS63Q8ZzL9dl2tVOdMfKiYHJfxGpowbQA4CA"
 #------------------------------------
