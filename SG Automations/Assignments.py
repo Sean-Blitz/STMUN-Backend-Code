@@ -6,6 +6,7 @@ sys.path.append(current_dir)
 from ..Infrastructure import SheetAPI
 from ..Infrastructure import QuestionaryClass
 from ..Infrastructure import CSV
+from difflib import get_close_matches
 
 # ---------- CONTROLS -----------
 registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" #link to your registration Sheet
@@ -400,7 +401,9 @@ def assign_new_schools():
             finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
             # a business logic function that calls display functions.
             CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
-            finalassignments, availableCountries, currentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, country suggestions list) #here you can add the later data science things for suggestions.
+
+            #Data science function to generate countrySuggestionsList!
+            finalassignments, availableCountries, currentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, countrySuggestionsList)
             finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
             cont = input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
@@ -417,32 +420,29 @@ def assign_new_schools():
             percentagesChecking = SheetsAPI.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
             percentagesChecking = [float(p.strip('%')) for p in percentagesChecking] # Convert "45%" to 45.0
             if percentagesChecking == percentages:
-                print("Percentages are correct. Moving on to next school, and placing name in CSV.")
+                print("Percentages are correct. Moving on to next school, and placing name in completed CSV.")
             else:
-                print("Percentage error. Please check the sheet!")
+                print("Percentage error. Please check the sheet! School name placed in completed CSV")
                 print(registrationSheetURL)
             Storage.append_to_csv("assignedSchools.csv", [selectedSchool])
             unassignedSchools.remove(selectedSchool)
-            
+
 def add_delegates():
+    #Goal: Add delegates to a school that already exists. Scan the sheet for user inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
+    # Request for new hashes and send this new data to the database.
+    
+    SchooltoAdd = input("Please input the school to add delegates to.")
+
+    CurrentSchools = [] #now get those schools from the Google Sheets
+
+    if SchooltoAdd not in CurrentSchools:
+        ClosestMatch = get_close_matches(SchooltoAdd, CurrentSchools, n=1, cutoff=0.6)
+        print(f"Input error. Did you mean: {ClosestMatch}?")
     pass
 def drop_delegates():
+    #Goal: delete delegates from the assignments sheet and move them back to the original pool. Ask user for which school and print all options for drop. Confirm drop, then delete them from the assignments sheet.
+    # Finally, insert them back into the original pool by reading their committee name, and slotting them back to the first empty cell. Request that these assignments be deleted from the database.
     pass
-
-def main():
-    options = ["Assign New Schools", "Add Delegates to a School", "Drop Delegates from a School"]
-    action = Display.select_option_with_pointer(options, "Hello SG! What do you want to do today?", "SCVMUN ASSIGNMENT ENGINE")
-    
-    if action == "Assign New Schools":
-        assign_new_schools()
-    elif action == "Add Delegates to a School":
-        add_delegates()
-    elif action == "Drop Delegates from a School":
-        drop_delegates()
-
-
-if __name__ == "__main__":
-    main()
 
 """
 Improvements:
