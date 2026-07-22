@@ -18,7 +18,7 @@ Display = QuestionaryClass()
 Storage = CSV()
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registrationSheetID}/edit"
 
-def verify_input(GA, Specialized):
+def verify_committee_number_input(GA, Specialized):
     if '\x1b' in GA:
         # keeps only the actual digits typed
         GA = ''.join(c for c in GA if c.isdigit())
@@ -314,11 +314,11 @@ def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, American
     #data science: school awards from past
     GA = input("How many delegates to put in GA?")
     Specialized = input("How many delegates to put in Specialized?")
-    GA, Specialized = verify_input(GA, Specialized)
+    GA, Specialized = verify_committee_number_input(GA, Specialized)
     Crisis = numdels - GA - Specialized
     return GA, Specialized, Crisis
 
-def read_committees_settings(GA, Specialized, Crisis, Committeetype, double):
+def read_committees_overview_from_sheet(GA, Specialized, Crisis, Committeetype, double):
     print("\033[F", end=""); print("\033[F", end=""); print("\033[K", end=""); print("\033[K", end="") #goes 2 lines up and deletes previous 2 lines.
     print(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
 
@@ -360,7 +360,7 @@ def assign_new_schools():
         else:
             names, percentages, spots, double, Committeetype, ranges = read_overview(registrationSheetID)
             availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
-            single_indices, GaIndices, SpecIndices, CrisisIndices = read_committees_settings(GA, Specialized, Crisis, Committeetype, double)
+            single_indices, GaIndices, SpecIndices, CrisisIndices = read_committees_overview_from_sheet(GA, Specialized, Crisis, Committeetype, double)
             
             i = 0; iterator = 0
             finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
@@ -423,7 +423,7 @@ def assign_new_schools():
                 print(registrationSheetURL)
             Storage.append_to_csv("assignedSchools.csv", [selectedSchool])
             unassignedSchools.remove(selectedSchool)
-
+            
 def add_delegates():
     pass
 def drop_delegates():
