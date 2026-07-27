@@ -28,9 +28,9 @@ def verify_committee_number_input(GA, Specialized):
         # keeps only the actual digits typed; ignores letters and ANSI escape sequences.
         Specialized = ''.join(c for c in Specialized if c.isdigit())
     GA = int(GA); Specialized = int(Specialized)
-    while DoubleGAs == "no" and GA % 2 != 0: #if no double delegate GAs and the input is odd
-        GA = input("How many delegates to put in GA? Input must be even.")
-        Specialized = input("How many delegates to put in Specialized?")
+    while DoubleGAs == "no" and GA % 2 != 0: #if no double delegate GAs and the Display.take_text_input is odd
+        GA = Display.take_text_input("How many delegates to put in GA? Display.take_text_input must be even.")
+        Specialized = Display.take_text_input("How many delegates to put in Specialized?")
         if '\x1b' in Specialized:
             # keeps only the actual digits typed; ignores letters and ANSI escape sequences.
             Specialized = ''.join(c for c in Specialized if c.isdigit())
@@ -95,10 +95,10 @@ def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalas
     elif iterator == 0:
         Display.clear_current_line()
         Display.display("Error in assignment logic.")
-        if input("Continue? (y/n)") == "y":
+        if Display.take_text_input("Continue? (y/n)") == "y":
             i = i + 1
             iterator = iterator + 1
-        elif input("Continue? (y/n)") == "n":
+        elif Display.take_text_input("Continue? (y/n)") == "n":
             sys.exit(0)
     else:
         Display.display("Error in making committees for GA at values of i and iterator:", i, iterator)
@@ -190,7 +190,7 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
     """
     Launches an interactive interface to browse and add country assignments.
     Uses true numeric shortcut mappings via text prompts.
-    Uses finalassignments inside the function to check with the availability map. Checks after every new assignment input from user with set logic.
+    Uses finalassignments inside the function to check with the availability map. Checks after every new assignment Display.take_text_input from user with set logic.
     If in availability map, edit finalassignments.
     Passes back finalassignments, and edits the global availability dictionary. 
     finalassignments is formatted: {"School - #": ["committee", "type", "country"]}
@@ -262,7 +262,7 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
             if user_input == 'b':
                 continue
                 
-            elif user_input == 'm': #manual input
+            elif user_input == 'm': #manual Display.take_text_input
                 while True:
                     raw_input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
@@ -314,8 +314,8 @@ def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, American
     Display.display("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
 
     #data science: school awards from past
-    GA = input("How many delegates to put in GA?")
-    Specialized = input("How many delegates to put in Specialized?")
+    GA = Display.take_text_input("How many delegates to put in GA?")
+    Specialized = Display.take_text_input("How many delegates to put in Specialized?")
     GA, Specialized = verify_committee_number_input(GA, Specialized)
     Crisis = numdels - GA - Specialized
     return GA, Specialized, Crisis
@@ -405,9 +405,9 @@ def assign_new_schools():
             #Data science function to generate countrySuggestionsList!
             finalassignments, availableCountries, currentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, countrySuggestionsList)
             finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
-            cont = input("Finished building cell maps. Push? (yes, no)")
+            cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
-                cont = input("Finished building cell maps. Push?")
+                cont = Display.take_text_input("Finished building cell maps. Push?")
             if cont != "yes":
                 sys.exit()
 
@@ -431,16 +431,16 @@ def assign_new_schools():
             unassignedSchools.remove(selectedSchool)
 
 def add_delegates():
-    #Goal: Add delegates to a school that already exists. Scan the sheet for user inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
+    #Goal: Add delegates to a school that already exists. Scan the sheet for user Display.take_text_inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
     # Request for new hashes and send this new data to the database.
     
-    SchooltoAdd = input("Please input the school to add delegates to.")
+    SchooltoAdd = Display.take_text_input("Please Display.take_text_input the school to add delegates to.")
 
     CurrentSchools = [] #now get those schools from the Google Sheets
 
     if SchooltoAdd not in CurrentSchools:
         ClosestMatch = get_close_matches(SchooltoAdd, CurrentSchools, n=1, cutoff=0.6)
-        Display.display(f"Input error. Did you mean: {ClosestMatch}?")
+        Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
     pass
 def drop_delegates():
     #Goal: delete delegates from the assignments sheet and move them back to the original pool. Ask user for which school and Display.display all options for drop. Confirm drop, then delete them from the assignments sheet.

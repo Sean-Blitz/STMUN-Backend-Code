@@ -1,8 +1,7 @@
 import sys
-
 from Assignments import Display
 import Assignments
-
+import ServerRequests
 
 def main():
     options = ["Assignments", "Hashes", "Database Management", "Awards", "Exit"]
@@ -20,6 +19,10 @@ def main():
     elif action == "Hashes":
         options = ["Regenerate Hashes for Delegate", "Regenerate Hashes for School"]
         action = Display.select_option_with_pointer(options, "Great! Select the specific option.", "SCVMUN CLI - Hashes Menu")
+
+        if action == "Regnerate Hashes for Delegate":
+            committee = Display.take_text_input("What is the delegate's committee? Please check the sheet's capitalization.")
+            country = Display.take_text_input("What is the delegate's country assignment? Please check the sheet's capitalization.")
     elif action == "Database Management":
         pass
     elif action == "Awards":

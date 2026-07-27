@@ -8,6 +8,9 @@ class DisplayClass:
     def display(self, *message):
         print(*message)
 
+    def take_text_input(self, *promptText):
+        return input(*promptText)
+
     def go_one_line_up(self):
         # ANSI escape code to move the cursor up one line
         sys.stdout.write("\033[F")
