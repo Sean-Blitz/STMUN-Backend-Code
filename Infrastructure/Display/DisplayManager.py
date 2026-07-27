@@ -1,11 +1,24 @@
 import questionary
 import sys
 
-class QuestionaryClass:
+class DisplayClass:
     def __init__(self) -> None:
         pass
 
-    def display_list(self, menu_choices, promptText, exitOption):
+    def display(self, *message):
+        print(*message)
+
+    def go_one_line_up(self):
+        # ANSI escape code to move the cursor up one line
+        sys.stdout.write("\033[F")
+        sys.stdout.flush()
+    
+    def clear_current_line(self):
+        # ANSI escape code to clear the current line
+        sys.stdout.write("\033[K")
+        sys.stdout.flush()
+
+    def display_list_of_selections(self, menu_choices, promptText, exitOption):
         # Add a clear exit option at the bottom of the list
         menu_choices.append(exitOption)
 

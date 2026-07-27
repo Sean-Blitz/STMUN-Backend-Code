@@ -4,9 +4,10 @@ import time
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 from ..Infrastructure import SheetAPI
-from ..Infrastructure import QuestionaryClass
+from ..Infrastructure import DisplayClass
 from ..Infrastructure import CSV
 from difflib import get_close_matches
+import ServerRequests
 
 # ---------- CONTROLS -----------
 registrationSheetID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" #link to your registration Sheet
@@ -15,7 +16,7 @@ DoubleGAs = "no" #type yes or no, depending on if there are double delegate GA's
 # -------------------------------
 
 SheetsAPI = SheetAPI()
-Display = QuestionaryClass()
+Display = DisplayClass()
 Storage = CSV()
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registrationSheetID}/edit"
 
@@ -67,7 +68,7 @@ def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalas
         singleIndices = singleIndices["crisis"]
         committeeCount = committeeCount[2]
     else:
-        print("Error in Committee Type Selection.")
+        Display.display("Error in Committee Type Selection.")
         return
     names, percentages, double, spots, Committeetype = data
 
@@ -92,15 +93,15 @@ def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalas
         i = i + 1
         iterator = iterator + 1
     elif iterator == 0:
-        print("\033[K", end="")
-        print("Error in assignment logic.")
+        Display.clear_current_line()
+        Display.display("Error in assignment logic.")
         if input("Continue? (y/n)") == "y":
             i = i + 1
             iterator = iterator + 1
         elif input("Continue? (y/n)") == "n":
             sys.exit(0)
     else:
-        print("Error in making committees for GA at values of i and iterator:", i, iterator)
+        Display.display("Error in making committees for GA at values of i and iterator:", i, iterator)
         i = i + 1
     return finalassignments, i, percentages, iterator
 
@@ -112,7 +113,7 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
             committee_type = details[1]
             choice_text = f"{delegate}: {current_committee} ({committee_type})"
             menu_choices.append(choice_text)
-        selected_choice = Display.display_list(menu_choices, "Select a delegate to modify committee (if desired)", "Save and Exit")
+        selected_choice = Display.display_list_of_selections(menu_choices, "Select a delegate to modify committee (if desired)", "Save and Exit")
 
         if selected_choice == "exit":
             break
@@ -124,13 +125,13 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
         #Helper function to check double committees.
         def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
             if current_assignment in Double_Committees and new_committee in Double_Committees:
-                print("The old committee was a double committee, and so is the new one. Change the other delegate!")
+                Display.display("The old committee was a double committee, and so is the new one. Change the other delegate!")
             elif new_committee in Double_Committees:
-                print("The new committee is a double committee. You should find a pair for this delegate, if possible.")
+                Display.display("The new committee is a double committee. You should find a pair for this delegate, if possible.")
             elif current_assignment in Double_Committees:
-                print("The old committee was a double committee. Make sure pairings are still correct!")
+                Display.display("The old committee was a double committee. Make sure pairings are still correct!")
             else:
-                print(f"Updated {delegate_key} to {new_committee.strip()}")
+                Display.display(f"Updated {delegate_key} to {new_committee.strip()}")
         #------------------------------------------------------------------
 
         #update dictionary with new choice
@@ -145,9 +146,9 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
                 finalassignments[delegate_key][0] = new_committee.strip()
                 check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
             else:
-                print("Your selected assignment is not the correct committee type or is not a committee name. Please try again.")
+                Display.display("Your selected assignment is not the correct committee type or is not a committee name. Please try again.")
         else:
-            print("No changes made or invalid committee name entered. Please try again.")
+            Display.display("No changes made or invalid committee name entered. Please try again.")
     return finalassignments
 
 def update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees):
@@ -159,7 +160,7 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
         else:
             finalassignments[delegate_key].append(new_country)
             
-        print(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
+        Display.display(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
     
             # 2. TWIN LINKING LOGIC FOR DOUBLE DELEGATION COMMITTEES
         if finalassignments[delegate_key][0] in Double_Committees:
@@ -180,7 +181,7 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
                     twin_count += 1
             
             if twin_count > 0:
-                print(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
+                Display.display(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
                 time.sleep(1)
 
     return finalassignments
@@ -206,10 +207,10 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
             current_country = finalassignments[delegate][2] if len(finalassignments[delegate]) > 2 else "Unassigned"
             menu_choices.append(f"{delegate} │ {current_comm} ({comm_type}) - {current_country}")
             
-        selected_choice = Display.display_list(menu_choices, "Select a delegate to give assignments", "Confirm Assignments")
+        selected_choice = Display.display_list_of_selections(menu_choices, "Select a delegate to give assignments", "Confirm Assignments")
 
         if selected_choice == "exit" or selected_choice is None:
-            print("\033[K Exiting and saving changes...")
+            Display.display("\033[K Exiting and saving changes...")
             break
 
         delegate_key = selected_choice.split(" │ ")[0].strip()
@@ -224,33 +225,33 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
 
         # ─── CASE 1: NO SUGGESTIONS MATRIX EXISTS ─────────────────────────────────────
         if not current_suggestions:
-            print("\033[F\033[K", end="") 
+            Display.go_one_line_up(); Display.clear_current_line()
             input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
             while not (current_comm, input.strip()) in availableCountries:
-                print("Entered country is not in the list of available countries. Try checking spelling or capitalization.")
+                Display.display("Entered country is not in the list of available countries. Try checking spelling or capitalization.")
                 input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
             new_country = input.strip()
 
         # ─── CASE 2: SUGGESTIONS MATRIX EXISTS (THE SHORTCUT ENGINE) ──────────────────
         else:
-            print("\033[F\033[K", end="") # Wipe the previous select prompt line
+            Display.go_one_line_up(); Display.clear_current_line()
             
-            # 1. Print out the available options as a clear text menu block
-            print(f"Suggestions for {delegate_key} ({current_comm}):")
+            # 1. Display.display out the available options as a clear text menu block
+            Display.display(f"Suggestions for {delegate_key} ({current_comm}):")
             for i, country in enumerate(current_suggestions):
-                print(f"  [{i + 1}] {country}")
-            print("  [M] Type a custom country manually")
-            print("  [B] Go back to main menu")
+                Display.display(f"  [{i + 1}] {country}")
+            Display.display("  [M] Type a custom country manually")
+            Display.display("  [B] Go back to main menu")
 
             # 2. Collect a single clean text input instead of a selection menu
             user_input = Display.typing_with_pre_fill("Select an option number/shortcut:", "")
 
-            # Clean up the printed list block from the terminal to keep things immaculate
+            # Clean up the Display.displayed list block from the terminal to keep things immaculate
             # (clears the prompt + your options + the header line)
             for i in range(len(current_suggestions) + 3):
-                print("\033[F\033[K", end="")
+                Display.go_one_line_up(); Display.clear_current_line()
 
             if not user_input:
                 continue
@@ -270,7 +271,7 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
                         new_country = raw_input.strip()
                         break
                     else:
-                        print("Country not available. Check spelling/capitalization.")
+                        Display.display("Country not available. Check spelling/capitalization.")
                     
             else:
                 # Validate if the user actually typed a valid option integer
@@ -284,33 +285,33 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
                         if lookup_pair in availableCountries: 
                             new_country = suggested_name
                         else:
-                            print("Selected country is no longer available. Please try again.")
+                            Display.display("Selected country is no longer available. Please try again.")
                             Display.press_any_key_to_continue()
                     else:
-                        print("Invalid suggestion option number.")
+                        Display.display("Invalid suggestion option number.")
                         Display.press_any_key_to_continue()
                 except ValueError:
-                    print("Please type a valid number or menu shortcut character.")
+                    Display.display("Please type a valid number or menu shortcut character.")
         finalassignments = update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees)
     valueslist = list(finalassignments.values())
     for i in range(len(valueslist)):
         if valueslist[i][2] == "" or valueslist[i][2] == None:
-            print("ERROR: You have not fulfilled all assignments yet!!!")
+            Display.display("ERROR: You have not fulfilled all assignments yet!!!")
             add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix)
 
 
     return finalassignments, availableCountries, currentRow
 
 def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels):
-    print("Top 5 country preferences:", "\033[1m" + CountryPrefs + "\033[0m") #print country preferences in bold for visibility.
-    print("Middle Eastern Bloc:", "\033[1m" + MiddleEasternBloc + "\033[0m")
-    print("American Bloc:", "\033[1m" + AmericanBloc + "\033[0m")
-    print("European Bloc:", "\033[1m" + EuropeanBloc + "\033[0m")
-    print("Asian Bloc:", "\033[1m" + AsianBloc + "\033[0m")
-    print("African Country Bloc:", "\033[1m" + AfricanBloc + "\033[0m")
-    print("Pacific Country Bloc:", "\033[1m" + PacificBloc + "\033[0m")
-    print("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
-    print("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
+    Display.display("Top 5 country preferences:", "\033[1m" + CountryPrefs + "\033[0m") #Display.display country preferences in bold for visibility.
+    Display.display("Middle Eastern Bloc:", "\033[1m" + MiddleEasternBloc + "\033[0m")
+    Display.display("American Bloc:", "\033[1m" + AmericanBloc + "\033[0m")
+    Display.display("European Bloc:", "\033[1m" + EuropeanBloc + "\033[0m")
+    Display.display("Asian Bloc:", "\033[1m" + AsianBloc + "\033[0m")
+    Display.display("African Country Bloc:", "\033[1m" + AfricanBloc + "\033[0m")
+    Display.display("Pacific Country Bloc:", "\033[1m" + PacificBloc + "\033[0m")
+    Display.display("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
+    Display.display("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
 
     #data science: school awards from past
     GA = input("How many delegates to put in GA?")
@@ -320,8 +321,8 @@ def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, American
     return GA, Specialized, Crisis
 
 def read_committees_overview_from_sheet(GA, Specialized, Crisis, Committeetype, double):
-    print("\033[F", end=""); print("\033[F", end=""); print("\033[K", end=""); print("\033[K", end="") #goes 2 lines up and deletes previous 2 lines.
-    print(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
+    Display.go_one_line_up(); Display.clear_current_line(); Display.go_one_line_up(); Display.clear_current_line()
+    Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
 
     indices = {"ga": [], "specialized": [], "crisis": []}
     single_indices = {"ga": [], "specialized": [], "crisis": []}
@@ -350,13 +351,12 @@ def assign_new_schools():
         CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output
         numdels = int(numdels)
 
-
         #pulls from Remaining Assignments for checking and pushing back later.
 
         GA, Specialized, Crisis= print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels)
 
         if GA + Specialized > numdels:
-            print("Error: The total number of delegates does not match the expected count.")
+            Display.display("Error: The total number of delegates does not match the expected count.")
             sys.exit()
         else:
             names, percentages, spots, double, Committeetype, ranges = read_overview(registrationSheetID)
@@ -391,13 +391,13 @@ def assign_new_schools():
                 elif i in CrisisIndices:
                     Crisis_Names.append(names[i])
                 else:
-                    print("There is a committee name error.")
+                    Display.display("There is a committee name error.")
                     sys.exit()
                 if not i in single_indices:
                     Double_Committees.add(names[i])
 
-            print("\033[K", end="")
-            print("Assignments for this school:")
+            Display.clear_current_line()
+            Display.display("Assignments for this school:")
             finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
             # a business logic function that calls display functions.
             CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
@@ -416,14 +416,17 @@ def assign_new_schools():
             SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, SchoolAssignmentsCells)
             SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, {f"Assignments!A{CurrentRow}": selectedSchool})
             
-            time.sleep(5); print("Checking sheet for changes...") #pause for sheet to register changes.
+            time.sleep(5); Display.display("Checking sheet for changes...") #pause for sheet to register changes.
             percentagesChecking = SheetsAPI.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
             percentagesChecking = [float(p.strip('%')) for p in percentagesChecking] # Convert "45%" to 45.0
-            if percentagesChecking == percentages:
-                print("Percentages are correct. Moving on to next school, and placing name in completed CSV.")
+            hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
+            if percentagesChecking == percentages and hashes != None:
+                Display.display("Percentages are correct. Here are the hashes. Moving on to next school, and placing name in completed CSV.")
+                Display.display(hashes)
             else:
-                print("Percentage error. Please check the sheet! School name placed in completed CSV")
-                print(registrationSheetURL)
+                Display.display("Percentage error. Please check the sheet! School name placed in completed CSV; here are the hashes. Moving on to next school.")
+                Display.display(registrationSheetURL)
+                Display.display(hashes)
             Storage.append_to_csv("assignedSchools.csv", [selectedSchool])
             unassignedSchools.remove(selectedSchool)
 
@@ -437,10 +440,10 @@ def add_delegates():
 
     if SchooltoAdd not in CurrentSchools:
         ClosestMatch = get_close_matches(SchooltoAdd, CurrentSchools, n=1, cutoff=0.6)
-        print(f"Input error. Did you mean: {ClosestMatch}?")
+        Display.display(f"Input error. Did you mean: {ClosestMatch}?")
     pass
 def drop_delegates():
-    #Goal: delete delegates from the assignments sheet and move them back to the original pool. Ask user for which school and print all options for drop. Confirm drop, then delete them from the assignments sheet.
+    #Goal: delete delegates from the assignments sheet and move them back to the original pool. Ask user for which school and Display.display all options for drop. Confirm drop, then delete them from the assignments sheet.
     # Finally, insert them back into the original pool by reading their committee name, and slotting them back to the first empty cell. Request that these assignments be deleted from the database.
     pass
 

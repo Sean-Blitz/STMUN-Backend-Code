@@ -8,3 +8,4 @@ SG Automations/credentials.json
 SG Automations/.vscode/launch.json
 *.json
 Infrastructure/Airtable/.env
+SG Automations/.env
