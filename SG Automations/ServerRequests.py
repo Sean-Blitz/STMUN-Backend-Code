@@ -68,14 +68,14 @@ def add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassig
         print(f"Error communicating with server: {e}")
         return {}
 
-def drop_delegates_from_school_and_delete_hashes(delegates_to_drop: dict[str, list]) -> dict[str, str]:
+def drop_delegates_from_school_and_delete_hashes(delegates_to_drop: list[str]) -> dict[str, str]:
     """
     Sends delegates_to_drop to FastAPI to remove delegates and return their deleted hashes.
     Prints any descriptive messages sent back by the server.
 
     Matching FastAPI function should: 
     1. accept bearer header token.
-    2. accept a JSON payload with the delegates_to_drop dictionary. Check if that delegate exists in the database, and if so, delete them and their hashes. Do not delete at all if even a single delegate doesn't exist.
+    2. accept a JSON payload with the delegates_to_drop list. Check if that delegate exists in the database, and if so, delete them and their hashes. Do not delete at all if even a single delegate doesn't exist.
     3. return a dictionary, where there is a key value pair with key being "data", and value being a dictionary with the hashes deleted {"school - #1": "hash12345", ...}
     4. return appropriate HTTP status codes (200, 401, 403, 400, 422, 500, etc.)
     5. return an optional message with things like "delegate does not exist".

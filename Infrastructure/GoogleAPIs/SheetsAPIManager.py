@@ -392,8 +392,84 @@ class SheetAPI(GoogleAPIs):
             elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
                 cell_map[coordinate] = country
         return finalassignments, cell_map, assigned_cell_map
+
+    def map_simple_cells_from_list_and_return_to_pile(
+        self, 
+        finalassignments: list, 
+        available_countries: dict, 
+        currentRow: int, 
+        delegates_to_drop: list
+    ):
+        """
+        Takes a list of cells and a list of delegates to drop (from those cells), reads inside the delegates to drop list elements, which are strings, and find the committee.
+        Then place the country assignment outside the committtee into the availableCountries sheet map, and also map the finalassignments into the assignments tab.
+        To fill holes, pull the available countries from sheets into memory as a dictionary. available_countries is formatted: {("committee", "country_name"): "sheet_coordinate"}
+        Search the dictionary's tuples, which are keys, for the country_name, then use the sheet_coordinate value to add a new key-value pair with that coordinate and the deleted country name from delegates_to_drop.
+        Delete the no-country key-value pair from available_countries. Return back available_countries as a cell map.
+        Cell maps have the format: {sheet_coordinate: country_name} for available countries, and {sheet_coordinate: "country_name (committee_name)"} for assigned countries.
+        """
+        # ------------------------------------------------------------------
+        # 1. Build assigned_cell_map for the Assignments tab
+        # ------------------------------------------------------------------
+        assigned_cell_map = {}
+        
+        for j, assignment in enumerate(finalassignments):
+            # Index formula across columns B to AE (30 items per row)
+            col_letter = self.sheets_alphabet(j + 1) if j <= 29 else self.sheets_alphabet(j - 29)
+            row_num = currentRow if j <= 29 else currentRow + 1
+            cell_ref = f"Assignments!{col_letter}{row_num}"
+
+            # Handle tuple/list formats [committee, type, country] or raw strings gracefully
+            if isinstance(assignment, (list, tuple)):
+                if len(assignment) >= 3:
+                    val_str = f"{assignment[2]} ({assignment[0]})" if assignment[2] else ""
+                elif len(assignment) == 2:
+                    val_str = f"{assignment[0]} ({assignment[1]})"
+                else:
+                    val_str = str(assignment[0]) if assignment else ""
+            else:
+                val_str = str(assignment) if assignment is not None else ""
+
+            assigned_cell_map[cell_ref] = val_str
+
+        # ------------------------------------------------------------------
+        # 2. Return dropped delegates back into available_countries pile
+        # ------------------------------------------------------------------
+        avail_dict = dict(available_countries)
+
+        for delegate_str in delegates_to_drop:
+            if not delegate_str:
+                continue
+
+            # Parse "Country (Committee)" -> extracts country and committee
+            if "(" in delegate_str and delegate_str.endswith(")"):
+                country, committee = delegate_str.rsplit(" (", 1)
+                committee = committee.rstrip(")")
+            else:
+                country, committee = delegate_str, ""
+
+            country = country.strip()
+            committee = committee.strip()
+
+            # Find an empty coordinate slot matching this committee
+            matched_key = None
+            for (comm_key, cty_key), coord in avail_dict.items():
+                if comm_key.strip().lower() == committee.lower() and (not cty_key or cty_key.strip().lower() in ("", "none", "unassigned")):
+                    matched_key = (comm_key, cty_key)
+                    break
+
+            # Swap out the empty key for the re-assigned country key
+            if matched_key:
+                coord = avail_dict.pop(matched_key)
+                avail_dict[(committee, country)] = coord
+
+        # Convert available_countries into final cell map format: {sheet_coordinate: country_name}
+        remaining_cell_map = {coord: country for (comm, country), coord in avail_dict.items()}
+
+        return assigned_cell_map, remaining_cell_map
     
     def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, currentRow, registrationSheetID):
+        # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
         cell_map = {}
         assigned_cell_map = {}
         checkingSet = set()
@@ -493,3 +569,153 @@ class SheetAPI(GoogleAPIs):
             result[col_idx + 1] = values
 
         return result
+
+    def read_row_from(
+        self, 
+        spreadsheet_id: str, 
+        sheet_name: str, 
+        row_number: int, 
+        start_column: str = "A"
+    ) -> list:
+        """
+        Reads an entire row from a Google Sheet starting from a specified column.
+
+        Parameters:
+            service: Authenticated Google Sheets API service instance.
+            spreadsheet_id (str): The ID of the Google Sheet.
+            sheet_name (str): The name of the tab/sheet.
+            row_number (int): The 1-indexed row number to read (e.g., 5).
+            start_column (str): The starting column in A1 notation (e.g., "C"). Defaults to "A".
+
+        Returns:
+            list: A list of cell values for that row starting from `start_column`.
+                Returns an empty list if the row or cells are empty.
+        """
+        # Sanitize and format the range (e.g., "'Responses'!C5:5")
+        # Using 'C5:5' fetches from Column C to the last populated column in Row 5.
+        range_name = f"'{sheet_name}'!{start_column.upper()}{row_number}:{row_number}"
+
+        # Call the Google Sheets API
+        result = self.service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=range_name
+        ).execute()
+
+        values = result.get("values", [])
+
+        # values is a list of rows (e.g., [["val1", "val2", ...]])
+        if values:
+            return values[0]
+        
+        return []
+
+    def clear_row_from(
+        self, 
+        spreadsheet_id: str, 
+        sheet_name: str, 
+        row_number: int, 
+        start_column: str = "A", 
+        num_columns: int = 26
+    ) -> dict:
+        """
+        Clears a row in a Google Sheet by overwriting cells with empty strings ("").
+
+        Parameters:
+            service: Authenticated Google Sheets API service instance.
+            spreadsheet_id (str): The ID of the Google Sheet.
+            sheet_name (str): The name of the tab/sheet.
+            row_number (int): The 1-indexed row number to clear (e.g., 5).
+            start_column (str): The column letter to start clearing from (e.g., "B"). Defaults to "A".
+            num_columns (int): How many columns to clear starting from start_column. Defaults to 26.
+
+        Returns:
+            dict: The API update response from Google Sheets.
+        """
+        # 1. Generate a row of empty strings based on how many columns you want to clear
+        empty_row = [[""] * num_columns]
+
+        # 2. Construct the range name (e.g., "'Assignments'!B5")
+        range_name = f"'{sheet_name}'!{start_column.upper()}{row_number}"
+
+        # 3. Call the API to overwrite the cells
+        response = self.service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            valueInputOption="USER_ENTERED",
+            body={"values": empty_row}
+        ).execute()
+
+        return response
+
+    def create_state_backup(self, spreadsheet_id: str, ranges_list: list) -> dict:
+        """
+        Reads multiple ranges from a Google Sheet in a single API call and maps 
+        every individual cell coordinate to its current value for rollback purposes.
+
+        Parameters:
+            service: Authenticated Google Sheets API service object.
+            spreadsheet_id (str): The ID of the spreadsheet.
+            ranges_list (list): List of range strings (e.g., ["Assignments!A1:C5", "Overview!A1:B10"])
+
+        Returns:
+            dict: Flattened dictionary with exact cell coordinates as keys.
+                Example: {"Assignments!A1": "Lincoln High", "Assignments!B1": "USA (GA)"}
+        """
+        if not ranges_list:
+            return {}
+
+        # Helper function to convert 0-indexed column numbers into A1 letters
+        def col_to_letter(col_idx):
+            result = ""
+            while col_idx >= 0:
+                result = chr(col_idx % 26 + 65) + result
+                col_idx = col_idx // 26 - 1
+            return result
+
+        # 1. Fetch all ranges in ONE single network request
+        response = self.service.spreadsheets().values().batchGet(
+            spreadsheetId=spreadsheet_id,
+            ranges=ranges_list,
+            valueRenderOption="FORMATTED_VALUE"
+        ).execute()
+
+        value_ranges = response.get("valueRanges", [])
+        backup_map = {}
+
+        # 2. Iterate through each returned range block
+        for vr in value_ranges:
+            range_str = vr.get("range", "")
+            values = vr.get("values", [])
+
+            if not range_str or not values:
+                continue
+
+            # Extract Sheet Name and starting coordinate from range_str (e.g., "Assignments!A1:C5")
+            if "!" in range_str:
+                sheet_name, cell_part = range_str.split("!", 1)
+            else:
+                sheet_name, cell_part = "", range_str
+
+            # Get starting cell coordinate (e.g., "A1")
+            start_cell = cell_part.split(":")[0]
+            
+            # Separate column letters from row numbers
+            start_col_str = "".join([c for c in start_cell if c.isalpha()])
+            start_row_num = int("".join([c for c in start_cell if c.isdigit()]))
+
+            # Convert starting column letter to a 0-indexed number (e.g., "A" -> 0, "B" -> 1)
+            start_col_num = 0
+            for char in start_col_str.upper():
+                start_col_num = start_col_num * 26 + (ord(char) - ord('A'))
+
+            # 3. Map every individual row and column to its cell key
+            for r_idx, row in enumerate(values):
+                current_row = start_row_num + r_idx
+                for c_idx, cell_value in enumerate(row):
+                    current_col_letter = col_to_letter(start_col_num + c_idx)
+                    
+                    # Format key: 'SheetName!A1'
+                    cell_key = f"{sheet_name}!{current_col_letter}{current_row}" if sheet_name else f"{current_col_letter}{current_row}"
+                    backup_map[cell_key] = cell_value
+
+        return backup_map

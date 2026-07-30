@@ -49,9 +49,9 @@ def read_overview(registrationSheetID):
     spots = [int(s) for s in spots] # Convert spot counts to integers
     double = SheetsAPI.read_cells(registrationSheetID, [f"Overview!E{i+2}" for i in range(len(names))])
     type = SheetsAPI.read_cells(registrationSheetID, [f"Overview!F{i+2}" for i in range(len(names))])
-    ranges = SheetsAPI.read_cells(registrationSheetID, [f"Overview!H{i+2}" for i in range(len(names))])
-    ranges = {names[i]: ranges[i] for i in range(len(names))}
-    return names, percentages, spots, double, type, ranges
+    raw_ranges = SheetsAPI.read_cells(registrationSheetID, [f"Overview!H{i+2}" for i in range(len(names))])
+    ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
+    return names, percentages, spots, double, type, ranges, raw_ranges
     
 def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
     """
@@ -186,7 +186,7 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
 
     return finalassignments
 
-def add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix=None):
+def add_assignments(finalassignments, availableCountries, Double_Committees, suggestions_matrix=None):
     """
     Launches an interactive interface to browse and add country assignments.
     Uses true numeric shortcut mappings via text prompts.
@@ -306,12 +306,7 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
                 except ValueError:
                     Display.display("Please type a valid number or menu shortcut character.")
         finalassignments = update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees)
-    valueslist = list(finalassignments.values())
-    for i in range(len(valueslist)):
-        if valueslist[i][2] == "" or valueslist[i][2] == None:
-            Display.display("ERROR: You have not fulfilled all assignments yet!!!")
-            add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix)
-    return finalassignments, availableCountries, currentRow
+    return finalassignments, availableCountries
 
 def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels, newschool=True):
     Display.display("Top 5 country preferences:", "\033[1m" + CountryPrefs + "\033[0m") #Display.display country preferences in bold for visibility.
@@ -384,6 +379,7 @@ def assign_new_schools():
                 finalassignments, i, percentages, iterator = assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
             
             GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
+            all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
             for i in range(len(names)): #build the lists above to pass into functions for verification.
                 if i in GaIndices:
                     GA_Names.append(names[i])
@@ -394,7 +390,6 @@ def assign_new_schools():
                 else:
                     Display.display("There is a committee name error.")
                     sys.exit()
-                all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
                 if not i in all_single_indices:
                     Double_Committees.add(names[i])
 
@@ -426,7 +421,7 @@ def assign_new_schools():
             unassignedSchools.remove(selectedSchool)
 
 def read_school_and_current_committees_data(registrationSheetID, selectedSchool, committeeCount=None):
-    names, percentages, spots, double, Committeetype, ranges = read_overview(registrationSheetID)
+    names, percentages, spots, double, Committeetype, ranges, raw_ranges = read_overview(registrationSheetID)
     availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
     single_indices, GaIndices, SpecIndices, CrisisIndices = read_committees_overview_from_sheet(Committeetype, double)
     row = SheetsAPI.find_row_by_string(registrationSheetID, sheetname, "C", selectedSchool)
@@ -445,7 +440,7 @@ def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spe
     CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
 
     #Data science function to generate countrySuggestionsList!
-    finalassignments, availableCountries, CurrentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, countrySuggestionsList)
+    finalassignments, availableCountries = add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
 
     return finalassignments, CurrentRow
 
@@ -461,6 +456,8 @@ def add_delegates():
         ClosestMatch = get_close_matches(selectedSchool, CurrentSchools, n=1, cutoff=0.6)
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
         selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
+
+    schoolrow = SheetsAPI.find_row_by_string(registrationSheetID, "Assignments", "A", selectedSchool)
 
     names, percentages, spots, availableCountries, single_indices, GaIndices, SpecIndices, CrisisIndices, GA, Specialized, Crisis, SecurityCouncil, numdels, double, Committeetype = read_school_and_current_committees_data(registrationSheetID, selectedSchool, committeeCount)
     
@@ -497,8 +494,13 @@ def add_delegates():
         if not i in all_single_indices:
             Double_Committees.add(names[i])
 
-    finalassignments, CurrentRow = check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries)
-    finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, availableCountries, CurrentRow, registrationSheetID)
+    Display.display("Assignments for this school:")
+    finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees) # a business logic function that calls display functions.
+
+    #Data science function to generate countrySuggestionsList!
+    finalassignments, availableCountries = add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
+
+    finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, availableCountries, schoolrow, registrationSheetID)
     cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
     while cont.lower() not in {"yes", "no"}:
         cont = Display.take_text_input("Finished building cell maps. Push?")
@@ -508,7 +510,7 @@ def add_delegates():
     #writing to the sheet the cell maps.
     SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, remaining_cell_map)
     SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, SchoolAssignmentsCells)
-    SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, {f"Assignments!A{CurrentRow}": selectedSchool})
+    SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, {f"Assignments!A{schoolrow}": selectedSchool})
     
     time.sleep(5); Display.display("Checking sheet for changes...") #pause for sheet to register changes.
     percentagesChecking = SheetsAPI.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
@@ -529,14 +531,91 @@ def add_delegates():
             sys.exit()
 
 def drop_delegates():
-    #Goal: delete delegates from the assignments sheet and move them back to the original pool. Ask user for which school and Display.display all options for drop. Confirm drop, read assignments sheet, then delete them from the assignments sheet.
+    #Goal: delete delegates from the assignments sheet and move them back to the original pool. Ask user for which school and Display.display all delegate options for drop. Confirm drop, read assignments sheet, then delete them from the assignments sheet.
     # Finally, insert them back into the original pool by reading their committee name, and slotting them back to the first empty cell. Request that these assignments be deleted from the database.
-    pass
+    selectedSchool = Display.take_text_input("Please input the school to drop delegates from.")
+    CurrentSchools = SheetsAPI.get_column_odd_cells_data(registrationSheetID, "Assignments", "A", 2)
+    names, percentages, spots, double, Committeetype, ranges, raw_ranges = read_overview(registrationSheetID)
+    availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
+    while selectedSchool not in CurrentSchools: #closest match logic for input errors.
+        ClosestMatch = get_close_matches(selectedSchool, CurrentSchools, n=1, cutoff=0.6)
+        Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
+        selectedSchool = Display.take_text_input("Please input the school to drop delegates from.")
+    
+    schoolrow = SheetsAPI.find_row_by_string(registrationSheetID, "Assignments", "A", selectedSchool)
+    if schoolrow is None:
+        Display.display(f"Error: Could not find the row for {selectedSchool} in the Assignments sheet.")
+        sys.exit()
 
+    for range in raw_ranges:
+        if range is None or range == "":
+            Display.display("Error: One of the ranges in the Overview sheet is empty. Please check the sheet.")
+            sys.exit()
+        else:
+            range = f"Remaining Assignments!{range}"
+    raw_ranges.append(f"Assignments!B{schoolrow}:AE{schoolrow}")
+    raw_ranges.append(f"Assignments!B{schoolrow+1}:AE{schoolrow+1}")
+    backup = SheetsAPI.create_state_backup(registrationSheetID, raw_ranges)
+
+    row1 = SheetsAPI.read_row_from(registrationSheetID, "Assignments", schoolrow, "B") or []
+    row2 = SheetsAPI.read_row_from(registrationSheetID, "Assignments", schoolrow + 1, "B") or []
+    list_of_assignments = row1 + row2  # Combine both rows, treating None as empty list
+
+    if list_of_assignments is not None:
+        final_list_of_assignments = []
+        seen_empty = False
+        for assignment in list_of_assignments:
+            if assignment and assignment != "":
+                final_list_of_assignments.append(assignment)
+                if seen_empty == True:
+                    print("There is a hole or error in the sheets assignment list! There cannot be an empty cell except for the last few cells.")
+            else:
+                seen_empty = True
+
+        Display.display("Click exit if you want to cancel the operation. Otherwise, selected the delegates with arrow keys and space. Hit enter to finish.")
+        delegates_to_drop = Display.display_list_of_selections_multi_select(final_list_of_assignments, "Select delegate(s) to drop from the school", "Exit")
+
+        if delegates_to_drop == "exit" or not delegates_to_drop:
+            Display.display("Operation cancelled. No delegates were dropped.")
+            sys.exit()
+
+        for assignment in delegates_to_drop:
+            final_list_of_assignments.remove(assignment)
+        Display.display(f"Final list of assignments: {final_list_of_assignments}")
+
+        cont = Display.take_text_input("Proceed with dropping the delegates and updating the sheet? (y/n)")
+        if cont == "n":
+            Display.display("Aborting drop operation.")
+            sys.exit()
+
+        SheetsAPI.clear_row_from(registrationSheetID, "Assignments", schoolrow, start_column='B', num_columns=30); SheetsAPI.clear_row_from(registrationSheetID, "Assignments", schoolrow + 1, start_column='B', num_columns=30) # wipe the rows clean before pushing back
+        
+        assigned_cell_map, remaining_cell_map = SheetsAPI.map_simple_cells_from_list_and_return_to_pile(final_list_of_assignments, availableCountries, schoolrow, delegates_to_drop) #type:ignore
+
+        SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, assigned_cell_map)
+        SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, remaining_cell_map)
+        #push back the new assignments to the sheet, and return the dropped delegates to the original pool.
+
+        deleted_hashes = ServerRequests.drop_delegates_from_school_and_delete_hashes(delegates_to_drop) #type:ignore
+        if deleted_hashes != {}:
+            for delegate, hash_value in deleted_hashes.items():
+                Display.display(f"Deleted {delegate} with hash: {hash_value}")
+        else:
+            Display.display("No delegates were deleted. Please check the server response for errors.")
+            SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, raw_ranges)
+            sys.exit()
+        
+    else:
+        print("The sheet for the school's assignments came back empty. Check the Assignments sheet.")
+        sys.exit()
+
+
+        
 """
 Improvements:
 Split up main function into smaller parts
 Fix percentage error
+Roll back changes if errors occur during the process?
 System for drops and additions.
 Link assignments up to sheets provided to schools.
 Code a reusable function that reads headers and returns column value from sheets, to allow for database-like reading?
