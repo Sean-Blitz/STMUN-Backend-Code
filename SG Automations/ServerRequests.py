@@ -194,7 +194,7 @@ def request_hashes_for_school(school_name: str) -> dict[str, str]:
         print(f"Error communicating with server: {e}")
         return {}
 
-def request_all_awards_data() -> dict[tuple[str, str], str]:
+def request_all_awards_data() -> dict[tuple[str, str], str]: # returns a dictionary where keys are (country, committee) tuples and values are award names.
     """
     Fetches all award data from FastAPI and formats it into a dictionary 
     where keys are (country, committee) tuples and values are award names.
@@ -389,3 +389,12 @@ def regenerate_hashes_for_school(school_name: str) -> dict[str, str]:
     except requests.exceptions.RequestException as e:
         print(f"Error communicating with server: {e}")
         return {}
+    
+def export_database_to_csv() -> None:
+    pass
+
+def view_business_log() -> None:
+    pass
+
+def view_tech_log() -> None:
+    pass

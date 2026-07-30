@@ -1,6 +1,7 @@
 import string
 from googleapiclient.discovery import build
 from .GoogleAPIsManager import GoogleAPIs
+import sys
 
 class SheetAPI(GoogleAPIs):
     def __init__(self):
@@ -85,19 +86,20 @@ class SheetAPI(GoogleAPIs):
         """
         Reads multiple individual cells from a Google Sheet and returns their values
         in the same order as the provided cell_list.
+        
         Parameters:
-            service: Authenticated Google Sheets API service instance.
             spreadsheet_id (str): The ID of the Google Sheet.
             cell_list (list): List of A1-notation cell references, e.g. ["A1", "B2"].
 
         Returns:
             list: Values in the same order as cell_list. Empty cells return None.
         """
+        ranges = cell_list
 
         # Batch request for all cells
         result = self.service.spreadsheets().values().batchGet(
             spreadsheetId=spreadsheet_id,
-            ranges=cell_list
+            ranges=ranges
         ).execute()
 
         value_ranges = result.get("valueRanges", [])
@@ -265,6 +267,45 @@ class SheetAPI(GoogleAPIs):
             
         return len(collected_data)
     
+    def get_column_odd_cells_data(self, sheet_id, sheet_name, column_letter, start_row) -> list:
+        """
+        Reads down a specific column in Google Sheets and returns all values 
+        until it hits an empty odd cell.
+        """    
+        range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
+        
+        sheet = self.service.spreadsheets()
+        result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
+        
+        values = result.get('values', [])
+        collected_data = []
+        
+        for i in range(len(values)):
+            # Calculate the actual physical spreadsheet row number
+            current_spreadsheet_row = start_row + i
+            
+            # Safe check: first see if the row list is completely empty
+            is_empty = False
+            if not values[i] or len(values[i]) == 0:
+                is_empty = True
+            elif not str(values[i][0]).strip():
+                is_empty = True
+                
+            # If it's empty, check if the PHYSICAL spreadsheet row is odd
+            if is_empty:
+                if current_spreadsheet_row % 2 != 0:
+                    break  # Stop tracking immediately if it's an empty odd row!
+                else:
+                    # If it's an empty EVEN row, your rules say keep going.
+                    # We append a blank placeholder string so your index matches up.
+                    collected_data.append("")
+                    continue
+
+            # If it's not empty, grab the cell data safely
+            collected_data.append(values[i][0])
+            
+        return collected_data
+    
     def pull_sheet_data(self, sheet_id, sheet_name, ranges):
         """
         Pulls all data from Remaining Assignments sheet into RAM.
@@ -344,6 +385,33 @@ class SheetAPI(GoogleAPIs):
                 #construct school assignments cells
                 assigned_cell_map[f"Assignments!{self.sheets_alphabet(j+1)}{currentRow}" if j <= 29 else f"Assignments!{self.sheets_alphabet(j-29)}{currentRow + 1}"] = f"{country} ({committee})"
             j += 1
+        for (committee, country), coordinate in availableCountries.items():
+            if (f"{committee.lower()}, {country.lower()}") in checkingSet:
+                #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
+                cell_map[coordinate] = ""
+            elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
+                cell_map[coordinate] = country
+        return finalassignments, cell_map, assigned_cell_map
+    
+    def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, currentRow, registrationSheetID):
+        cell_map = {}
+        assigned_cell_map = {}
+        checkingSet = set()
+        current_number = self.read_single_cell(registrationSheetID, [f"Assignments!A{currentRow+1}"])
+        if current_number is not None:
+            current_number = int(current_number)
+        else:
+            print(f"Warning: Could not read the current number from Assignments!A{currentRow+1}. Please check the sheet.")
+            sys.exit(1)
+        for delegate, vals in finalassignments.items():
+            if len(vals) == 3:
+                committee = vals[0]
+                country = vals[2]
+                checkingSet.add(f"{committee.lower()}, {country.lower()}")
+
+                #construct school assignments cells. Search for first empty cell (displayed in Sheet)
+                assigned_cell_map[f"Assignments!{self.sheets_alphabet(current_number+1)}{currentRow}" if current_number <= 29 else f"Assignments!{self.sheets_alphabet(current_number-29)}{currentRow + 1}"] = f"{country} ({committee})"
+            current_number += 1
         for (committee, country), coordinate in availableCountries.items():
             if (f"{committee.lower()}, {country.lower()}") in checkingSet:
                 #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.

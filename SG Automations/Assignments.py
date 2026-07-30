@@ -210,8 +210,21 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
         selected_choice = Display.display_list_of_selections(menu_choices, "Select a delegate to give assignments", "Confirm Assignments")
 
         if selected_choice == "exit" or selected_choice is None:
-            Display.display("\033[K Exiting and saving changes...")
-            break
+        # --- CHECK IF ALL DELEGATES ARE ASSIGNED ---
+            all_assigned = True
+            for details in finalassignments.values():
+                # Check if country field is missing, empty, or None
+                if len(details) <= 2 or details[2] == "" or details[2] is None:
+                    all_assigned = False
+                    break  # Found at least one unassigned delegate, stop checking
+            
+            # --- DECISION LOGIC ---
+            if not all_assigned:
+                Display.display("ERROR: You have not fulfilled all assignments yet! Please assign all delegates.")
+                continue  # Keeps the user INSIDE the while loop so they can assign remaining delegates
+            else:
+                Display.display("\033[K Exiting and saving changes...")
+                break  # Safely breaks out of the while loop and finishes the function      
 
         delegate_key = selected_choice.split(" │ ")[0].strip()
         delegate_index = delegate_keys.index(delegate_key)
@@ -298,11 +311,9 @@ def add_assignments(finalassignments, availableCountries, currentRow, Double_Com
         if valueslist[i][2] == "" or valueslist[i][2] == None:
             Display.display("ERROR: You have not fulfilled all assignments yet!!!")
             add_assignments(finalassignments, availableCountries, currentRow, Double_Committees, suggestions_matrix)
-
-
     return finalassignments, availableCountries, currentRow
 
-def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels):
+def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels, newschool=True):
     Display.display("Top 5 country preferences:", "\033[1m" + CountryPrefs + "\033[0m") #Display.display country preferences in bold for visibility.
     Display.display("Middle Eastern Bloc:", "\033[1m" + MiddleEasternBloc + "\033[0m")
     Display.display("American Bloc:", "\033[1m" + AmericanBloc + "\033[0m")
@@ -311,7 +322,8 @@ def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, American
     Display.display("African Country Bloc:", "\033[1m" + AfricanBloc + "\033[0m")
     Display.display("Pacific Country Bloc:", "\033[1m" + PacificBloc + "\033[0m")
     Display.display("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
-    Display.display("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
+    if newschool == True:
+        Display.display("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
 
     #data science: school awards from past
     GA = Display.take_text_input("How many delegates to put in GA?")
@@ -320,10 +332,7 @@ def print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, American
     Crisis = numdels - GA - Specialized
     return GA, Specialized, Crisis
 
-def read_committees_overview_from_sheet(GA, Specialized, Crisis, Committeetype, double):
-    Display.go_one_line_up(); Display.clear_current_line(); Display.go_one_line_up(); Display.clear_current_line()
-    Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
-
+def read_committees_overview_from_sheet(Committeetype, double):
     indices = {"ga": [], "specialized": [], "crisis": []}
     single_indices = {"ga": [], "specialized": [], "crisis": []}
     for index, (kind, is_double) in enumerate(zip(Committeetype, double)):
@@ -346,22 +355,14 @@ def assign_new_schools():
     unassignedSchools = Storage.find_non_overlap_string(sheetSchools, "assignedSchools.csv")
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
-        row = SheetsAPI.find_row_by_string(registrationSheetID, sheetname, "C", selectedSchool)
-        output = SheetsAPI.read_cells(registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
-        CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output
-        numdels = int(numdels)
-
-        #pulls from Remaining Assignments for checking and pushing back later.
-
-        GA, Specialized, Crisis= print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels)
+        names, percentages, spots, availableCountries, single_indices, GaIndices, SpecIndices, CrisisIndices, GA, Specialized, Crisis, SecurityCouncil, numdels, double, Committeetype = read_school_and_current_committees_data(registrationSheetID, selectedSchool)
 
         if GA + Specialized > numdels:
             Display.display("Error: The total number of delegates does not match the expected count.")
             sys.exit()
         else:
-            names, percentages, spots, double, Committeetype, ranges = read_overview(registrationSheetID)
-            availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
-            single_indices, GaIndices, SpecIndices, CrisisIndices = read_committees_overview_from_sheet(GA, Specialized, Crisis, Committeetype, double)
+            Display.go_one_line_up(); Display.clear_current_line(); Display.go_one_line_up(); Display.clear_current_line()
+            Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
             
             i = 0; iterator = 0
             finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
@@ -393,18 +394,12 @@ def assign_new_schools():
                 else:
                     Display.display("There is a committee name error.")
                     sys.exit()
-                if not i in single_indices:
+                all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
+                if not i in all_single_indices:
                     Double_Committees.add(names[i])
 
-            Display.clear_current_line()
-            Display.display("Assignments for this school:")
-            finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
-            # a business logic function that calls display functions.
-            CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
-
-            #Data science function to generate countrySuggestionsList!
-            finalassignments, availableCountries, currentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, countrySuggestionsList)
-            finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, currentRow)
+            finalassignments, CurrentRow = check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries)
+            finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, CurrentRow)
             cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
                 cont = Display.take_text_input("Finished building cell maps. Push?")
@@ -430,20 +425,111 @@ def assign_new_schools():
             Storage.append_to_csv("assignedSchools.csv", [selectedSchool])
             unassignedSchools.remove(selectedSchool)
 
+def read_school_and_current_committees_data(registrationSheetID, selectedSchool, committeeCount=None):
+    names, percentages, spots, double, Committeetype, ranges = read_overview(registrationSheetID)
+    availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
+    single_indices, GaIndices, SpecIndices, CrisisIndices = read_committees_overview_from_sheet(Committeetype, double)
+    row = SheetsAPI.find_row_by_string(registrationSheetID, sheetname, "C", selectedSchool)
+    output = SheetsAPI.read_cells(registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
+    CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output; numdels = int(numdels)
+    if committeeCount is None:
+        committeeCount = numdels
+    GA, Specialized, Crisis = print_data_to_terminal_with_prompt(CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, committeeCount, newschool=False)
+    
+    return names, percentages, spots, availableCountries, single_indices, GaIndices, SpecIndices, CrisisIndices, GA, Specialized, Crisis, SecurityCouncil, committeeCount, double, Committeetype
+
+def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries):
+    Display.display("Assignments for this school:")
+    finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
+    # a business logic function that calls display functions.
+    CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
+
+    #Data science function to generate countrySuggestionsList!
+    finalassignments, availableCountries, CurrentRow = add_assignments(finalassignments, availableCountries, CurrentRow, Double_Committees) #, countrySuggestionsList)
+
+    return finalassignments, CurrentRow
+
 def add_delegates():
-    #Goal: Add delegates to a school that already exists. Scan the sheet for user Display.take_text_inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
+    # Goal: Add delegates to a school that already exists. Scan the sheet for user Display.take_text_inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
     # Request for new hashes and send this new data to the database.
     
-    SchooltoAdd = Display.take_text_input("Please Display.take_text_input the school to add delegates to.")
+    selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
+    committeeCount = int(Display.take_text_input("How many delegates to add?"))
 
-    CurrentSchools = [] #now get those schools from the Google Sheets
-
-    if SchooltoAdd not in CurrentSchools:
-        ClosestMatch = get_close_matches(SchooltoAdd, CurrentSchools, n=1, cutoff=0.6)
+    CurrentSchools = SheetsAPI.get_column_odd_cells_data(registrationSheetID, "Assignments", "A", 2)
+    while selectedSchool not in CurrentSchools:
+        ClosestMatch = get_close_matches(selectedSchool, CurrentSchools, n=1, cutoff=0.6)
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
-    pass
+        selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
+
+    names, percentages, spots, availableCountries, single_indices, GaIndices, SpecIndices, CrisisIndices, GA, Specialized, Crisis, SecurityCouncil, numdels, double, Committeetype = read_school_and_current_committees_data(registrationSheetID, selectedSchool, committeeCount)
+    
+    i = 0; iterator = 0
+    finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
+    while iterator < GA:
+        data = (names, percentages, double, spots, Committeetype)
+        finalassignments, i, percentages, iterator = assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+    iterator = 0
+    while iterator < Specialized:
+        data = (names, percentages, double, spots, Committeetype)
+        finalassignments, i, percentages, iterator = assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+    iterator = 0
+    if SecurityCouncil.lower() != "yes":
+        CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
+    else:
+        CrisisInd = CrisisIndices
+    while iterator < Crisis:
+        data = (names, percentages, double, spots, Committeetype)
+        finalassignments, i, percentages, iterator = assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+    
+    GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
+    for i in range(len(names)): #build the lists above to pass into functions for verification.
+        if i in GaIndices:
+            GA_Names.append(names[i])
+        elif i in SpecIndices:
+            Spec_Names.append(names[i])
+        elif i in CrisisIndices:
+            Crisis_Names.append(names[i])
+        else:
+            Display.display("There is a committee name error.")
+            sys.exit()
+        all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
+        if not i in all_single_indices:
+            Double_Committees.add(names[i])
+
+    finalassignments, CurrentRow = check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries)
+    finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, availableCountries, CurrentRow, registrationSheetID)
+    cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
+    while cont.lower() not in {"yes", "no"}:
+        cont = Display.take_text_input("Finished building cell maps. Push?")
+    if cont != "yes":
+        sys.exit()
+
+    #writing to the sheet the cell maps.
+    SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, remaining_cell_map)
+    SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, SchoolAssignmentsCells)
+    SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, {f"Assignments!A{CurrentRow}": selectedSchool})
+    
+    time.sleep(5); Display.display("Checking sheet for changes...") #pause for sheet to register changes.
+    percentagesChecking = SheetsAPI.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
+    percentagesChecking = [float(p.strip('%')) for p in percentagesChecking] if percentagesChecking else [] # Convert "45%" to 45.0
+    if percentagesChecking == percentages:
+        Display.display("Percentages are correct. Moving on to next school, and placing name in completed CSV.")
+        hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
+        Display.display(hashes)
+    else:
+        Display.display("Percentage error. Please check the sheet! School name placed in completed CSV.")
+        Display.display(registrationSheetURL)
+        cont = Display.take_text_input("Should we proceed to send new assignments to the database? (yes/no)")
+        if cont == "yes":
+            hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
+            Display.display(hashes)
+        else:
+            Display.display("Aborting database update. Please check the sheet manually.")
+            sys.exit()
+
 def drop_delegates():
-    #Goal: delete delegates from the assignments sheet and move them back to the original pool. Ask user for which school and Display.display all options for drop. Confirm drop, then delete them from the assignments sheet.
+    #Goal: delete delegates from the assignments sheet and move them back to the original pool. Ask user for which school and Display.display all options for drop. Confirm drop, read assignments sheet, then delete them from the assignments sheet.
     # Finally, insert them back into the original pool by reading their committee name, and slotting them back to the first empty cell. Request that these assignments be deleted from the database.
     pass
 
@@ -451,8 +537,8 @@ def drop_delegates():
 Improvements:
 Split up main function into smaller parts
 Fix percentage error
-System for drops and additions? Start with a questionary prompt for adding schools, dropping delegates, adding delegates.
-Link assignments up to sheets provided to schools
+System for drops and additions.
+Link assignments up to sheets provided to schools.
 Code a reusable function that reads headers and returns column value from sheets, to allow for database-like reading?
 
 """
