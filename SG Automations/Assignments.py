@@ -547,12 +547,7 @@ def drop_delegates():
         Display.display(f"Error: Could not find the row for {selectedSchool} in the Assignments sheet.")
         sys.exit()
 
-    for range in raw_ranges:
-        if range is None or range == "":
-            Display.display("Error: One of the ranges in the Overview sheet is empty. Please check the sheet.")
-            sys.exit()
-        else:
-            range = f"Remaining Assignments!{range}"
+    formatted_ranges = [f"Remaining Assignments!{r}" for r in raw_ranges if r] # this block of code saves a backup as a dictionary. Key: cell coordinate. Value: cell value.
     raw_ranges.append(f"Assignments!B{schoolrow}:AE{schoolrow}")
     raw_ranges.append(f"Assignments!B{schoolrow+1}:AE{schoolrow+1}")
     backup = SheetsAPI.create_state_backup(registrationSheetID, raw_ranges)
@@ -602,7 +597,7 @@ def drop_delegates():
                 Display.display(f"Deleted {delegate} with hash: {hash_value}")
         else:
             Display.display("No delegates were deleted. Please check the server response for errors.")
-            SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, raw_ranges)
+            SheetsAPI.write_values_to_sheet_from_dict(registrationSheetID, backup)
             sys.exit()
         
     else:
@@ -615,9 +610,5 @@ def drop_delegates():
 Improvements:
 Split up main function into smaller parts
 Fix percentage error
-Roll back changes if errors occur during the process?
-System for drops and additions.
 Link assignments up to sheets provided to schools.
-Code a reusable function that reads headers and returns column value from sheets, to allow for database-like reading?
-
 """
