@@ -305,93 +305,6 @@ class SheetAPI(GoogleAPIs):
             collected_data.append(values[i][0])
             
         return collected_data
-    
-    def pull_sheet_data(self, sheet_id, sheet_name, ranges):
-        """
-        Pulls all data from Remaining Assignments sheet into RAM.
-        Assumes each range contains only a pile of country names.
-        Maps (committee, country_name) -> absolute_coordinate in a dictionary.
-        """
-        full_ranges = [f"{sheet_name}!{r}" for r in ranges.values()]
-        
-        # Execute ONE bulk network pull for all grid blocks
-        result = self.service.spreadsheets().values().batchGet(
-            spreadsheetId=sheet_id,
-            ranges=full_ranges
-        ).execute()
-        
-        value_ranges = result.get('valueRanges', [])
-        availability_map = {}
-        
-        # Helper to convert column indexes back to Excel letters
-        def col_to_letter(col_idx):
-            letter = ""
-            while col_idx >= 0:
-                letter = chr(col_idx % 26 + 65) + letter
-                col_idx = (col_idx // 26) - 1
-            return letter
-
-        # Process each committee block
-        for (committee_name, raw_range_str), value_range_obj in zip(ranges.items(), value_ranges):
-            
-            rows = value_range_obj.get('values', [])
-            if not rows:
-                continue
-                
-            # Parse the top-left starting corner of this specific bounding box
-            start_cell = raw_range_str.split(':')[0]
-            start_col_str = ''.join([c for c in start_cell if c.isalpha()]).upper()
-            start_row_num = int(''.join([c for c in start_cell if c.isdigit()]))
-            
-            # Convert start column letter to a base-0 index
-            start_col_idx = 0
-            for char in start_col_str:
-                start_col_idx = start_col_idx * 26 + (ord(char) - ord('A') + 1)
-            start_col_idx -= 1 
-
-            # Loop through every cell in the returned matrix
-            for row_offset, row in enumerate(rows):
-                for col_offset, cell_value in enumerate(row):
-                    
-                    # Strip and read the text
-                    country_name = cell_value.strip()
-                    
-                    # Ignore empty cells or placeholders
-                    if not country_name or country_name.lower() in ["", "unassigned"]:
-                        continue
-                        
-                    # Calculate the exact row and column for THIS specific cell
-                    current_row_abs = start_row_num + row_offset
-                    current_col_abs_letter = col_to_letter(start_col_idx + col_offset)
-                    
-                    absolute_coordinate = f"{sheet_name}!{current_col_abs_letter}{current_row_abs}"
-                    
-                    # Save to your validation lookup map
-                    availability_map[(committee_name, country_name)] = absolute_coordinate
-
-        return availability_map
-    
-    def map_cells(self, finalassignments: dict, availableCountries, currentRow):
-        cell_map = {}
-        assigned_cell_map = {}
-        checkingSet = set()
-        j = 0
-        for delegate, vals in finalassignments.items():
-            if len(vals) == 3:
-                committee = vals[0]
-                country = vals[2]
-                checkingSet.add(f"{committee.lower()}, {country.lower()}")
-
-                #construct school assignments cells
-                assigned_cell_map[f"Assignments!{self.sheets_alphabet(j+1)}{currentRow}" if j <= 29 else f"Assignments!{self.sheets_alphabet(j-29)}{currentRow + 1}"] = f"{country} ({committee})"
-            j += 1
-        for (committee, country), coordinate in availableCountries.items():
-            if (f"{committee.lower()}, {country.lower()}") in checkingSet:
-                #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
-                cell_map[coordinate] = ""
-            elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
-                cell_map[coordinate] = country
-        return finalassignments, cell_map, assigned_cell_map
 
     def map_simple_cells_from_list_and_return_to_pile(
         self, 
@@ -647,7 +560,7 @@ class SheetAPI(GoogleAPIs):
 
         return response
 
-    def create_state_backup(self, spreadsheet_id: str, ranges_list: list) -> dict:
+    def read_data_for_backup(self, spreadsheet_id: str, ranges_list: list) -> dict:
         """
         Reads multiple ranges from a Google Sheet in a single API call and maps 
         every individual cell coordinate to its current value for rollback purposes.
@@ -719,3 +632,70 @@ class SheetAPI(GoogleAPIs):
                     backup_map[cell_key] = cell_value
 
         return backup_map
+
+    def pull_sheet_data(self, ranges, sheet_id):
+        """
+        Pulls all data from ranges into RAM.
+        Assumes each range contains only a pile of country names.
+        Maps (committee, country_name) -> absolute_coordinate in a dictionary.
+        """
+        sheet_name="Remaining Assignments"
+        full_ranges = [f"{sheet_name}!{r}" for r in ranges.values()]
+        
+        # Execute ONE bulk network pull for all grid blocks
+        result = self.service.spreadsheets().values().batchGet(
+            spreadsheetId=sheet_id,
+            ranges=full_ranges
+        ).execute()
+        
+        value_ranges = result.get('valueRanges', [])
+        availability_map = {}
+        
+        # Helper to convert column indexes back to Excel letters
+        def col_to_letter(col_idx):
+            letter = ""
+            while col_idx >= 0:
+                letter = chr(col_idx % 26 + 65) + letter
+                col_idx = (col_idx // 26) - 1
+            return letter
+
+        # Process each committee block
+        for (committee_name, raw_range_str), value_range_obj in zip(ranges.items(), value_ranges):
+            
+            rows = value_range_obj.get('values', [])
+            if not rows:
+                continue
+                
+            # Parse the top-left starting corner of this specific bounding box
+            start_cell = raw_range_str.split(':')[0]
+            start_col_str = ''.join([c for c in start_cell if c.isalpha()]).upper()
+            start_row_num = int(''.join([c for c in start_cell if c.isdigit()]))
+            
+            # Convert start column letter to a base-0 index
+            start_col_idx = 0
+            for char in start_col_str:
+                start_col_idx = start_col_idx * 26 + (ord(char) - ord('A') + 1)
+            start_col_idx -= 1 
+
+            # Loop through every cell in the returned matrix
+            for row_offset, row in enumerate(rows):
+                for col_offset, cell_value in enumerate(row):
+                    
+                    # Strip and read the text
+                    country_name = cell_value.strip()
+                    
+                    # Ignore empty cells or placeholders
+                    if not country_name or country_name.lower() in ["", "unassigned"]:
+                        continue
+                        
+                    # Calculate the exact row and column for THIS specific cell
+                    current_row_abs = start_row_num + row_offset
+                    current_col_abs_letter = col_to_letter(start_col_idx + col_offset)
+                    
+                    absolute_coordinate = f"{sheet_name}!{current_col_abs_letter}{current_row_abs}"
+                    
+                    # Save to your validation lookup map
+                    availability_map[(committee_name, country_name)] = absolute_coordinate
+
+        return availability_map
+

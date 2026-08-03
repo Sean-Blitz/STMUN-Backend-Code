@@ -3,11 +3,11 @@ import sys
 import time
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
-from ..Infrastructure import SheetAPI
+from Assignments_Sheets_Adapter import Assignments_to_Sheets
 from ..Infrastructure import DisplayClass
 from ..Infrastructure import CSV
 
-SheetsAPI = SheetAPI()
+SheetsAPI = Assignments_to_Sheets()
 Display = DisplayClass()
 Storage = CSV()
 
@@ -31,18 +31,6 @@ def verify_committee_number_input(GA, Specialized, DoubleGAs):
         GA = int(GA)
         Specialized = int(Specialized)
     return GA, Specialized
-
-def read_overview(registrationSheetID):
-    names = SheetsAPI.get_column_data_until_empty(registrationSheetID, "Overview", "A", 2) # Use this function to also detect number of committees
-    percentages = SheetsAPI.read_cells(registrationSheetID, [f"Overview!D{i+2}" for i in range(len(names))])
-    percentages = [float(p.strip('%')) for p in percentages] # Convert "45%" to 45.0
-    spots = SheetsAPI.read_cells(registrationSheetID, [f"Overview!C{i+2}" for i in range(len(names))])
-    spots = [int(s) for s in spots] # Convert spot counts to integers
-    double = SheetsAPI.read_cells(registrationSheetID, [f"Overview!E{i+2}" for i in range(len(names))])
-    type = SheetsAPI.read_cells(registrationSheetID, [f"Overview!F{i+2}" for i in range(len(names))])
-    raw_ranges = SheetsAPI.read_cells(registrationSheetID, [f"Overview!H{i+2}" for i in range(len(names))])
-    ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
-    return names, percentages, spots, double, type, ranges, raw_ranges
     
 def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
     """
@@ -214,19 +202,6 @@ def read_committees_overview_from_sheet(Committeetype, double):
 
     return single_indices, GaIndices, SpecIndices, CrisisIndices
 
-def read_school_and_current_committees_data(sheetname, registrationSheetID, selectedSchool, doubleGAs, committeeCount=None):
-    names, percentages, spots, double, Committeetype, ranges, raw_ranges = read_overview(registrationSheetID)
-    availableCountries = SheetsAPI.pull_sheet_data(registrationSheetID, "Remaining Assignments", ranges)
-    single_indices, GaIndices, SpecIndices, CrisisIndices = read_committees_overview_from_sheet(Committeetype, double)
-    row = SheetsAPI.find_row_by_string(registrationSheetID, sheetname, "C", selectedSchool)
-    output = SheetsAPI.read_cells(registrationSheetID, [f"{sheetname}!R{row}", f"{sheetname}!S{row}", f"{sheetname}!T{row}", f"{sheetname}!U{row}", f"{sheetname}!V{row}", f"{sheetname}!W{row}", f"{sheetname}!X{row}", f"{sheetname}!Y{row}", f"{sheetname}!Q{row}"])
-    CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output; numdels = int(numdels)
-    if committeeCount is None:
-        committeeCount = numdels
-    GA, Specialized, Crisis = print_data_to_terminal_with_prompt(doubleGAs, CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, committeeCount, newschool=False)
-    
-    return names, percentages, spots, availableCountries, single_indices, GaIndices, SpecIndices, CrisisIndices, GA, Specialized, Crisis, SecurityCouncil, committeeCount, double, Committeetype
-
 def add_assignments(finalassignments, availableCountries, Double_Committees, suggestions_matrix=None):
     """
     Launches an interactive interface to browse and add country assignments.
@@ -349,11 +324,11 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
         finalassignments = update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees)
     return finalassignments, availableCountries
 
-def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries, registrationSheetID):
+def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries):
     Display.display("Assignments for this school:")
     finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
     # a business logic function that calls display functions.
-    CurrentRow = SheetsAPI.get_column_odd_cells(registrationSheetID, "Assignments", "A", 1) + 2
+    CurrentRow = SheetsAPI.find_new_school_row_in_assignments_sheet()
 
     #Data science function to generate countrySuggestionsList!
     finalassignments, availableCountries = add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)

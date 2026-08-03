@@ -1,5 +1,5 @@
 import sys
-from Assignments import Display, Storage
+from Assignments import Display
 import Assignments
 import ServerRequests
 

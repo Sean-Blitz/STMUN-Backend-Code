@@ -5,6 +5,8 @@ from .GoogleAPIs.GmailAPIManager import GmailAPI
 from .GoogleAPIs.DocsAPIManager import DocAPI
 from .GoogleAPIs.SlidesAPIManager import SlideAPI
 
+from .GoogleAPIs import SheetsAPIManager
+
 from .Display.DisplayManager import DisplayClass
 
 from .CSV.CSVManager import CSV
