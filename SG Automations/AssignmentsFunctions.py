@@ -32,7 +32,7 @@ def verify_committee_number_input(GA, Specialized, DoubleGAs):
         Specialized = int(Specialized)
     return GA, Specialized
     
-def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
+def assign_committee(CommitteeTypeSelection, Indices: list, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
     """
     Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
     """
@@ -48,7 +48,7 @@ def assign_committee(CommitteeTypeSelection, Indices: dict, data: tuple, finalas
         committeeCount = committeeCount[2]
     else:
         Display.display("Error in Committee Type Selection.")
-        return
+        sys.exit()
     names, percentages, double, spots, Committeetype = data
 
     row = min(Indices, key = lambda x: percentages[x]) #find the lowest percentage GA committee
@@ -328,11 +328,10 @@ def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spe
     Display.display("Assignments for this school:")
     finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
     # a business logic function that calls display functions.
-    CurrentRow = SheetsAPI.find_new_school_row_in_assignments_sheet()
 
     #Data science function to generate countrySuggestionsList!
     finalassignments, availableCountries = add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
 
-    return finalassignments, CurrentRow
+    return finalassignments
 
 

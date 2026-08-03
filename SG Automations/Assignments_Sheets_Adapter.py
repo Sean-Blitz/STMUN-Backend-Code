@@ -66,7 +66,7 @@ class Assignments_to_Sheets:
         """
         return SheetsAPI.get_column_odd_cells_data(registration_sheet_ID, "Assignments", "A", 2)  # Skip header
 
-    def write_school_name_to_sheet(self, school_name: str, row_number: int) -> None:
+    def write_school_name_to_sheet(self, school_name: str) -> None:
         """
         Writes a school name to the assignments sheet at the specified row.
 
@@ -74,29 +74,33 @@ class Assignments_to_Sheets:
             school_name (str): The name of the school to write.
             row_number (int): The row number where the school name should be written.
         """
+        row_number = self.find_new_school_row_in_assignments_sheet()
         cell_address = f"Assignments!A{row_number}"
         SheetsAPI.write_values_to_sheet_from_dict(registration_sheet_ID, {cell_address: school_name})
 
     def find_new_school_row_in_assignments_sheet(self) -> int:
-        CurrentRow = SheetsAPI.get_column_odd_cells(registration_sheet_ID, "Assignments", "A", 1) + 2
-        return CurrentRow
+        new_row_in_assignment_sheet = SheetsAPI.get_column_odd_cells(registration_sheet_ID, "Assignments", "A", 1) + 2
+        return new_row_in_assignment_sheet
 
     def find_existing_school_row_in_assignments_sheet(self, school_name: str) -> int:
         if schoolrow:= SheetsAPI.find_row_by_string(registration_sheet_ID, "Assignments", "A", school_name) is None:
             Display.display(f"Error: Could not find the row for {school_name} in the Assignments sheet.")
             sys.exit()
+
+        self.schoolrow = schoolrow
         return schoolrow
 
-    def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, currentRow):
+    def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, selectedSchool: str):
+        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(selectedSchool)
         # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
         cell_map = {}
         assigned_cell_map = {}
         checkingSet = set()
-        current_number = SheetsAPI.read_single_cell(registration_sheet_ID, [f"Assignments!A{currentRow+1}"])
+        current_number = SheetsAPI.read_single_cell(registration_sheet_ID, [f"Assignments!A{schoolrow+1}"])
         if current_number is not None:
             current_number = int(current_number)
         else:
-            print(f"Warning: Could not read the current number from Assignments!A{currentRow+1}. Please check the sheet.")
+            print(f"Warning: Could not read the current number from Assignments!A{schoolrow+1}. Please check the sheet.")
             sys.exit(1)
         for delegate, vals in finalassignments.items():
             if len(vals) == 3:
@@ -105,7 +109,7 @@ class Assignments_to_Sheets:
                 checkingSet.add(f"{committee.lower()}, {country.lower()}")
 
                 #construct school assignments cells. Search for first empty cell (displayed in Sheet)
-                assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(current_number+1)}{currentRow}" if current_number <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(current_number-29)}{currentRow + 1}"] = f"{country} ({committee})"
+                assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(current_number+1)}{schoolrow}" if current_number <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(current_number-29)}{schoolrow + 1}"] = f"{country} ({committee})"
             current_number += 1
         for (committee, country), coordinate in availableCountries.items():
             if (f"{committee.lower()}, {country.lower()}") in checkingSet:
@@ -121,7 +125,7 @@ class Assignments_to_Sheets:
         ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
 
         availableCountries = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID)  # Populate availableCountries map
-        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(selectedSchool)
 
         formatted_ranges = [f"Remaining Assignments!{r}" for r in raw_ranges if r] # this block of code saves a backup as a dictionary. Key: cell coordinate. Value: cell value.
         formatted_ranges.append(f"Assignments!B{schoolrow}:AE{schoolrow}")
@@ -137,7 +141,7 @@ class Assignments_to_Sheets:
         Parameters:
             selectedSchool (str): The name of the school to retrieve assignments for."""
 
-        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(selectedSchool)
         row1 = SheetsAPI.read_row_from(registration_sheet_ID, "Assignments", schoolrow, "B") or []
         row2 = SheetsAPI.read_row_from(registration_sheet_ID, "Assignments", schoolrow + 1, "B") or []
 
@@ -153,7 +157,7 @@ class Assignments_to_Sheets:
         Parameters:
             selectedSchool (str): The name of the school to clear assignments for.
         """
-        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(selectedSchool)
         SheetsAPI.clear_row_from(registration_sheet_ID, "Assignments", schoolrow, "B", num_columns=30)
         SheetsAPI.clear_row_from(registration_sheet_ID, "Assignments", schoolrow + 1, "B", num_columns=30)
 
@@ -177,7 +181,8 @@ class Assignments_to_Sheets:
         
         return names, percentages, spots, availableCountries, double, Committeetype, output
 
-    def map_cells(self, finalassignments: dict, availableCountries, currentRow):
+    def map_cells(self, finalassignments: dict, availableCountries):
+        new_row_in_assignment_sheet = self.find_new_school_row_in_assignments_sheet()
         cell_map = {}
         assigned_cell_map = {}
         checkingSet = set()
@@ -189,7 +194,7 @@ class Assignments_to_Sheets:
                 checkingSet.add(f"{committee.lower()}, {country.lower()}")
 
                 #construct school assignments cells
-                assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(j+1)}{currentRow}" if j <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(j-29)}{currentRow + 1}"] = f"{country} ({committee})"
+                assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(j+1)}{new_row_in_assignment_sheet}" if j <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(j-29)}{new_row_in_assignment_sheet + 1}"] = f"{country} ({committee})"
             j += 1
         for (committee, country), coordinate in availableCountries.items():
             if (f"{committee.lower()}, {country.lower()}") in checkingSet:
@@ -198,5 +203,10 @@ class Assignments_to_Sheets:
             elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
                 cell_map[coordinate] = country
         return finalassignments, cell_map, assigned_cell_map
+
+    def prepare_list_of_assignments_for_push(self, finalassignments: list, availableCountries: dict, delegates_to_drop: list, schoolname):
+        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(schoolname)
+        assigned_cell_map, remaining_cell_map = SheetsAPI.map_simple_cells_from_list_and_return_to_pile(finalassignments, availableCountries, schoolrow, delegates_to_drop)
+        return assigned_cell_map, remaining_cell_map
 
     

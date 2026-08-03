@@ -36,14 +36,14 @@ def assign_new_schools():
             
             i = 0; iterator = 0
             finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
-            committeeCount = (GA, Specialized, Crisis)
+            committeeCounts = (GA, Specialized, Crisis)
             while iterator < GA:
                 data = (names, percentages, double, spots, Committeetype)
-                finalassignments, i, percentages, iterator = assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+                finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
             iterator = 0
             while iterator < Specialized:
                 data = (names, percentages, double, spots, Committeetype)
-                finalassignments, i, percentages, iterator = assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+                finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
             iterator = 0
             if SecurityCouncil.lower() != "yes":
                 CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
@@ -51,7 +51,7 @@ def assign_new_schools():
                 CrisisInd = CrisisIndices
             while iterator < Crisis:
                 data = (names, percentages, double, spots, Committeetype)
-                finalassignments, i, percentages, iterator = assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+                finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts) 
             
             GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
             all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
@@ -68,8 +68,8 @@ def assign_new_schools():
                 if not i in all_single_indices:
                     Double_Committees.add(names[i])
 
-            finalassignments, CurrentRow = AssignmentsFunctions.check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries)
-            finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries, CurrentRow)
+            finalassignments = AssignmentsFunctions.check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries)
+            finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries)
             cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
                 cont = Display.take_text_input("Finished building cell maps. Push?")
@@ -79,7 +79,7 @@ def assign_new_schools():
             #writing to the sheet the cell maps.
             SheetsAPI.push_values(remaining_cell_map)
             SheetsAPI.push_values(SchoolAssignmentsCells)
-            SheetsAPI.write_school_name_to_sheet(selectedSchool, CurrentRow)
+            SheetsAPI.write_school_name_to_sheet(selectedSchool)
             
             time.sleep(5); Display.display("Checking sheet for changes...") #pause for sheet to register changes.
             percentagesChecking = SheetsAPI.read_percentages_from_overview(names)
@@ -106,22 +106,21 @@ def add_delegates():
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
         selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
 
-    schoolrow = SheetsAPI.find_existing_school_row_in_assignments_sheet(selectedSchool)
-
     names, percentages, spots, availableCountries, double, Committeetype, output = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
     single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
     CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, _ = output
     GA, Specialized, Crisis = AssignmentsFunctions.print_data_to_terminal_with_prompt(DoubleGAs, CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, committeeCount, newschool=False)
     
     i = 0; iterator = 0
-    finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
+    finalassignments = {} # dictionary with a value being a list of two elements, the committee and the country assigned.
+    committeeCounts = (GA, Specialized, Crisis)
     while iterator < GA:
         data = (names, percentages, double, spots, Committeetype)
-        finalassignments, i, percentages, iterator = assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+        finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
     iterator = 0
     while iterator < Specialized:
         data = (names, percentages, double, spots, Committeetype)
-        finalassignments, i, percentages, iterator = assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+        finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
     iterator = 0
     if SecurityCouncil.lower() != "yes":
         CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
@@ -129,7 +128,7 @@ def add_delegates():
         CrisisInd = CrisisIndices
     while iterator < Crisis:
         data = (names, percentages, double, spots, Committeetype)
-        finalassignments, i, percentages, iterator = assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCount) #type: ignore
+        finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
     
     GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
     for i in range(len(names)): #build the lists above to pass into functions for verification.
@@ -152,7 +151,7 @@ def add_delegates():
     #Data science function to generate countrySuggestionsList!
     finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
 
-    finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, availableCountries, schoolrow)
+    finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, availableCountries, selectedSchool)
     cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
     while cont.lower() not in {"yes", "no"}:
         cont = Display.take_text_input("Finished building cell maps. Push?")
@@ -162,7 +161,7 @@ def add_delegates():
     #writing to the sheet the cell maps.
     SheetsAPI.push_values(remaining_cell_map)
     SheetsAPI.push_values(SchoolAssignmentsCells)
-    SheetsAPI.write_school_name_to_sheet(selectedSchool, schoolrow)
+    SheetsAPI.write_school_name_to_sheet(selectedSchool)
     
     time.sleep(5); Display.display("Checking sheet for changes...") #pause for cloud storage system (sheets) to register changes.
     percentagesChecking = SheetsAPI.read_percentages_from_overview(names)
@@ -224,13 +223,13 @@ def drop_delegates():
 
         SheetsAPI.clear_assignments_currently_in_storage_for_school(selectedSchool)
         
-        assigned_cell_map, remaining_cell_map = SheetsAPI.map_simple_cells_from_list_and_return_to_pile(final_list_of_assignments, availableCountries, schoolrow, delegates_to_drop) #type:ignore
+        assigned_cell_map, remaining_cell_map = SheetsAPI.prepare_list_of_assignments_for_push(final_list_of_assignments, availableCountries, delegates_to_drop, selectedSchool)
 
         SheetsAPI.push_values(assigned_cell_map)
         SheetsAPI.push_values(remaining_cell_map)
         #push back the new assignments to the sheet, and return the dropped delegates to the original pool.
 
-        deleted_hashes = ServerRequests.drop_delegates_from_school_and_delete_hashes(delegates_to_drop) #type:ignore
+        deleted_hashes = ServerRequests.drop_delegates_from_school_and_delete_hashes(delegates_to_drop)
         if deleted_hashes != {}:
             for delegate, hash_value in deleted_hashes.items():
                 Display.display(f"Deleted {delegate} with hash: {hash_value}")
@@ -242,11 +241,3 @@ def drop_delegates():
     else:
         print("The sheet for the school's assignments came back empty. Check the Assignments sheet.")
         sys.exit()
-
-
-        
-"""
-Improvements:
-Fix percentage error
-Link assignments up to sheets provided to schools.
-"""
