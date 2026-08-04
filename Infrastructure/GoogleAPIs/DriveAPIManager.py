@@ -68,7 +68,7 @@ class DriveAPI(GoogleAPIs):
 
         return copied_file['id']
 
-    def find_subfolder_id(self, parent_folder_id, search_string):
+    def find_subfolder_id(self, parent_folder_id, search_string) -> str | None:
         """
         Finds a single subfolder in a given parent folder whose name contains the search string.
 

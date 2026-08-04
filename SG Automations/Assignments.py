@@ -1,6 +1,8 @@
 import os
 import sys
 import time
+
+import RosterConnector
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 from Assignments_Sheets_Adapter import Assignments_to_Sheets, registration_sheet_ID
@@ -88,10 +90,15 @@ def assign_new_schools():
                 Display.display("Percentages are correct. Here are the hashes. Moving on to next school, and placing name in completed CSV.")
                 Display.display(hashes)
             else:
-                Display.display("Percentage error. Please check the sheet! School name placed in completed CSV; here are the hashes. Moving on to next school.")
+                Display.display("Percentage error. Please check the sheet! Here are the hashes. Moving on to next school.")
                 Display.display(registrationSheetURL)
                 Display.display(hashes)
             unassignedSchools.remove(selectedSchool)
+
+            while cont := Display.take_text_input("Generate a roster and add assignments to it? (yes/no)") != "yes":
+                cont = Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")
+            new_roster_ID = RosterConnector.generate_roster_and_add_assignments_to_it(finalassignments, selectedSchool)
+            Display.display(f"Roster generated and assignments added. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
 
 def add_delegates():
     # Goal: Add delegates to a school that already exists. Scan the sheet for user Display.take_text_inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
@@ -177,6 +184,13 @@ def add_delegates():
         if cont == "yes":
             hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
             Display.display(hashes)
+            cont = Display.take_text_input("Proceed to add these delegates to the roster? (yes/no)")
+            if cont == "yes":
+                new_roster_ID = RosterConnector.add_delegates_to_existing_school_roster(selectedSchool, finalassignments)
+                Display.display(f"Delegates added to roster. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
+            else:
+                Display.display("Aborting roster update. Please check the sheet manually.")
+                sys.exit()
         else:
             Display.display("Aborting database update. Please check the sheet manually.")
             sys.exit()
@@ -233,6 +247,8 @@ def drop_delegates():
         if deleted_hashes != {}:
             for delegate, hash_value in deleted_hashes.items():
                 Display.display(f"Deleted {delegate} with hash: {hash_value}")
+            school_roster_ID = RosterConnector.find_existing_school_roster_ID(selectedSchool)
+            Display.display(f"Go into the roster and delete the delegates manually: https://docs.google.com/spreadsheets/d/{school_roster_ID}/edit")
         else:
             Display.display("No delegates were deleted. Please check the server response for errors.")
             SheetsAPI.push_values(backup)

@@ -11,7 +11,7 @@ def main():
         options = ["Assign New Schools", "Add Delegates to a School", "Drop Delegates from a School"]
         action = Display.select_option_with_pointer(options, "Great! Select the specific option.", "SCVMUN CLI - Assignments Menu")
         if action == "Assign New Schools":
-                Assignments.assign_new_schools()
+            Assignments.assign_new_schools()
         elif action == "Add Delegates to a School":
             Assignments.add_delegates()
         elif action == "Drop Delegates from a School":
