@@ -83,15 +83,13 @@ class Assignments_to_Sheets:
         return new_row_in_assignment_sheet
 
     def find_existing_school_row_in_assignments_sheet(self, school_name: str) -> int:
-        if schoolrow:= SheetsAPI.find_row_by_string(registration_sheet_ID, "Assignments", "A", school_name) is None:
+        if (schoolrow:= SheetsAPI.find_row_by_string(registration_sheet_ID, "Assignments", "A", school_name)) is None:
             Display.display(f"Error: Could not find the row for {school_name} in the Assignments sheet.")
             sys.exit()
-
-        self.schoolrow = schoolrow
         return schoolrow
 
     def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, selectedSchool: str):
-        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
         # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
         cell_map = {}
         assigned_cell_map = {}
@@ -125,12 +123,12 @@ class Assignments_to_Sheets:
         ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
 
         availableCountries = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID)  # Populate availableCountries map
-        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
 
         formatted_ranges = [f"Remaining Assignments!{r}" for r in raw_ranges if r] # this block of code saves a backup as a dictionary. Key: cell coordinate. Value: cell value.
         formatted_ranges.append(f"Assignments!B{schoolrow}:AE{schoolrow}")
         formatted_ranges.append(f"Assignments!B{schoolrow+1}:AE{schoolrow+1}")
-        backup = SheetsAPI.read_data_for_backup(registration_sheet_ID, raw_ranges)
+        backup = SheetsAPI.read_data_for_backup(registration_sheet_ID, formatted_ranges)
 
         return availableCountries, backup
 
@@ -141,7 +139,7 @@ class Assignments_to_Sheets:
         Parameters:
             selectedSchool (str): The name of the school to retrieve assignments for."""
 
-        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
         row1 = SheetsAPI.read_row_from(registration_sheet_ID, "Assignments", schoolrow, "B") or []
         row2 = SheetsAPI.read_row_from(registration_sheet_ID, "Assignments", schoolrow + 1, "B") or []
 
@@ -157,7 +155,7 @@ class Assignments_to_Sheets:
         Parameters:
             selectedSchool (str): The name of the school to clear assignments for.
         """
-        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
         SheetsAPI.clear_row_from(registration_sheet_ID, "Assignments", schoolrow, "B", num_columns=30)
         SheetsAPI.clear_row_from(registration_sheet_ID, "Assignments", schoolrow + 1, "B", num_columns=30)
 
@@ -205,7 +203,7 @@ class Assignments_to_Sheets:
         return finalassignments, cell_map, assigned_cell_map
 
     def prepare_list_of_assignments_for_push(self, finalassignments: list, availableCountries: dict, delegates_to_drop: list, schoolname):
-        schoolrow = self.schoolrow if hasattr(self, 'schoolrow') else self.find_existing_school_row_in_assignments_sheet(schoolname)
+        schoolrow = self.find_existing_school_row_in_assignments_sheet(schoolname)
         assigned_cell_map, remaining_cell_map = SheetsAPI.map_simple_cells_from_list_and_return_to_pile(finalassignments, availableCountries, schoolrow, delegates_to_drop)
         return assigned_cell_map, remaining_cell_map
 

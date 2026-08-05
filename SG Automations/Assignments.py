@@ -95,7 +95,7 @@ def assign_new_schools():
                 Display.display(hashes)
             unassignedSchools.remove(selectedSchool)
 
-            while cont := Display.take_text_input("Generate a roster and add assignments to it? (yes/no)") != "yes":
+            while (cont := Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")) != "yes":
                 cont = Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")
             new_roster_ID = RosterConnector.generate_roster_and_add_assignments_to_it(finalassignments, selectedSchool)
             Display.display(f"Roster generated and assignments added. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
@@ -172,7 +172,6 @@ def add_delegates():
     
     time.sleep(5); Display.display("Checking sheet for changes...") #pause for cloud storage system (sheets) to register changes.
     percentagesChecking = SheetsAPI.read_percentages_from_overview(names)
-    percentagesChecking = [float(p.strip('%')) for p in percentagesChecking] if percentagesChecking else [] # Convert "45%" to 45.0
     if percentagesChecking == percentages:
         Display.display("Percentages are correct. Moving on to next school.")
         hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
@@ -257,3 +256,10 @@ def drop_delegates():
     else:
         print("The sheet for the school's assignments came back empty. Check the Assignments sheet.")
         sys.exit()
+
+
+"""
+Improvements:
+- In the function add_assignments, live update availableCountries instead of waiting until map_cells to do it. This allows better data tracking for later features.
+- Prevent duplicate countries from existing in memory by checking finalassignments. This will also be helped by live updating availableCountries.
+"""

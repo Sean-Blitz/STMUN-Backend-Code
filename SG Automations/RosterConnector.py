@@ -41,7 +41,7 @@ def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list],
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_school_name_and_number)
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_committee)
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_country)
-    SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, {"B16:": schoolname})
+    SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, {"B16": schoolname})
 
     return new_roster_ID
 
@@ -80,7 +80,6 @@ def add_delegates_to_existing_school_roster(schoolname: str, new_delegates: dict
     SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, cell_map_of_school_name_and_number)
     SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, cell_map_of_committee)
     SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, cell_map_of_country)
-    SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, {"B16:": schoolname})
 
     return school_roster_ID
 

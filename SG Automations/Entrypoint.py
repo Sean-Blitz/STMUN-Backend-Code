@@ -61,6 +61,5 @@ def main():
         Display.display("Invalid option selected. Exiting.")
         sys.exit()
 
-
 if __name__ == "__main__":
     main()
