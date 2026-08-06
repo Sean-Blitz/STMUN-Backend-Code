@@ -1,7 +1,8 @@
-from ..Infrastructure import SheetAPI
-from ..Infrastructure import DisplayClass
-from ..Infrastructure import DriveAPI
 import sys
+
+from Automations.Infrastructure import SheetAPI
+from Automations.Infrastructure import DisplayClass
+from Automations.Infrastructure import DriveAPI
 
 SheetsAPI = SheetAPI()
 Display = DisplayClass()

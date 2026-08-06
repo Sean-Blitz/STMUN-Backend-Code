@@ -4,8 +4,8 @@ import time
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 from Assignments_Sheets_Adapter import Assignments_to_Sheets
-from ..Infrastructure import DisplayClass
-from ..Infrastructure import CSV
+from Automations.Infrastructure import DisplayClass
+from Automations.Infrastructure import CSV
 
 SheetsAPI = Assignments_to_Sheets()
 Display = DisplayClass()
@@ -333,5 +333,13 @@ def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spe
     finalassignments, availableCountries = add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
 
     return finalassignments
+
+def sync_with_secondary_storage(finalassignments):
+    """
+    Syncs with Airtable dropdown fields. You take finalassignments, parse it, and search the dropdown for the committee and country using the AirtableAPIManager.
+    Then update that dropdown field with the new assignment. This is a one-way sync from the CLI to Airtable.
+    """
+    pass
+
 
 

@@ -1,15 +1,14 @@
 import os
 import sys
 import time
-
-import RosterConnector
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 from Assignments_Sheets_Adapter import Assignments_to_Sheets, registration_sheet_ID
-from ..Infrastructure import DisplayClass
+from Automations.Infrastructure import DisplayClass
 from difflib import get_close_matches
-import ServerRequests
-import AssignmentsFunctions
+from . import ServerRequests
+from . import AssignmentsFunctions
+from . import RosterConnector
 
 # ---------- CONTROLS -----------
 # For things related to the sheets, visit SheetsAPIManager.py to change the information.

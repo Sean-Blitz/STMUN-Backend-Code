@@ -1,6 +1,6 @@
+import sys
 from Automations.Infrastructure import DisplayClass
 from Automations.Infrastructure import SheetAPI
-import sys
 
 # ---------------- Controls --------------------
 registration_sheet_ID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" # link to your registration Sheet, for assignments.

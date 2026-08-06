@@ -239,3 +239,36 @@ class AirtableAPI:
         # Assume only one matching record
         record = data[0]["fields"]
         return record.get(return_column)
+
+    def select_dropdown_option_raw(
+        self,
+        base_id: str,
+        table_name: str,
+        record_id: str,
+        field_name: str,
+        target_option: str,
+    ) -> bool:
+        url = f"https://api.airtable.com/v0/{base_id}/{table_name}/{record_id}"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {"fields": {field_name: target_option}, "typecast": False}
+
+        response = requests.patch(url, headers=headers, json=payload)
+
+        if response.status_code == 200:
+            return True
+
+        # 422 indicates invalid dropdown selection or schema mismatch
+        if response.status_code == 422:
+            error_details = response.json().get("error", {})
+            print(
+                f"[Airtable 422] Option '{target_option}' rejected for field '{field_name}'. Details: {error_details}"
+            )
+        else:
+            print(f"[Airtable Error] HTTP {response.status_code}: {response.text}")
+
+        return False
