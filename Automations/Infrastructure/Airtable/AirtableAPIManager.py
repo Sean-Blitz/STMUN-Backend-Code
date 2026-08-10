@@ -272,3 +272,49 @@ class AirtableAPI:
             print(f"[Airtable Error] HTTP {response.status_code}: {response.text}")
 
         return False
+
+    def update_airtable_text_field(self, base_id: str, table_name: str, record_id: str, field_name: str, value: str):
+        """
+        Updates a text field for a specific record in Airtable using PATCH.
+        """
+        url = f"https://api.airtable.com/v0/{base_id}/{table_name}/{record_id}"
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "fields": {
+                field_name: value
+            }
+        }
+        
+        response = requests.patch(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            print(f"Failed to update '{field_name}': {response.status_code} - {response.text}")
+
+    def find_airtable_record_id(self, base_id: str, table_name: str, school_name: str, delegate_num: str):
+        """
+        Searches the Airtable table using the REST API for a record matching
+        'School Name' and 'Delegate #'.
+        """
+        url = f"https://api.airtable.com/v0/{base_id}/{table_name}"
+        headers = {
+            "Authorization": f"Bearer {self.api_token}"
+        }
+        
+        # Airtable filter formula
+        formula = f"AND({{School Name}} = '{school_name}', {{Delegate #}} = '{delegate_num}')"
+        params = {
+            "filterByFormula": formula
+        }
+        
+        response = requests.get(url, headers=headers, params=params)
+        
+        if response.status_code == 200:
+            records = response.json().get("records", [])
+            if records:
+                return records[0]["id"]
+        else:
+            print(f"Error searching Airtable: {response.status_code} - {response.text}")
+            
+        return None

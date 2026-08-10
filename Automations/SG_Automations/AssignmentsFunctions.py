@@ -1,15 +1,17 @@
 import os
 import sys
-import time
+import re
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 from Assignments_Sheets_Adapter import Assignments_to_Sheets
 from Automations.Infrastructure import DisplayClass
 from Automations.Infrastructure import CSV
+from Automations.Infrastructure import AirtableAPI
 
 SheetsAPI = Assignments_to_Sheets()
 Display = DisplayClass()
 Storage = CSV()
+SecondaryStorage = AirtableAPI()
 
 def verify_committee_number_input(GA, Specialized, DoubleGAs):
     if '\x1b' in GA:
@@ -130,9 +132,15 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
             Display.display("No changes made or invalid committee name entered. Please try again.")
     return finalassignments
 
-def update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees):
+def update_dictionary(new_country, old_country, finalassignments, delegate_key, current_comm, Double_Committees, availableCountries):
     # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
     if new_country:
+        new_country = new_country.strip(); old_country = old_country.strip()
+        if new_country is not None and new_country != old_country:
+            if old_country is not None and old_country.strip() != "":
+                # If the delegate already had an assignment, return it to availableCountries
+                availableCountries.append([current_comm, old_country])
+            availableCountries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries
         # 1. Update the selected delegate
         if len(finalassignments[delegate_key]) > 2:
             finalassignments[delegate_key][2] = new_country
@@ -143,26 +151,37 @@ def update_dictionary(new_country, finalassignments, delegate_key, current_comm,
     
             # 2. TWIN LINKING LOGIC FOR DOUBLE DELEGATION COMMITTEES
         if finalassignments[delegate_key][0] in Double_Committees:
-            twin_count = 0
             
             # Scan the dict for the other partner delegate in the exact same committee
             for other_delegate, details in finalassignments.items():
+
                 # Skip the one we literally just manually updated
                 if other_delegate == delegate_key:
                     continue
                     
                 # If it's the same committee, copy the country over!
                 if details[0] == current_comm:
-                    if len(finalassignments[other_delegate]) > 2:
-                        finalassignments[other_delegate][2] = new_country
+                    other_old_country = (details[2] if len(details) > 2 else "")
+                    other_old_country = other_old_country.strip() if other_old_country else ""
+                    if other_old_country == old_country:
+                        twin_delegate = other_delegate
+                        break # this part ensures that you only flag the other delegate once, so that there is only one twin.
                     else:
-                        finalassignments[other_delegate].append(new_country)
-                    twin_count += 1
-            
-            if twin_count > 0:
-                Display.display(f"\033[K Linked Assignment: Automatically matched {twin_count} partner delegate(s) in {current_comm}!")
-                time.sleep(1)
+                        twin_delegate = None
+                else:
+                    twin_delegate = None
 
+                if twin_delegate is not None:
+                    twin_details = finalassignments[twin_delegate]
+
+                    if len(finalassignments[twin_details]) > 2:
+                        finalassignments[twin_details][2] = new_country
+                    else:
+                        finalassignments[twin_details].append(new_country)
+                    if old_country is not None and old_country.strip() != "": 
+                        # If the delegate already had an assignment, return it to availableCountries
+                        availableCountries.append([current_comm, old_country])
+                    availableCountries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries, for the twin delegate.
     return finalassignments
 
 def print_data_to_terminal_with_prompt(doubleGAs, CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels, newschool=True):
@@ -210,7 +229,7 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
     If in availability map, edit finalassignments.
     Passes back finalassignments, and edits the global availability dictionary. 
     finalassignments is formatted: {"School - #": ["committee", "type", "country"]}
-    availableCountries is formatted: {("committee", "country_name"): "sheet_coordinate"}
+    availableCountries is formatted as a 2D list: [["committee", "country_name"], ...]
     Finally, creates cell maps at the very end for assigned and unassigned.
     """
     delegate_keys = list(finalassignments.keys())
@@ -243,12 +262,13 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
                 break  # Safely breaks out of the while loop and finishes the function      
 
         delegate_key = selected_choice.split(" │ ")[0].strip()
-        delegate_index = delegate_keys.index(delegate_key)
         current_comm = finalassignments[delegate_key][0]
 
+        old_country = finalassignments[delegate_key][2] if len(finalassignments[delegate_key]) > 2 else None
+
         current_suggestions = []
-        if suggestions_matrix and delegate_index < len(suggestions_matrix):
-            current_suggestions = suggestions_matrix[delegate_index]
+        if suggestions_matrix:
+            current_suggestions = suggestions_matrix[selected_choice] if suggestions_matrix[selected_choice] else None
 
         new_country = None
 
@@ -291,11 +311,11 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
             if user_input == 'b':
                 continue
                 
-            elif user_input == 'm': #manual Display.take_text_input
+            elif user_input == 'm': #manual input
                 while True:
                     raw_input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
-                    lookup_pair = (current_comm.strip(), raw_input.strip())
+                    lookup_pair = [current_comm.strip(), raw_input.strip()]
                     if lookup_pair in availableCountries:
                         new_country = raw_input.strip()
                         break
@@ -308,7 +328,7 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
                     selection_idx = int(user_input) - 1
                     if 0 <= selection_idx < len(current_suggestions):
                         suggested_name = current_suggestions[selection_idx]
-                        lookup_pair = (current_comm.strip(), suggested_name.strip())
+                        lookup_pair = [current_comm.strip(), suggested_name.strip()]
                         
                         # FIXED: Tuple evaluation instead of zip()
                         if lookup_pair in availableCountries: 
@@ -321,7 +341,8 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
                         Display.press_any_key_to_continue()
                 except ValueError:
                     Display.display("Please type a valid number or menu shortcut character.")
-        finalassignments = update_dictionary(new_country, finalassignments, delegate_key, current_comm, Double_Committees)
+
+        finalassignments = update_dictionary(new_country, old_country, finalassignments, delegate_key, current_comm, Double_Committees, availableCountries)
     return finalassignments, availableCountries
 
 def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries):
@@ -332,14 +353,69 @@ def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spe
     #Data science function to generate countrySuggestionsList!
     finalassignments, availableCountries = add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
 
-    return finalassignments
+    return finalassignments, availableCountries
 
-def sync_with_secondary_storage(finalassignments):
+def parse_delegate_key(delegate_key: str):
     """
-    Syncs with Airtable dropdown fields. You take finalassignments, parse it, and search the dropdown for the committee and country using the AirtableAPIManager.
-    Then update that dropdown field with the new assignment. This is a one-way sync from the CLI to Airtable.
+    Parses a delegate key string like "School Name - #1" or "School Name - 1".
+    Returns a tuple: (school_name, delegate_number_as_string)
     """
-    pass
+    if "-" in delegate_key:
+        school_part, delegate_part = delegate_key.rsplit("-", 1)
+        school_name = school_part.strip()
+        
+        # Extract digits from delegate part (e.g., "#1" -> "1")
+        match = re.search(r'\d+', delegate_part)
+        delegate_num = match.group(0) if match else delegate_part.strip()
+        return school_name, delegate_num
+    
+    return delegate_key.strip(), ""
 
+def sync_with_secondary_storage(
+    finalassignments: dict, 
+    base_id: str = "YOUR_BASE_ID", 
+    table_name: str = "YOUR_TABLE_NAME"
+):
+    """
+    Syncs finalassignments with Airtable using requests. 
+    Parses delegate keys, searches for record IDs, updates 'Committee Assigned' via 
+    select_dropdown_option_raw, and updates 'Country' text field via REST API.
+    """
+    for delegate_key, assignment_info in finalassignments.items():
+        if not assignment_info or not isinstance(assignment_info, (list, tuple)):
+            continue
 
+        # Extract committee and country from list/tuple
+        committee = assignment_info[0] if len(assignment_info) > 0 else ""
+        country = assignment_info[2] if len(assignment_info) > 2 else ""
+
+        # Parse "School Name - #1"
+        school_name, delegate_num = parse_delegate_key(delegate_key)
+
+        # Retrieve record_id from Airtable
+        record_id = SecondaryStorage.find_airtable_record_id(base_id=base_id, table_name=table_name, school_name=school_name, delegate_num=delegate_num)
+
+        if not record_id:
+            print(f"Warning: No matching record found for '{school_name}' (Delegate #{delegate_num})")
+            continue
+
+        # 1. Update 'Committee Assigned' using your dropdown helper method
+        if committee:
+            SecondaryStorage.select_dropdown_option_raw(
+                base_id=base_id,
+                table_name=table_name,
+                record_id=record_id,
+                field_name="Committee Assigned",
+                target_option=committee
+            )
+
+        # 2. Update 'Country' (text field) via HTTP PATCH request
+        if country:
+            SecondaryStorage.update_airtable_text_field(base_id=base_id, table_name=table_name, record_id=record_id, field_name="Country", value=country)
+
+def generate_dictionary_of_suggestions(finalassignments) -> dict[str, list[str]]:
+    """Generate suggestions based on school size, awards_history, and trust status. Do it only for GAs, for now."""
+    awards_history = SheetsAPI.get_school_awards_data() # returns "good", "great", "below average", or "unexperienced"
+    countrySuggestionsList = {}
+    return countrySuggestionsList
 

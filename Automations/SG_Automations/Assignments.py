@@ -69,7 +69,7 @@ def assign_new_schools():
                 if not i in all_single_indices:
                     Double_Committees.add(names[i])
 
-            finalassignments = AssignmentsFunctions.check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries)
+            finalassignments, availableCountries = AssignmentsFunctions.check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries)
             finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries)
             cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
@@ -155,9 +155,10 @@ def add_delegates():
     finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees) # a business logic function that calls display functions.
 
     #Data science function to generate countrySuggestionsList!
+    #countrySuggestionsList = AssignmentsFunctions.generate_dictionary_of_suggestions(finalassignments)
     finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
 
-    finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, availableCountries, selectedSchool)
+    finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, selectedSchool, availableCountries)
     cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
     while cont.lower() not in {"yes", "no"}:
         cont = Display.take_text_input("Finished building cell maps. Push?")
@@ -235,7 +236,7 @@ def drop_delegates():
 
         SheetsAPI.clear_assignments_currently_in_storage_for_school(selectedSchool)
         
-        assigned_cell_map, remaining_cell_map = SheetsAPI.prepare_list_of_assignments_for_push(final_list_of_assignments, availableCountries, delegates_to_drop, selectedSchool)
+        assigned_cell_map, remaining_cell_map = SheetsAPI.prepare_list_of_assignments_for_push(final_list_of_assignments, delegates_to_drop, selectedSchool)
 
         SheetsAPI.push_values(assigned_cell_map)
         SheetsAPI.push_values(remaining_cell_map)
@@ -256,9 +257,3 @@ def drop_delegates():
         print("The sheet for the school's assignments came back empty. Check the Assignments sheet.")
         sys.exit()
 
-
-"""
-Improvements:
-- In the function add_assignments, live update availableCountries instead of waiting until map_cells to do it. This allows better data tracking for later features.
-- Prevent duplicate countries from existing in memory by checking finalassignments. This will also be helped by live updating availableCountries.
-"""

@@ -88,12 +88,12 @@ class Assignments_to_Sheets:
             sys.exit()
         return schoolrow
 
-    def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, selectedSchool: str):
+    def map_cells_for_added_delegates(self, finalassignments: dict, selectedSchool: str, new_list_of_countries_and_committees: list[list[str]]) -> tuple[dict, dict, dict]:
         schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+        availableCountries = self.available_countries_and_coordinates
         # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
         cell_map = {}
         assigned_cell_map = {}
-        checkingSet = set()
         current_number = SheetsAPI.read_single_cell(registration_sheet_ID, [f"Assignments!A{schoolrow+1}"])
         if current_number is not None:
             current_number = int(current_number)
@@ -104,17 +104,16 @@ class Assignments_to_Sheets:
             if len(vals) == 3:
                 committee = vals[0]
                 country = vals[2]
-                checkingSet.add(f"{committee.lower()}, {country.lower()}")
-
                 #construct school assignments cells. Search for first empty cell (displayed in Sheet)
                 assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(current_number+1)}{schoolrow}" if current_number <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(current_number-29)}{schoolrow + 1}"] = f"{country} ({committee})"
             current_number += 1
-        for (committee, country), coordinate in availableCountries.items():
-            if (f"{committee.lower()}, {country.lower()}") in checkingSet:
+        for coordinate, [committee, country] in availableCountries.items():
+            if [committee, country] in new_list_of_countries_and_committees:
                 #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
-                cell_map[coordinate] = ""
-            elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
                 cell_map[coordinate] = country
+            elif [committee, country] not in new_list_of_countries_and_committees:
+                cell_map[coordinate] = ""
+        del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
         return finalassignments, cell_map, assigned_cell_map
 
     def get_available_countries_and_backup_storage(self, selectedSchool: str):
@@ -122,13 +121,17 @@ class Assignments_to_Sheets:
         raw_ranges = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!H{i+2}" for i in range(len(names))])
         ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
 
-        availableCountries = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID)  # Populate availableCountries map
+        self.available_countries_and_coordinates = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID)  # Populate availableCountries map
         schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
 
         formatted_ranges = [f"Remaining Assignments!{r}" for r in raw_ranges if r] # this block of code saves a backup as a dictionary. Key: cell coordinate. Value: cell value.
         formatted_ranges.append(f"Assignments!B{schoolrow}:AE{schoolrow}")
         formatted_ranges.append(f"Assignments!B{schoolrow+1}:AE{schoolrow+1}")
         backup = SheetsAPI.read_data_for_backup(registration_sheet_ID, formatted_ranges)
+
+        availableCountries = []
+        for values in self.available_countries_and_coordinates.values():
+            availableCountries.append(values)
 
         return availableCountries, backup
 
@@ -173,38 +176,125 @@ class Assignments_to_Sheets:
 
     def read_school_and_current_committees_data(self, selectedSchool):
         names, percentages, spots, double, Committeetype, ranges, raw_ranges = self.read_overview()
-        availableCountries = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID)
+        self.available_countries_and_coordinates = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID) # format: {"Sheet_coordinate": ["committee", "country_name"]}
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)
         output = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!X{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
-        
+
+        availableCountries = []
+        for values in self.available_countries_and_coordinates.values():
+            availableCountries.append(values)
         return names, percentages, spots, availableCountries, double, Committeetype, output
 
-    def map_cells(self, finalassignments: dict, availableCountries):
+    def map_cells(self, finalassignments: dict, new_list_of_countries_and_committees: list[list[str]]):
+        availableCountries = self.available_countries_and_coordinates
         new_row_in_assignment_sheet = self.find_new_school_row_in_assignments_sheet()
         cell_map = {}
         assigned_cell_map = {}
-        checkingSet = set()
         j = 0
         for delegate, vals in finalassignments.items():
             if len(vals) == 3:
                 committee = vals[0]
                 country = vals[2]
-                checkingSet.add(f"{committee.lower()}, {country.lower()}")
 
                 #construct school assignments cells
                 assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(j+1)}{new_row_in_assignment_sheet}" if j <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(j-29)}{new_row_in_assignment_sheet + 1}"] = f"{country} ({committee})"
             j += 1
-        for (committee, country), coordinate in availableCountries.items():
-            if (f"{committee.lower()}, {country.lower()}") in checkingSet:
-                #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
-                cell_map[coordinate] = ""
-            elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
+        for coordinate, [committee, country] in availableCountries.items():
+            if [committee, country] in new_list_of_countries_and_committees:
                 cell_map[coordinate] = country
+            elif [committee, country] not in new_list_of_countries_and_committees:
+                cell_map[coordinate] = ""
+        del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
         return finalassignments, cell_map, assigned_cell_map
 
-    def prepare_list_of_assignments_for_push(self, finalassignments: list, availableCountries: dict, delegates_to_drop: list, schoolname):
+    def prepare_list_of_assignments_for_push(self, finalassignments: list, delegates_to_drop: list, schoolname):
         schoolrow = self.find_existing_school_row_in_assignments_sheet(schoolname)
-        assigned_cell_map, remaining_cell_map = SheetsAPI.map_simple_cells_from_list_and_return_to_pile(finalassignments, availableCountries, schoolrow, delegates_to_drop)
+        assigned_cell_map, remaining_cell_map = self.map_simple_cells_from_list_and_return_to_pile(finalassignments, schoolrow, delegates_to_drop)
         return assigned_cell_map, remaining_cell_map
 
-    
+    def map_simple_cells_from_list_and_return_to_pile(
+            self, 
+            finalassignments: list,
+            currentRow: int, 
+            delegates_to_drop: list
+        ):
+            """
+            Takes a list of cells and a list of delegates to drop (from those cells), reads inside the delegates to drop list elements, which are strings, and find the committee.
+            Then place the country assignment outside the committtee into the availableCountries sheet map, and also map the finalassignments into the assignments tab.
+            
+            available_countries is formatted: {cell_coordinate: [committee, country_name]}
+            Returns:
+                assigned_cell_map: {sheet_coordinate: "country_name (committee_name)"}
+                remaining_cell_map: {sheet_coordinate: country_name}
+            """
+            # ------------------------------------------------------------------
+            # 1. Build assigned_cell_map for the Assignments tab
+            # ------------------------------------------------------------------
+            assigned_cell_map = {}
+            available_countries = self.available_countries_and_coordinates
+            
+            for j, assignment in enumerate(finalassignments):
+                # Index formula across columns B to AE (30 items per row)
+                col_letter = SheetsAPI.sheets_alphabet(j + 1) if j <= 29 else SheetsAPI.sheets_alphabet(j - 29)
+                row_num = currentRow if j <= 29 else currentRow + 1
+                cell_ref = f"Assignments!{col_letter}{row_num}"
+
+                # Handle tuple/list formats [committee, type, country] or raw strings gracefully
+                if isinstance(assignment, (list, tuple)):
+                    if len(assignment) >= 3:
+                        val_str = f"{assignment[2]} ({assignment[0]})" if assignment[2] else ""
+                    elif len(assignment) == 2:
+                        val_str = f"{assignment[0]} ({assignment[1]})"
+                    else:
+                        val_str = str(assignment[0]) if assignment else ""
+                else:
+                    val_str = str(assignment) if assignment is not None else ""
+
+                assigned_cell_map[cell_ref] = val_str
+
+            # ------------------------------------------------------------------
+            # 2. Return dropped delegates back into available_countries pile
+            # ------------------------------------------------------------------
+            avail_dict = dict(available_countries)
+
+            for delegate_str in delegates_to_drop:
+                if not delegate_str:
+                    continue
+
+                # Parse "Country (Committee)" -> extracts country and committee
+                if "(" in delegate_str and delegate_str.endswith(")"):
+                    country, committee = delegate_str.rsplit(" (", 1)
+                    committee = committee.rstrip(")")
+                else:
+                    country, committee = delegate_str, ""
+
+                country = country.strip()
+                committee = committee.strip()
+
+                # Find an empty cell slot matching this committee
+                matched_coord = None
+                for coord, val in avail_dict.items():
+                    comm_key = val[0] if len(val) > 0 else ""
+                    cty_key = val[1] if len(val) > 1 else ""
+
+                    if comm_key.strip().lower() == committee.lower() and (not cty_key or cty_key.strip().lower() in ("", "none", "unassigned")):
+                        matched_coord = coord
+                        break
+
+                # Assign the country back to the open cell coordinate
+                if matched_coord:
+                    avail_dict[matched_coord] = [committee, country]
+
+            # Convert available_countries into final cell map format: {sheet_coordinate: country_name}
+            remaining_cell_map = {coord: val[1] for coord, val in avail_dict.items()}
+            del self.available_countries_and_coordinates
+            return assigned_cell_map, remaining_cell_map
+
+    def get_school_awards_data(self):
+        """
+        Read school's points from the sheet. If greater than average but below twice of average, return "good". If higher, return "great". 
+        If less than average but more than half of average, return "below average", and if less than that, return "unexperienced".
+        """
+
+        
+        pass

@@ -305,81 +305,6 @@ class SheetAPI(GoogleAPIs):
             collected_data.append(values[i][0])
             
         return collected_data
-
-    def map_simple_cells_from_list_and_return_to_pile(
-        self, 
-        finalassignments: list, 
-        available_countries: dict, 
-        currentRow: int, 
-        delegates_to_drop: list
-    ):
-        """
-        Takes a list of cells and a list of delegates to drop (from those cells), reads inside the delegates to drop list elements, which are strings, and find the committee.
-        Then place the country assignment outside the committtee into the availableCountries sheet map, and also map the finalassignments into the assignments tab.
-        To fill holes, pull the available countries from sheets into memory as a dictionary. available_countries is formatted: {("committee", "country_name"): "sheet_coordinate"}
-        Search the dictionary's tuples, which are keys, for the country_name, then use the sheet_coordinate value to add a new key-value pair with that coordinate and the deleted country name from delegates_to_drop.
-        Delete the no-country key-value pair from available_countries. Return back available_countries as a cell map.
-        Cell maps have the format: {sheet_coordinate: country_name} for available countries, and {sheet_coordinate: "country_name (committee_name)"} for assigned countries.
-        """
-        # ------------------------------------------------------------------
-        # 1. Build assigned_cell_map for the Assignments tab
-        # ------------------------------------------------------------------
-        assigned_cell_map = {}
-        
-        for j, assignment in enumerate(finalassignments):
-            # Index formula across columns B to AE (30 items per row)
-            col_letter = self.sheets_alphabet(j + 1) if j <= 29 else self.sheets_alphabet(j - 29)
-            row_num = currentRow if j <= 29 else currentRow + 1
-            cell_ref = f"Assignments!{col_letter}{row_num}"
-
-            # Handle tuple/list formats [committee, type, country] or raw strings gracefully
-            if isinstance(assignment, (list, tuple)):
-                if len(assignment) >= 3:
-                    val_str = f"{assignment[2]} ({assignment[0]})" if assignment[2] else ""
-                elif len(assignment) == 2:
-                    val_str = f"{assignment[0]} ({assignment[1]})"
-                else:
-                    val_str = str(assignment[0]) if assignment else ""
-            else:
-                val_str = str(assignment) if assignment is not None else ""
-
-            assigned_cell_map[cell_ref] = val_str
-
-        # ------------------------------------------------------------------
-        # 2. Return dropped delegates back into available_countries pile
-        # ------------------------------------------------------------------
-        avail_dict = dict(available_countries)
-
-        for delegate_str in delegates_to_drop:
-            if not delegate_str:
-                continue
-
-            # Parse "Country (Committee)" -> extracts country and committee
-            if "(" in delegate_str and delegate_str.endswith(")"):
-                country, committee = delegate_str.rsplit(" (", 1)
-                committee = committee.rstrip(")")
-            else:
-                country, committee = delegate_str, ""
-
-            country = country.strip()
-            committee = committee.strip()
-
-            # Find an empty coordinate slot matching this committee
-            matched_key = None
-            for (comm_key, cty_key), coord in avail_dict.items():
-                if comm_key.strip().lower() == committee.lower() and (not cty_key or cty_key.strip().lower() in ("", "none", "unassigned")):
-                    matched_key = (comm_key, cty_key)
-                    break
-
-            # Swap out the empty key for the re-assigned country key
-            if matched_key:
-                coord = avail_dict.pop(matched_key)
-                avail_dict[(committee, country)] = coord
-
-        # Convert available_countries into final cell map format: {sheet_coordinate: country_name}
-        remaining_cell_map = {coord: country for (comm, country), coord in avail_dict.items()}
-
-        return assigned_cell_map, remaining_cell_map
     
     def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, currentRow, registrationSheetID):
         # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
@@ -636,21 +561,30 @@ class SheetAPI(GoogleAPIs):
     def pull_sheet_data(self, ranges, sheet_id):
         """
         Pulls all data from ranges into RAM.
-        Assumes each range contains only a pile of country names.
-        Maps (committee, country_name) -> absolute_coordinate in a dictionary.
+
+        Returns:
+            {
+                "Remaining Assignments!D21": ["GA", "Germany"],
+                "Remaining Assignments!D22": ["GA", "Germany"],
+                "Remaining Assignments!D23": ["GA", "France"],
+                ...
+            }
+
+        The sheet coordinate uniquely identifies each available assignment,
+        so duplicate country names within the same committee are preserved.
         """
-        sheet_name="Remaining Assignments"
+        sheet_name = "Remaining Assignments"
         full_ranges = [f"{sheet_name}!{r}" for r in ranges.values()]
-        
+
         # Execute ONE bulk network pull for all grid blocks
         result = self.service.spreadsheets().values().batchGet(
             spreadsheetId=sheet_id,
             ranges=full_ranges
         ).execute()
-        
+
         value_ranges = result.get('valueRanges', [])
         availability_map = {}
-        
+
         # Helper to convert column indexes back to Excel letters
         def col_to_letter(col_idx):
             letter = ""
@@ -660,42 +594,57 @@ class SheetAPI(GoogleAPIs):
             return letter
 
         # Process each committee block
-        for (committee_name, raw_range_str), value_range_obj in zip(ranges.items(), value_ranges):
-            
+        for (committee_name, raw_range_str), value_range_obj in zip(
+            ranges.items(), value_ranges
+        ):
+
             rows = value_range_obj.get('values', [])
             if not rows:
                 continue
-                
+
             # Parse the top-left starting corner of this specific bounding box
             start_cell = raw_range_str.split(':')[0]
-            start_col_str = ''.join([c for c in start_cell if c.isalpha()]).upper()
-            start_row_num = int(''.join([c for c in start_cell if c.isdigit()]))
-            
+            start_col_str = ''.join(
+                c for c in start_cell if c.isalpha()
+            ).upper()
+            start_row_num = int(
+                ''.join(c for c in start_cell if c.isdigit())
+            )
+
             # Convert start column letter to a base-0 index
             start_col_idx = 0
             for char in start_col_str:
-                start_col_idx = start_col_idx * 26 + (ord(char) - ord('A') + 1)
-            start_col_idx -= 1 
+                start_col_idx = (
+                    start_col_idx * 26
+                    + (ord(char) - ord('A') + 1)
+                )
+            start_col_idx -= 1
 
             # Loop through every cell in the returned matrix
             for row_offset, row in enumerate(rows):
                 for col_offset, cell_value in enumerate(row):
-                    
-                    # Strip and read the text
+
                     country_name = cell_value.strip()
-                    
+
                     # Ignore empty cells or placeholders
-                    if not country_name or country_name.lower() in ["", "unassigned"]:
+                    if not country_name or country_name.lower() == "unassigned":
                         continue
-                        
-                    # Calculate the exact row and column for THIS specific cell
+
+                    # Calculate the exact row and column for THIS cell
                     current_row_abs = start_row_num + row_offset
-                    current_col_abs_letter = col_to_letter(start_col_idx + col_offset)
-                    
-                    absolute_coordinate = f"{sheet_name}!{current_col_abs_letter}{current_row_abs}"
-                    
-                    # Save to your validation lookup map
-                    availability_map[(committee_name, country_name)] = absolute_coordinate
+                    current_col_abs_letter = col_to_letter(
+                        start_col_idx + col_offset
+                    )
+
+                    absolute_coordinate = (
+                        f"{sheet_name}!{current_col_abs_letter}{current_row_abs}"
+                    )
+
+                    # Coordinate is now the unique key
+                    availability_map[absolute_coordinate] = [
+                        committee_name,
+                        country_name
+                    ]
 
         return availability_map
 
