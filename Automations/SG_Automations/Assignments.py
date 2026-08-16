@@ -75,8 +75,8 @@ def assign_new_schools():
             # a business logic function that calls display functions.
 
             #Data science function to generate countrySuggestionsDictionary!
-            countrySuggestionsDictionary = generateSuggestions.generate_dictionary_of_suggestions(finalassignments, numdels, availableCountries, selectedSchool)
-            finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsDictionary)
+            countrySuggestionsDictionary = generateSuggestions.generate_dictionary_of_suggestions(finalassignments, numdels, availableCountries, selectedSchool, CountryPrefs)
+            finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees, countrySuggestionsDictionary)
             finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries)
             cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
@@ -162,8 +162,8 @@ def add_delegates():
     finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees) # a business logic function that calls display functions.
 
     #Data science function to generate countrySuggestionsDictionary!
-    #countrySuggestionsDictionary = AssignmentsFunctions.generate_dictionary_of_suggestions(finalassignments)
-    finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsDictionary)
+    countrySuggestionsDictionary = generateSuggestions.generate_dictionary_of_suggestions(finalassignments, GA+Specialized+Crisis, availableCountries, selectedSchool, CountryPrefs)
+    finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees, countrySuggestionsDictionary)
 
     finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, selectedSchool, availableCountries)
     cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
