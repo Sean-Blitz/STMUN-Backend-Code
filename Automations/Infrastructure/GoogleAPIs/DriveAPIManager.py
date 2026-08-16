@@ -221,7 +221,7 @@ class DriveAPI(GoogleAPIs):
         # Assume only one match
         return files[0]["id"]
 
-    def list_google_sheet_ids(self, folder_id: str, service) -> list:
+    def list_google_sheet_ids(self, folder_id: str) -> list:
         """
         Returns a list of Google Sheet file IDs inside a Google Drive folder.
 
@@ -244,7 +244,7 @@ class DriveAPI(GoogleAPIs):
         page_token = None
 
         while True:
-            response = service.files().list(
+            response = self.service.files().list(
                 q=query,
                 fields="nextPageToken, files(id, name)",
                 pageToken=page_token
