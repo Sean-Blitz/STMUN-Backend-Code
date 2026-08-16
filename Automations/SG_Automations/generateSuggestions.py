@@ -28,9 +28,15 @@ def generate_dictionary_of_suggestions(finalassignments: dict, numdels: int, ava
 
     You don't actually have to account for double delegates, because they are binded together later during assignments anyways.
     """
-    tier1 = set()
-    tier2 = set()
+    tier1 = {"Canada","Argentina","Australia","Denmark","Finland","Germany","Netherlands","Norway","Spain","Sweden","Switzerland","Portugal",
+             "Republic of Korea","Turkey","Italy","Mexico","India","Hungary","Japan","Belgium","Austria","Pakistan","Morocco","Brazil","Singapore",
+            "Egypt","Saudi Arabia","Poland"}
+    tier2 = {"Cote d'Ivoire", "Croatia","Colombia","Chile","New Zealand","Vietnam","Thailand","Venezuela","U.A.E.","Ukraine","Ireland","Greece",
+            "Iraq","Kazakhstan","Senegal","Czech Rep.","Dominican Republic","Algeria","Bangladesh","Cambodia","Iceland","Indonesia","Kenya","Malaysia",
+            "Lebanon","Luxembourg","Haiti","Paraguay","Panama","Nigeria","Myanmar","Mongolia","Ethiopia","Estonia","Bulgaria","D.R.C.","Qatar","Ecuador",
+            "Uruguay","D.P.R.K.","Iran","Israel","Cuba","Costa Rica","Philippines","Lithuania"}
     top5 = {"China", "United States", "Russia", "United Kingdom", "France"}
+
     blacklist = os.getenv("BLACKLIST")
     blacklist = blacklist.lower().split(",") if blacklist is not None else print("No schools in the blacklist")
     sanitized_school_name = schoolname.lower().replace("high", "").replace("school", "").replace("hs", "").replace("college", "").replace("preparatory", "").replace("prep", "").strip()
@@ -38,19 +44,23 @@ def generate_dictionary_of_suggestions(finalassignments: dict, numdels: int, ava
 
     if blacklist is not None:
         if numdels >= 30 and sanitized_school_name not in blacklist:
-            half1 = numdels//2; half2 = (numdels//2)+(numdels%2)
+            count = 0
+            for delegate_key, (committee, comm_type, country) in finalassignments.items():
+                if comm_type.upper() == "GA":
+                    count = count +1
+            half1 = count//2
             firstcountrySuggestionsDictionary, already_suggested_delegates = suggest_p5_countries(top5, half1, preferences, finalassignments, availableCountries)
-            other_half_finalassignments = finalassignments
+            other_half_finalassignments = finalassignments.copy()
             for delegate in already_suggested_delegates:
                 del other_half_finalassignments[delegate]
-            otherCountrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, other_half_finalassignments, preferences, half2, availableCountries)
+            otherCountrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, other_half_finalassignments, preferences, availableCountries)
             countrySuggestionsDictionary = firstcountrySuggestionsDictionary | otherCountrySuggestionsDictionary
 
         elif numdels < 30 and sanitized_school_name not in blacklist:
-            countrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, numdels, availableCountries)
+            countrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, availableCountries)
 
         elif sanitized_school_name in blacklist:
-            countrySuggestionsDictionary = suggest_countries_for_blacklisted_school(finalassignments, tier1, tier2, availableCountries)
+            countrySuggestionsDictionary = suggest_countries_for_blacklisted_school(finalassignments, tier1, tier2, availableCountries, preferences)
         else: return None
 
     elif blacklist is None:
@@ -60,17 +70,17 @@ def generate_dictionary_of_suggestions(finalassignments: dict, numdels: int, ava
             other_half_finalassignments = finalassignments
             for delegate in already_suggested_delegates:
                 del other_half_finalassignments[delegate]
-            otherCountrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, other_half_finalassignments, preferences, half2, availableCountries)
+            otherCountrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, other_half_finalassignments, preferences, availableCountries)
             countrySuggestionsDictionary = firstcountrySuggestionsDictionary | otherCountrySuggestionsDictionary
 
         elif numdels < 30:
-            countrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, numdels, availableCountries)
+            countrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, availableCountries)
         else: return None
     else: return None
             
     return countrySuggestionsDictionary
 
-def suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, half1, availableCountries) -> dict[str, list[str]]:
+def suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, availableCountries) -> dict[str, list[str]]:
     """
     Keep track of countries already suggested. If suggested more than 4 times in the list, do not suggest that country again.
 
@@ -83,7 +93,7 @@ def suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignm
     SuggestionsDictionary = {}
     already_suggested_countries = []
     ignored_countries = []
-    committee_availability = {}
+    committee_availability = {} # a dictionary that saves availability data from past iterations
 
     if school_status == "great":
         assignments = (0, 3, 3) # take 2 from tier 1, 3 from tier 2, and 4 from tier 3
@@ -97,6 +107,43 @@ def suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignm
         Display.display("")
         sys.exit(1)
 
+    SuggestionsDictionary = generate_suggestions_for_delegates(finalassignments, tier1, tier2, availableCountries, preferences, already_suggested_countries, ignored_countries, committee_availability, assignments, SuggestionsDictionary)
+    return SuggestionsDictionary
+
+def suggest_p5_countries(top5, half1, preferences, finalassignments, availableCountries) -> tuple[dict[str, list[str]], set]:
+    # do not take into account preferences. Since there are only 5 top countries anyways, just give them random selections.
+    already_suggested_delegates = set()
+    countrySuggestionsDictionary = {}
+    for index, (delegate_key, [committee, comm_type, country]) in enumerate(finalassignments.items()):
+
+        if index == half1: # once we get this number of delegates, we stop.
+            break
+        # Only process General Assembly (GA) committees
+        if comm_type.upper() != "GA":
+            continue
+
+        # 1. Filter available countries specifically for this delegate's committee, based on if in top5 and if in preferences in committee.
+        top5 = {country.strip().lower() for country in top5}
+        top5_available_for_comm = [country.strip() for comm, country in availableCountries if comm.strip().lower() == committee.lower() and country.strip().lower() in top5]
+        preferences_in_committee = [country for country in top5_available_for_comm if country in preferences]
+
+        countrySuggestionsDictionary[delegate_key] = (top5_available_for_comm, preferences_in_committee)
+        already_suggested_delegates.add(delegate_key)
+
+    return countrySuggestionsDictionary, already_suggested_delegates
+
+def suggest_countries_for_blacklisted_school(finalassignments, tier1, tier2, availableCountries, preferences) -> dict[str, list[str]]:
+    SuggestionsDictionary = {}
+    already_suggested_countries = []
+    ignored_countries = []
+    committee_availability = {}
+
+    assignments = (0, 3, 3)
+    SuggestionsDictionary = generate_suggestions_for_delegates(finalassignments, tier1, tier2, availableCountries, preferences, already_suggested_countries, ignored_countries, committee_availability, assignments, SuggestionsDictionary)
+
+    return SuggestionsDictionary
+
+def generate_suggestions_for_delegates(finalassignments, tier1, tier2, availableCountries, preferences, already_suggested_countries: list[str], ignored_countries: list[str], committee_availability, assignments, SuggestionsDictionary):
     for delegate_key, details in finalassignments.items():
         committee = details[0]
         comm_type = details[1]
@@ -167,34 +214,6 @@ def suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignm
         for preference in preferences:
             if preference in available_for_comm:
                 preferences_in_committee.add(preference)
-
         SuggestionsDictionary[delegate_key] = (delegate_country_suggestions, preferences_in_committee)
+
     return SuggestionsDictionary
-
-def suggest_p5_countries(top5, half1, preferences, finalassignments, availableCountries) -> tuple[dict[str, list[str]], set]:
-    already_suggested_delegates = set()
-    countrySuggestionsDictionary = {}
-    already_suggested_countries = []
-    for index, (delegate_key, [committee, comm_type, country]) in enumerate(finalassignments.items()):
-        
-        # Only process General Assembly (GA) committees
-        if comm_type.upper() != "GA":
-            continue
-
-        # 1. Filter available countries specifically for this delegate's committee
-        available_for_comm = [country.strip().upper() for comm, country in availableCountries if comm.strip().lower() == committee.lower()]
-
-    return countrySuggestionsDictionary, already_suggested_delegates
-
-def suggest_countries_for_blacklisted_school(finalassignments, tier1, tier2, availableCountries) -> dict[str, list[str]]: # do not take into account preferences. Since there are only 5 top countries anyways, just give them random selections.
-    countrySuggestionsDictionary = {}
-    already_suggested_countries = []
-    for delegate_key, [committee, comm_type, country] in finalassignments.items():
-        
-        # Only process General Assembly (GA) committees
-        if comm_type.upper() != "GA":
-            continue
-
-        # 1. Filter available countries specifically for this delegate's committee
-        available_for_comm = [country.strip().upper() for comm, country in availableCountries if comm.strip().lower() == committee.lower()]
-    return countrySuggestionsDictionary
