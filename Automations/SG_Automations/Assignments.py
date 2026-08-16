@@ -9,6 +9,7 @@ from difflib import get_close_matches
 from . import ServerRequests
 from . import AssignmentsFunctions
 from . import RosterConnector
+from . import generateSuggestions
 
 # ---------- CONTROLS -----------
 # For things related to the sheets, visit SheetsAPIManager.py to change the information.
@@ -69,7 +70,13 @@ def assign_new_schools():
                 if not i in all_single_indices:
                     Double_Committees.add(names[i])
 
-            finalassignments, availableCountries = AssignmentsFunctions.check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries)
+            Display.display("Assignments for this school:")
+            finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
+            # a business logic function that calls display functions.
+
+            #Data science function to generate countrySuggestionsDictionary!
+            countrySuggestionsDictionary = generateSuggestions.generate_dictionary_of_suggestions(finalassignments, numdels, availableCountries, selectedSchool)
+            finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsDictionary)
             finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries)
             cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
             while cont.lower() not in {"yes", "no"}:
@@ -154,9 +161,9 @@ def add_delegates():
     Display.display("Assignments for this school:")
     finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees) # a business logic function that calls display functions.
 
-    #Data science function to generate countrySuggestionsList!
-    #countrySuggestionsList = AssignmentsFunctions.generate_dictionary_of_suggestions(finalassignments)
-    finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
+    #Data science function to generate countrySuggestionsDictionary!
+    #countrySuggestionsDictionary = AssignmentsFunctions.generate_dictionary_of_suggestions(finalassignments)
+    finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsDictionary)
 
     finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, selectedSchool, availableCountries)
     cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
@@ -257,3 +264,10 @@ def drop_delegates():
         print("The sheet for the school's assignments came back empty. Check the Assignments sheet.")
         sys.exit()
 
+"""
+Improvements:
+Take into consideration school's own choices when determining suggestions matrix. Also, make sure that a P5 almost surely shows up in big school's suggestions, as long as they requested it.
+Fix sheets and read_school_and_current_committees_data function to only read from one box country preferences and another box region bloc preferences
+
+In get_school_awards_data, you can change input options so that the user can input rankings themselves. Also, change the way the sheets calculates things to make it based on number of people attending too.
+"""

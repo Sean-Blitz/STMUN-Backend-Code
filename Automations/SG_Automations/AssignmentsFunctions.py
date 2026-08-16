@@ -345,16 +345,6 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
         finalassignments = update_dictionary(new_country, old_country, finalassignments, delegate_key, current_comm, Double_Committees, availableCountries)
     return finalassignments, availableCountries
 
-def check_committees_and_build_final_assignments(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees, availableCountries):
-    Display.display("Assignments for this school:")
-    finalassignments = confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
-    # a business logic function that calls display functions.
-
-    #Data science function to generate countrySuggestionsList!
-    finalassignments, availableCountries = add_assignments(finalassignments, availableCountries, Double_Committees) #, countrySuggestionsList)
-
-    return finalassignments, availableCountries
-
 def parse_delegate_key(delegate_key: str):
     """
     Parses a delegate key string like "School Name - #1" or "School Name - 1".
@@ -412,10 +402,4 @@ def sync_with_secondary_storage(
         # 2. Update 'Country' (text field) via HTTP PATCH request
         if country:
             SecondaryStorage.update_airtable_text_field(base_id=base_id, table_name=table_name, record_id=record_id, field_name="Country", value=country)
-
-def generate_dictionary_of_suggestions(finalassignments) -> dict[str, list[str]]:
-    """Generate suggestions based on school size, awards_history, and trust status. Do it only for GAs, for now."""
-    awards_history = SheetsAPI.get_school_awards_data() # returns "good", "great", "below average", or "unexperienced"
-    countrySuggestionsList = {}
-    return countrySuggestionsList
 

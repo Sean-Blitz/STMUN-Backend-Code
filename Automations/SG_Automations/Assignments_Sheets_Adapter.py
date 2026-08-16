@@ -4,6 +4,7 @@ from Automations.Infrastructure import SheetAPI
 
 # ---------------- Controls --------------------
 registration_sheet_ID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" # link to your registration Sheet, for assignments.
+award_sheet_ID = "1qrqM4EdBO-aqebxhbQ-4NTXnEvpIhSkBfw9lLBY9BMw"
 registrationSheetResponsesName = "Responses" # Name of the tab in the registration sheet that contains the responses.
 # ----------------------------------------------
 
@@ -290,11 +291,60 @@ class Assignments_to_Sheets:
             del self.available_countries_and_coordinates
             return assigned_cell_map, remaining_cell_map
 
-    def get_school_awards_data(self):
+    def get_school_awards_data(self, sanitized_school_name) -> str:
         """
         Read school's points from the sheet. If greater than average but below twice of average, return "good". If higher, return "great". 
         If less than average but more than half of average, return "below average", and if less than that, return "unexperienced".
         """
+        sheetID = award_sheet_ID
 
-        
-        pass
+        list_of_school_names_in_awards_sheet = SheetsAPI.get_column_data_until_empty(sheetID, "Sorted", "G", 2)
+        sanitized_list_of_school_names_in_awards_sheet = [name.lower().replace("high", "").replace("school", "").replace("hs", "").replace("college", "").replace("preparatory", "").replace("prep", "").strip()
+                                                for name in list_of_school_names_in_awards_sheet]
+
+        if sanitized_school_name in sanitized_list_of_school_names_in_awards_sheet:
+            row = sanitized_list_of_school_names_in_awards_sheet.index(sanitized_school_name) +2
+
+        else:
+            Display.display("Cannot find school in the awards sheet! If you would like, you can input the school's name from the sheet by manually searching here:")
+            Display.display(f"https://docs.google.com/spreadsheets/d/{sheetID}/")
+            school_name = Display.take_text_input("School name from sheet (type \"n\" if school does not exist)")
+            if school_name != "n":
+                try:
+                    row = list_of_school_names_in_awards_sheet.index(school_name) +2
+                except ValueError:
+                    Display.display("Cannot find that school in the sheet. If you've updated that sheet while running this code, re-run this code.")
+                    Display.display("Otherwise, we default to making this school a \"good\" school in ranking.")
+                    return "good"
+            else:
+                Display.display("Now, we default to making this school a \"good\" school in ranking.")
+                return "good"
+
+        school_points = SheetsAPI.read_single_cell(sheetID, f"N{row}")
+        average_points = SheetsAPI.read_single_cell(sheetID, f"N{len(list_of_school_names_in_awards_sheet)+2}")
+
+        if school_points and average_points:
+            try:
+                school_points = int(school_points)
+                average_points = int(average_points)
+            except ValueError:
+                Display.display("Check the sheet and code if the cells are properly formatted and read! Currently the cell that's being read does not contain a whole number.")
+                Display.display("We will default to returning \"good\" for this school.")
+                return "good"
+
+            if school_points > average_points * 2:
+                return "great"
+            elif school_points > average_points:
+                return "good"
+            elif school_points >= average_points / 2:
+                return "below average"
+            elif average_points / 2 >= school_points:
+                return "unexperienced"
+            else:
+                Display.display("School points is an unexpected value. Check the code and sheets.")
+                Display.display("We will default to returning \"good\" for this school.")
+                return "good"
+        else:
+            Display.display("Cells returned nothing or function encountered an error. Check the code and sheet.")
+            Display.display("We will default to returning \"good\" for this school.")
+            return "good"
