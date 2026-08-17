@@ -129,28 +129,15 @@ for i in range(len(mail_school_names)):
                 new_name_template="Invoice {n}" + (" - Independent" if independent == "y" else ""),
                 sName = sName)
     
-    newrecord = lambda datebox, delbox, number: Database.create_airtable_record(record_id, datestr, datebox, delbox, DelegateCount, number, schoolName)
     if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
-        DelBox = "Initial Delegates (Early)"
-        DateBox = "Date (Early)"
-        number_2 = 10 if independent == "y" else 40
-        writing = newrecord(DateBox, DelBox, number_2)
         newInvoice = CreateInvoice(template1_independent if independent == "y" else template1_school, independent)
         checkcell = "B25"
         inputCell = "B28"
     elif date.month == 12 and date.day <= 20 or date.month == 11 and date.day >= 2: 
-        DelBox = "Initial Delegates (Regular)"
-        DateBox = "Date (Regular)"
-        number_2 = 15 if independent == "y" else 50
-        writing = newrecord(DateBox, DelBox, number_2)
         newInvoice = CreateInvoice(template2_independent if independent == "y" else template2_school, independent)
         checkcell = "B26"
         inputCell = "B29"
     elif date.month == 1 and date.day <= 26 or date.month == 12 and date.day >= 21:
-        DelBox = "Initial Delegates (Late)"
-        DateBox = "Date (Late)"
-        number_2 = 20 if independent == "y" else 60
-        writing = newrecord(DateBox, DelBox, number_2)
         newInvoice = CreateInvoice(template3_independent if independent == "y" else template3_school, independent)
         checkcell = "B27"
         inputCell = "B30"

@@ -3,9 +3,8 @@ import datetime
 import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
-
-from ..Infrastructure import DriveAPI
-from ..Infrastructure import SheetAPI
+from Automations.Infrastructure import DriveAPI
+from Automations.Infrastructure import SheetAPI
 
 CloudStorageAPI = DriveAPI()
 Sheets = SheetAPI()
