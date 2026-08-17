@@ -5,6 +5,7 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 
+from dotenv import load_dotenv
 from Automations.Infrastructure import GmailAPI
 from Automations.Infrastructure import DriveAPI
 from Automations.Infrastructure import SheetAPI
@@ -17,19 +18,20 @@ CloudStorageAPI = DriveAPI()
 Sheets = SheetAPI()
 Document = DocAPI()
 Database = AirtableAPI()
+load_dotenv()
 
 # ----------------------- Controls -----------------------
 table_name = "Form Response"
-AttendingFolderID = "1BPlHoP2G4ih7ewIRQsU0vV9ILkOSxsCv"  #change these two when years change.
-NotAttendingFolderID = "12yoRVdgJ9U7Koo-OK-wp-09ycOMoMc_4"
-template1_independent = "1nIXIxgR57DWdu6A7eopkBAoB8IiuicZgd1Y1TvQSBdk" #change these templates every year.
-template2_independent = "1JFi7uRHeQV9pYd6nAGcDl-elXs4D31tS3FqzpF3jEzc"
-template3_independent = "1plvWHfrhVu9PjRlRdJ9EPg9EkNxOB4yrRw3ySwnNIeI"
-template1_school = "1ZB17zyTXzjWeX_3xsUXVIaZIGWfEayqwU68HQ2IL3zg"
-template2_school = "1EBKQYdnZevr2sJV1fdi4S2pVtZFHtsWKowrXGzdeoCs"
-template3_school = "1Kzg_Nkdx1SdzvCADenSK_vvHkCv5qBer6_Ia-TwXXEg"
-emailtemplate = "1OB-rn-AcMMhjaeELjg2nI8IDZUb7d6jW3gJcehKqnHk"
-emailfolderID = "1SWw6PxL_ewuVRWtJwyLkS1HmKLkffdf5"
+AttendingFolderID = os.getenv("AttendingFolderID")  #change these two when years change.
+NotAttendingFolderID = os.getenv("NotAttendingFolderID")
+template1_independent = os.getenv("template1_independent_invoice_ID") #change these templates every year.
+template2_independent = os.getenv("template2_independent_invoice_ID")
+template3_independent = os.getenv("template3_independent_invoice_ID")
+template1_school = os.getenv("template1_school_invoice_ID")
+template2_school = os.getenv("template2_school_invoice_ID")
+template3_school = os.getenv("template3_school_invoice_ID")
+emailtemplate = os.getenv("emailtemplateID")
+emailfolderID = os.getenv("emailfolderID")
 # -------------------------------------------------------
 
 def statename(state):

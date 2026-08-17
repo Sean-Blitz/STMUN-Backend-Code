@@ -1,17 +1,24 @@
 import csv
+import sys
 import os
 import time
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
+from dotenv import load_dotenv
 from Automations.Infrastructure import DriveAPI
 from Automations.Infrastructure import SheetAPI
 #These four are other .py files with the proper functions called here.
 
 storage = DriveAPI()
 SheetsAPI = SheetAPI()
+load_dotenv()
 
-#-------------------------------- Main Script ----------------------------#
-folderID = ['1HEfiWYpQKMCVeRheuj7fo0cUmZ6Rh6vA']
+folderID = os.getenv("FoldersWithAllFinalInvoicesID") if os.getenv("FoldersWithAllFinalInvoicesID") else None  #Change folderIDs from year to year.
+if folderID:
+    folderID = list(folderID.split(","))  #Convert the string of folder IDs into a list of folder IDs.
+else:
+    print("No folder IDs provided in the environment variable 'FoldersWithAllFinalInvoicesID'. Please set this variable in your .env file.")
+    sys.exit(1)
 #Change folderIDs from year to year.
 
 for i in range(len(folderID)): #each folder (technically only one right now. Can modify above to scan more.)

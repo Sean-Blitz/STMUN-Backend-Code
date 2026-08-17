@@ -3,15 +3,17 @@ import datetime
 import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
+from dotenv import load_dotenv
 from Automations.Infrastructure import DriveAPI
 from Automations.Infrastructure import SheetAPI
 
 CloudStorageAPI = DriveAPI()
 Sheets = SheetAPI()
+load_dotenv()
 
 #--------------------- Controls ------------------------
-ParentFolderID = "1BPlHoP2G4ih7ewIRQsU0vV9ILkOSxsCv"
-YearText = "SCVMUN LVI (2027)"
+AttendingFolderID = os.getenv("AttendingFolderID")  
+YearText = os.getenv("YearText")
 #-------------------------------------------------------
 
 def inputcheck(input, valid):
@@ -27,7 +29,7 @@ if Final != "y":
         print ("Input error.")
         sys.exit()
 
-FolderIDs = CloudStorageAPI.get_subfolders_as_dict(ParentFolderID)
+FolderIDs = CloudStorageAPI.get_subfolders_as_dict(AttendingFolderID)
 names = list(FolderIDs.keys())
 toeditsheets = {}
 paidschoolsheets = {}
