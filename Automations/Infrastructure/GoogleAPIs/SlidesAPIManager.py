@@ -1,11 +1,11 @@
-from GoogleAPIsManager import GoogleAPIs
+from .GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
 
 class SlideAPI(GoogleAPIs):
     def __init__(self):
         super().__init__(CREDENTIALS_FILE="credentials.json", TOKEN_FILE = "token.json", SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents'])
         creds = self.authenticate()
-        self.self = build('slides', 'v1', credentials=creds)
+        self.presentations = build('slides', 'v1', credentials=creds)
 
     
     def duplicate_slide(self, presentation_id, slide_object_id):
@@ -32,7 +32,7 @@ class SlideAPI(GoogleAPIs):
         new_slide_id = response["replies"][0]["duplicateObject"]["objectId"]
         return new_slide_id
 
-    def replace_placeholders(service, presentation_id, value_map):
+    def replace_placeholders(self, service, presentation_id, value_map):
         """
         Replace placeholders in a Google Slides presentation.
 
@@ -57,7 +57,7 @@ class SlideAPI(GoogleAPIs):
 
         body = {"requests": requests}
 
-        response = service.presentations().batchUpdate(
+        response = self.presentations().batchUpdate(
             presentationId=presentation_id,
             body=body
         ).execute()

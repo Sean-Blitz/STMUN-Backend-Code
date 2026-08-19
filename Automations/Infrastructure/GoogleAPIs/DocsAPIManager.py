@@ -7,7 +7,7 @@ class DocAPI(GoogleAPIs):
         creds = self.authenticate()
         self.docs_service = build('docs', 'v1', credentials=creds)
 
-    def fill_doc_placeholders(self, document_id, aEmail, schoolName, sheeturl):
+    def fill_doc_placeholders(self, document_id, aEmail, schoolName, sheeturl, headDelegateEmail):
         """
         Replaces three hardcoded placeholders in a Google Doc.
 
@@ -43,6 +43,15 @@ class DocAPI(GoogleAPIs):
                         "matchCase": True
                     },
                     "replaceText": sheeturl
+                }
+            },
+            {
+                "replaceAllText": {
+                    "containsText": {
+                        "text": "{{headDelegateEmail}}",
+                        "matchCase": True
+                    },
+                    "replaceText": headDelegateEmail
                 }
             }
         ]

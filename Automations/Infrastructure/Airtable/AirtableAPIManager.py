@@ -2,80 +2,56 @@ import requests
 import json
 import datetime
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
+finance_table_id = os.getenv("FINANCE_TABLE_ID")  # Ensure this is set in your .env file
+form_response_table_id = os.getenv("FORM_RESPONSE_TABLE_ID")  # Ensure this is set in your .env file
 class AirtableAPI:
     def __init__(self):
-        self.api_token = self.load_env_file(".env")["API_KEY"]
+        self.api_token = os.getenv("API_KEY")
 
-    def load_env_file(self, relative_path: str) -> dict:
-        """
-        Reads a .env file given its relative path from the current script,
-        and returns its contents as a dictionary.
-        """
-        # 1. Get the absolute directory of the currently running script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # 2. Combine it with the relative path to get the absolute path
-        env_path = os.path.join(script_dir, relative_path)
-        
-        env_data = {}
-        
-        # 3. Check if the file exists before trying to open it
-        if not os.path.exists(env_path):
-            raise FileNotFoundError(f"Could not find .env file at: {env_path}")
-            
-        # 4. Read and parse the file
-        with open(env_path, "r", encoding="utf-8") as file:
-            for line in file:
-                # Clean up whitespace and skip empty lines or comments
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                    
-                # Split by the first '=' character
-                if "=" in line:
-                    key, value = line.split("=", 1)
-                    # Strip potential whitespace or quotes around values
-                    env_data[key.strip()] = value.strip().strip('"').strip("'")
-                    
-        return env_data
+    def search_records(self, record_id):
+        headers = {"Authorization": f"Bearer {self.api_token}"}
 
-    def search_records(self,rID):
-        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/tblnLy4pZDVjGskAw/{rID}"
-        auth_token = self.api_token
+        # 1. Fetch main record (Schools/Advisors table)
+        school_url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/{form_response_table_id}/{record_id}"
+        school_resp = requests.get(school_url, headers=headers)
+        school_data = school_resp.json()  # requests.json() converts JSON directly to Python dict
 
-        headers = {
-            "Authorization": f"Bearer {auth_token}"
-        }
-        resp=requests.get(url,headers=headers)
-        d1 = str(resp.json())
-        d2 = d1.replace("\'", "\"").replace("True", "true").replace("False", "false").replace("Null", "null")
-        #getting rid of the stupid JSON errors Airtable has
-        response = json.loads(d2)
+        fields = school_data.get("fields", {})
 
-        fields = response["fields"]
-        #fields is a dictionary
+        sName = fields.get("School Name")
+        sAddress = fields.get("School Address")
+        sPhoneNumber = fields.get("School Phone Number")
+        aName = fields.get("Advisor Name")
+        aPhoneNumber = fields.get("Advisor Phone Number")
+        aEmail = fields.get("Advisor Email")
+        head_delegate_email = fields.get("Head Delegate Email")
+        DelegateCount = fields.get("Number of Delegates (Initial)")
+        finance_record_id = fields.get("Finance (Linked)")
+        finance_record_id = finance_record_id[0] if finance_record_id else None  # Get the first linked record ID
 
-        sName = fields["School Name"]
-        sAddress = fields["School Address"]
-        sPhoneNumber = fields["School Phone Number"]
-        aName = fields["Advisor Name"]
-        aPhoneNumber = fields["Advisor Phone Number"]
-        aEmail = fields["Advisor Email"]
-        DelegateCount = fields["Number of Delegates(Initial)"]
-        Balance = fields["Balance (from Finance (WIP) 2)"]
-        Balance = int(Balance[0])
-        CheckDelegateCount = fields["Number of Delegates (Final) (from Finance (WIP) 2)"]
-        CheckDelegateCount = int(CheckDelegateCount[0])
-        Subtotal = fields["Subtotal (from Finance (WIP) 2)"]
-        Subtotal = int(Subtotal[0])
-        DelFee = fields["Delegation Fee (from Finance (WIP) 2)"]
-        DelFee = int(DelFee[0])
+        # 2. Fetch record from the second (Finance) table
+        finance_url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/{finance_table_id}/{finance_record_id}"
+        finance_resp = requests.get(finance_url, headers=headers)
+        finance_data = finance_resp.json()
 
-        return sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, DelFee
+        fin_fields = finance_data.get("fields", {})
+
+        # Extract finance fields directly from the second table
+        # Using .get() prevents KeyError if a field is empty/missing
+        Balance = int(fin_fields.get("Balance", 0))
+        CheckDelegateCount = int(
+            fin_fields.get("Number of Delegates (Final)", 0)
+        )
+        Subtotal = int(fin_fields.get("Subtotal", 0))
+        DelFee = int(fin_fields.get("Delegation Fee", 0))
+
+        return sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, DelFee, head_delegate_email
 
     def search_formResponse(self, rID):
-        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/tbl7XkJTdmk2kIowi/{rID}" #change this next year.
+        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/{form_response_table_id}/{rID}" #change this next year.
         auth_token = self.api_token
 
         headers = {
@@ -93,7 +69,7 @@ class AirtableAPI:
         city = fields["City"]
         state = fields["State"]
         zip_code = fields["Zip Code"]
-        DelCount = fields["Number of Delegates(Initial)"]
+        DelCount = fields["Number of Delegates (Initial)"]
 
         return city, state, zip_code, DelCount
 
@@ -132,7 +108,7 @@ class AirtableAPI:
         return records[0]["id"]
 
     def view_latest_record(self, rID):
-        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/tblnLy4pZDVjGskAw/{rID}" #change this next year.
+        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/{form_response_table_id}/{rID}" #change this next year.
         auth_token = self.api_token
 
         headers = {
@@ -151,7 +127,7 @@ class AirtableAPI:
         sAddress = fields["School Address"]
         aPhoneNumber = fields["Advisor Phone Number"]
         aEmail = fields["Advisor Email"]
-        DelegateCount = fields["Number of Delegates(Initial)"]
+        DelegateCount = fields["Number of Delegates (Initial)"]
         timestamp = fields["Timestamp"]
         date = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ").date()
         datestr = str(date.month)+"/"+str(date.day)+"/"+str(date.year)
@@ -172,7 +148,7 @@ class AirtableAPI:
             number_1 (int or float)
             number_2 (int or float)
         """
-        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/tblnLy4pZDVjGskAw" #change this next year.
+        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/{form_response_table_id}" #change this next year.
         api_token = self.api_token
         headers = {
             "Authorization": f"Bearer {api_token}",
@@ -212,8 +188,6 @@ class AirtableAPI:
         Searches Airtable table for a value and returns another field from the same row.
 
         Args:
-            table_id (str): Airtable table ID (or full URL path after app ID)
-            api_key (str): Airtable API key
             search_name (str): Value to search for in the column
             search_column (str): Column to search in
             return_column (str): Column to retrieve from the matching row
@@ -223,7 +197,7 @@ class AirtableAPI:
         """
         api_key = self.api_token
         return_column = "Record ID"
-        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/tbl7XkJTdmk2kIowi" #change this next year.
+        url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/{form_response_table_id}" #change this next year.
         headers = {"Authorization": f"Bearer {api_key}"}
 
         formula = f"{{{search_column}}}='{search_name}'"
@@ -272,25 +246,6 @@ class AirtableAPI:
             print(f"[Airtable Error] HTTP {response.status_code}: {response.text}")
 
         return False
-
-    def update_airtable_text_field(self, base_id: str, table_name: str, record_id: str, field_name: str, value: str):
-        """
-        Updates a text field for a specific record in Airtable using PATCH.
-        """
-        url = f"https://api.airtable.com/v0/{base_id}/{table_name}/{record_id}"
-        headers = {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "fields": {
-                field_name: value
-            }
-        }
-        
-        response = requests.patch(url, headers=headers, json=payload)
-        if response.status_code != 200:
-            print(f"Failed to update '{field_name}': {response.status_code} - {response.text}")
 
     def find_airtable_record_id(self, base_id: str, table_name: str, school_name: str, delegate_num: str):
         """

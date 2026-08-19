@@ -2,6 +2,7 @@
 import os
 import datetime
 import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 
@@ -11,7 +12,6 @@ from Automations.Infrastructure import DriveAPI
 from Automations.Infrastructure import SheetAPI
 from Automations.Infrastructure import DocAPI
 from Automations.Infrastructure import AirtableAPI
-#These four are other .py files with the proper functions called here.
 
 mailAPI = GmailAPI()
 CloudStorageAPI = DriveAPI()
@@ -32,6 +32,7 @@ template2_school = os.getenv("template2_school_invoice_ID")
 template3_school = os.getenv("template3_school_invoice_ID")
 emailtemplate = os.getenv("emailtemplateID")
 emailfolderID = os.getenv("emailfolderID")
+YearText = os.getenv("YearText")
 # -------------------------------------------------------
 
 def statename(state):
@@ -61,7 +62,7 @@ def folderfinding(sName):
         )
         print("Folder moved successfully. Check name regardless.")
         yearfolder = CloudStorageAPI.create_drive_folder(
-            name='SCVMUN LV (2026)', #this is what you should change every year.
+            name=YearText,
             mime_type='application/vnd.google-apps.folder',
             parent_id=movedfolder
         )
@@ -74,7 +75,7 @@ def folderfinding(sName):
         )
         print("Folder created successfully. Check name regardless.")
         yearfolder = CloudStorageAPI.create_drive_folder(
-            name='SCVMUN LV (2026)', #this is what you should change every year.
+            name=YearText, 
             mime_type='application/vnd.google-apps.folder',
             parent_id=createdfolder
         )
@@ -101,16 +102,20 @@ def keepgoing():
 
 today = datetime.date.today()
 gmailIDs = mailAPI.find_emails_from_sender_with_label()
+if EmailCount := len(gmailIDs) == 0:
+    print("No emails found with the label 'Finances Automation'. What this means is that you have to check your email to see if the Airtable automated email is marked with the label.")
+    sys.exit()
+print(f"Found {len(gmailIDs)} emails with the label 'Finances Automation'.")
 mail_school_names = mailAPI.extract_strings_and_remove_label(message_ids=gmailIDs)
 
 i=0
 for i in range(len(mail_school_names)):
     record_id = Database.get_field_by_name(search_name=mail_school_names[i], search_column="School Name")
 
-    schoolName, schoolAddress, advisorPhoneNumber, advisorEmail, delegateCount, date, datestr = Database.view_latest_record(record_id) #first view latest record. DO NOT USE THESE VARIABLES EXCEPT DATE.
+    _, _, _, _, _, date, _ = Database.view_latest_record(record_id) #first view latest record. DO NOT USE THESE VARIABLES EXCEPT DATE.
     #This is a bug to fix. Currently it pulls date from the most recent record, but we want it from specifically that school.
 
-    sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee = Database.search_records(record_id)
+    sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee, head_delegate_email = Database.search_records(record_id)
     city, state, zipCode, DelCount = Database.search_formResponse(record_id)
     state = statename(state)
 
@@ -120,8 +125,9 @@ for i in range(len(mail_school_names)):
         continue
     while not independent in ["y", "n", "exit"]:
         independent = input("Invalid input. Independent registration? y/n. Exit to stop.")
-
-    keepgoing()
+    if independent == "exit":
+        print("Process cancelled for this school.")
+        continue
 
     yearfolder = folderfinding(sName)
     CreateInvoice = lambda templateID, independent: CloudStorageAPI.copy_drive_file_with_number(
@@ -175,26 +181,16 @@ for i in range(len(mail_school_names)):
     print(sheeturl)
 
     docID = CloudStorageAPI.copy_drive_file(
-        
         file_id=emailtemplate,
         destination_folder_id=emailfolderID,
         new_name=f"{sName} Email"
     )
 
-    Document.fill_doc_placeholders(
-        document_id=docID,
-        aEmail = aEmail,
-        schoolName = sName,
-        sheeturl = sheeturl)
+    Document.fill_doc_placeholders(document_id=docID,aEmail = aEmail,schoolName = sName,sheeturl = sheeturl, headDelegateEmail = head_delegate_email)
 
     print("Email draft created.")
-
     keepgoing()
-
-    CloudStorageAPI.share_doc_with_user(
-        document_id=docID,
-        email="sg@scvmun.com",
-        role="writer")
+    CloudStorageAPI.share_doc_with_user(document_id=docID,email="sg@scvmun.com",role="writer")
 
     print("Shared.")
     print("https://docs.google.com/document/d/" + docID)
