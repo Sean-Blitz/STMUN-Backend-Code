@@ -14,6 +14,9 @@ load_dotenv()
 #--------------------- Controls ------------------------
 AttendingFolderID = os.getenv("AttendingFolderID")  
 YearText = os.getenv("YearText")
+fullyPaidInvoiceFolderID = os.getenv("fullyPaidInvoiceFolderID")
+partiallyPaidInvoiceFolderID = os.getenv("partiallyPaidInvoiceFolderID")
+unpaidInvoiceFolderID = os.getenv("unpaidInvoiceFolderID")
 #-------------------------------------------------------
 
 def inputcheck(input, valid):
@@ -143,7 +146,7 @@ elif Final == "y":
         balance = int(Sheets.read_single_unformatted_cell(fromsheetID, "Purchase order!H36")) #type: ignore
 
         if payments != 0 and balance == 0:
-            tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, "1lpF-H-EhDMQWBOK6xgqlhYE00E0wWiUt", f"Final Invoice - {names[i]}")
+            tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, fullyPaidInvoiceFolderID, f"Final Invoice - {names[i]}")
             Sheets.write_values_to_sheet_from_dict(
                 tosheetID,
                 {
@@ -151,7 +154,7 @@ elif Final == "y":
                 })
             print("Paid" )
         elif payments != 0 and balance != 0:
-            tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, "1TUMtb3k4lv6ahFIxxDAeAYZReiT0RCJj", f"Final Invoice - {names[i]}")
+            tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, partiallyPaidInvoiceFolderID, f"Final Invoice - {names[i]}")
             Sheets.write_values_to_sheet_from_dict(
                 tosheetID,
                 {
@@ -159,7 +162,7 @@ elif Final == "y":
                 })
             print("Partially Paid")
         elif payments == 0 and balance >= 0:
-            tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, "11u9S7UrT6HEAqsMAyh0yZVhb0BvSLxMa", f"Final Invoice - {names[i]}")
+            tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, unpaidInvoiceFolderID, f"Final Invoice - {names[i]}")
             Sheets.write_values_to_sheet_from_dict(
                 tosheetID,
                 {
