@@ -73,6 +73,25 @@ class AirtableAPI:
 
         return city, state, zip_code, DelCount
 
+    def update_airtable_text_field(self, base_id: str, table_name: str, record_id: str, field_name: str, value: str):
+        """
+        Updates a text field for a specific record in Airtable using PATCH.
+        """
+        url = f"https://api.airtable.com/v0/{base_id}/{table_name}/{record_id}"
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "fields": {
+                field_name: value
+            }
+        }
+        
+        response = requests.patch(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            print(f"Failed to update '{field_name}': {response.status_code} - {response.text}")
+            
     def get_latest_record_id(self, base_id, table_name):
         """
         Returns the record ID of the most recently created record in an Airtable table.
