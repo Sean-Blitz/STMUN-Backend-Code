@@ -38,44 +38,32 @@ def generate_dictionary_of_suggestions(finalassignments: dict, numdels: int, ava
     top5 = {"China", "United States", "Russia", "United Kingdom", "France"}
 
     blacklist = os.getenv("BLACKLIST")
-    blacklist = blacklist.lower().split(",") if blacklist is not None else print("No schools in the blacklist")
+    if blacklist is not None:
+        blacklist = [school.strip() for school in blacklist.lower().split(",") if school.strip()]
+    else:
+        print("No schools in the blacklist")
+        blacklist = []
     sanitized_school_name = schoolname.lower().replace("high", "").replace("school", "").replace("hs", "").replace("college", "").replace("preparatory", "").replace("prep", "").strip()
     school_status = SheetsAPI.get_school_awards_data(sanitized_school_name) # returns "good", "great", "below average", or "unexperienced"
 
-    if blacklist is not None:
-        if numdels >= 30 and sanitized_school_name not in blacklist:
-            count = 0
-            for delegate_key, (committee, comm_type, country) in finalassignments.items():
-                if comm_type.upper() == "GA":
-                    count = count +1
-            half1 = count//2
-            firstcountrySuggestionsDictionary, already_suggested_delegates = suggest_p5_countries(top5, half1, preferences, finalassignments, availableCountries)
-            other_half_finalassignments = finalassignments.copy()
-            for delegate in already_suggested_delegates:
-                del other_half_finalassignments[delegate]
-            otherCountrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, other_half_finalassignments, preferences, availableCountries)
-            countrySuggestionsDictionary = firstcountrySuggestionsDictionary | otherCountrySuggestionsDictionary
+    if numdels >= 30 and sanitized_school_name not in blacklist:
+        count = 0
+        for delegate_key, (committee, comm_type, country) in finalassignments.items():
+            if comm_type.upper() == "GA":
+                count = count +1
+        half1 = count//2
+        firstcountrySuggestionsDictionary, already_suggested_delegates = suggest_p5_countries(top5, half1, preferences, finalassignments, availableCountries)
+        other_half_finalassignments = finalassignments.copy()
+        for delegate in already_suggested_delegates:
+            del other_half_finalassignments[delegate]
+        otherCountrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, other_half_finalassignments, preferences, availableCountries)
+        countrySuggestionsDictionary = firstcountrySuggestionsDictionary | otherCountrySuggestionsDictionary
 
-        elif numdels < 30 and sanitized_school_name not in blacklist:
-            countrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, availableCountries)
+    elif numdels < 30 and sanitized_school_name not in blacklist:
+        countrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, availableCountries)
 
-        elif sanitized_school_name in blacklist:
-            countrySuggestionsDictionary = suggest_countries_for_blacklisted_school(finalassignments, tier1, tier2, availableCountries, preferences)
-        else: return None
-
-    elif blacklist is None:
-        if numdels >= 30:
-            half1 = numdels//2; half2 = (numdels//2)+(numdels%2)
-            firstcountrySuggestionsDictionary, already_suggested_delegates = suggest_p5_countries(top5, half1, preferences, finalassignments, availableCountries)
-            other_half_finalassignments = finalassignments
-            for delegate in already_suggested_delegates:
-                del other_half_finalassignments[delegate]
-            otherCountrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, other_half_finalassignments, preferences, availableCountries)
-            countrySuggestionsDictionary = firstcountrySuggestionsDictionary | otherCountrySuggestionsDictionary
-
-        elif numdels < 30:
-            countrySuggestionsDictionary = suggest_countries_based_on_ranking(school_status, tier1, tier2, finalassignments, preferences, availableCountries)
-        else: return None
+    elif sanitized_school_name in blacklist:
+        countrySuggestionsDictionary = suggest_countries_for_blacklisted_school(finalassignments, tier1, tier2, availableCountries, preferences)
     else: return None
             
     return countrySuggestionsDictionary

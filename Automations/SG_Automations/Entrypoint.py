@@ -1,7 +1,7 @@
 import sys
 from . import Assignments
 from . import ServerRequests
-from . Assignments import Display
+from .Assignments import Display
 
 def main():
     options = ["Assignments", "Hashes", "Database Management", "Awards", "Exit"]
