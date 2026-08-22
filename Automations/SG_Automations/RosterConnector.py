@@ -34,18 +34,12 @@ def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list],
         raise RuntimeError(f"Could not copy roster for school '{schoolname}'.")
 
     # Add the assignments to the new roster
-    cell_map_of_school_name_and_number = {}
     cell_map_of_committee = {}
-    cell_map_of_country = {}
     i = 0
     for school_name_and_number, [committee, committeetype, country] in finalassignments.items():
-        cell_map_of_school_name_and_number[f"C{i+21}"] = school_name_and_number
-        cell_map_of_committee[f"E{i+21}"] = f"{committee} ({committeetype})"
-        cell_map_of_country[f"D{i+21}"] = country
+        cell_map_of_committee[f"D{i+21}"] = f"{committee} ({committeetype})"
         i += 1
-    SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_school_name_and_number)
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_committee)
-    SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_country)
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, {"B16": schoolname})
 
     return new_roster_ID
@@ -79,13 +73,9 @@ def add_delegates_to_existing_school_roster(schoolname: str, new_delegates: dict
     cell_map_of_country = {}
     i = row
     for school_name_and_number, [committee, committeetype, country] in new_delegates.items():
-        cell_map_of_school_name_and_number[f"C{i+21}"] = school_name_and_number
-        cell_map_of_committee[f"E{i+21}"] = f"{committee} ({committeetype})"
-        cell_map_of_country[f"D{i+21}"] = country
+        cell_map_of_committee[f"D{i+21}"] = f"{committee} ({committeetype})"
         i += 1
-    SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, cell_map_of_school_name_and_number)
     SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, cell_map_of_committee)
-    SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, cell_map_of_country)
 
     return school_roster_ID
 
