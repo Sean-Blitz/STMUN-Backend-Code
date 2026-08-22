@@ -25,7 +25,7 @@ def assign_new_schools():
     unassignedSchools = SheetsAPI.find_schools_not_yet_assigned("Responses", "Assignments")
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
-        names, percentages, spots, double, Committeetype, output = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
+        names, percentages, spots, double, Committeetype, output, advisorEmail, HeadDelegateEmail = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
         availableCountries, _ = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool)
         single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
         RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
@@ -116,9 +116,15 @@ def assign_new_schools():
             if cont == "no":
                 Display.display("Roster generation skipped. Please make it manually.")
                 sys.exit()
-            new_roster_ID = RosterConnector.generate_roster_and_add_assignments_to_it(finalassignments, selectedSchool)
+            new_roster_ID, this_year_folder_ID = RosterConnector.generate_roster_and_add_assignments_to_it(finalassignments, selectedSchool)
             Display.display(f"Roster generated and assignments added. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
-
+            while (cont := Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")) != "yes":
+                cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")
+            if cont == "no":
+                Display.display("Email draft skipped. Please make it manually.")
+                sys.exit()
+            new_email_doc_ID = RosterConnector.draft_email_for_school_and_share_roster(selectedSchool, advisorEmail, HeadDelegateEmail, new_roster_ID, this_year_folder_ID)
+            Display.display(f"Email draft created: https://docs.google.com/document/d/{new_email_doc_ID}/edit")
             unassignedSchools.remove(selectedSchool)
 
 def add_delegates():
@@ -135,7 +141,7 @@ def add_delegates():
         selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
 
     availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool)
-    names, percentages, spots, double, Committeetype, output = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
+    names, percentages, spots, double, Committeetype, output, _, _ = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
     single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
     RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
     CountryPrefs = [country1, country2, country3, country4, country5]
@@ -292,8 +298,6 @@ def drop_delegates():
 
 """
 Improvements:
-Take into consideration school's own choices when determining suggestions matrix. Also, make sure that a P5 almost surely shows up in big school's suggestions, as long as they requested it.
-Fix sheets and read_school_and_current_committees_data function to only read from one box country preferences and another box region bloc preferences
 
 In get_school_awards_data, you can change input options so that the user can input rankings themselves. Also, change the way the sheets calculates things to make it based on number of people attending too.
 """

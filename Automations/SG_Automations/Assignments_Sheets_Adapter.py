@@ -180,7 +180,8 @@ class Assignments_to_Sheets:
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)
         output = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
         #RegionBloc, CountryPref1, CountryPref2, CountryPref3, CountryPref4, CountryPref5, SecurityCouncil, numdels
-        return names, percentages, spots, double, Committeetype, output
+        advisorEmail, HeadDelegateEmail = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!K{row}", f"Responses!O{row}"])
+        return names, percentages, spots, double, Committeetype, output, advisorEmail, HeadDelegateEmail
 
     def map_cells(self, finalassignments: dict, new_list_of_countries_and_committees: list[list[str]]):
         availableCountries = self.available_countries_and_coordinates

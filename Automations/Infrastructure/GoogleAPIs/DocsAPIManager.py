@@ -60,3 +60,25 @@ class DocAPI(GoogleAPIs):
             documentId=document_id,
             body={"requests": requests}
         ).execute()
+
+    def fill_doc_placeholders_from_dictionary(self, document_id, replacements: dict):
+        """
+        Replaces placeholders in a Google Doc based on a dictionary of replacements.
+        """
+        requests = []
+
+        for placeholder, replacement in replacements.items():
+            requests.append({
+                "replaceAllText": {
+                    "containsText": {
+                        "text": placeholder,
+                        "matchCase": True
+                    },
+                    "replaceText": replacement
+                }
+            })
+            
+        self.docs_service.documents().batchUpdate(
+            documentId=document_id,
+            body={"requests": requests}
+        ).execute()

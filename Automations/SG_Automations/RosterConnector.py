@@ -3,15 +3,19 @@ import os
 from Automations.Infrastructure import SheetAPI
 from Automations.Infrastructure import DisplayClass
 from Automations.Infrastructure import DriveAPI
+from Automations.Infrastructure import DocAPI
 from dotenv import load_dotenv; load_dotenv()
 
 SheetsAPI = SheetAPI()
 Display = DisplayClass()
 Drive = DriveAPI()
+Docs = DocAPI()
 
 # ------------- Controls -----------------------
 AttendingFolderID = os.getenv("AttendingFolderID")
 model_roster_sheet_ID = os.getenv("model_roster_sheet_ID")
+email_folder_ID = os.getenv("RosterEmailsFolderID")
+email_template_ID = os.getenv("EmailTemplateID")
 YearName = os.getenv("YearName")  # Replace with the actual year name, e.g., "2024"
 
 def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list], schoolname: str):
@@ -42,7 +46,7 @@ def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list],
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_committee)
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, {"B16": schoolname})
 
-    return new_roster_ID
+    return new_roster_ID, this_year_folder_ID
 
 def add_delegates_to_existing_school_roster(schoolname: str, new_delegates: dict[str, list]):
     """
@@ -97,3 +101,28 @@ def find_existing_school_roster_ID(schoolname: str):
 
     return school_roster_ID
 
+def draft_email_for_school_and_share_roster(schoolname: str, advisorEmail, HeadDelegateEmail, roster_ID: str, this_year_folder_ID: str):
+    """
+    Drafts an email in Google Docs by replacing placeholders. Adds a new Google Docs file.
+    """
+    if email_template_ID is None:
+        raise RuntimeError("Email template ID not found in environment variables.")
+
+    new_email_doc_ID = Drive.copy_drive_file(email_template_ID, email_folder_ID, f"{schoolname} Email Draft")
+    if new_email_doc_ID is None:
+        raise RuntimeError(f"Could not copy email draft for school '{schoolname}'.")
+
+    # Replace placeholders in the new email document
+    replacements = {
+        "{{SCHOOL_NAME}}": schoolname,
+        "{{ADVISOR_EMAIL}}": advisorEmail,
+        "{{HEAD_DELEGATE_EMAIL}}": HeadDelegateEmail,
+        "{{ROSTER_LINK}}": f"https://docs.google.com/spreadsheets/d/{roster_ID}",
+        "{{FOLDER_LINK}}": f"https://drive.google.com/drive/folders/{this_year_folder_ID}"
+    }
+    Docs.fill_doc_placeholders_from_dictionary(new_email_doc_ID, replacements)
+
+    Drive.share_spreadsheet(roster_ID, advisorEmail, role="writer")
+    Drive.share_spreadsheet(roster_ID, HeadDelegateEmail, role="writer")
+
+    return new_email_doc_ID
