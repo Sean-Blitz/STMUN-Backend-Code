@@ -7,6 +7,7 @@ from Assignments_Sheets_Adapter import Assignments_to_Sheets
 from Automations.Infrastructure import DisplayClass
 from Automations.Infrastructure import CSV
 from Automations.Infrastructure import AirtableAPI
+from dotenv import load_dotenv; load_dotenv()
 
 SheetsAPI = Assignments_to_Sheets()
 Display = DisplayClass()
@@ -342,15 +343,17 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
     return finalassignments, availableCountries
 
 def sync_with_secondary_storage(
-    finalassignments: dict, 
-    base_id: str = "YOUR_BASE_ID", 
-    table_name: str = "YOUR_TABLE_NAME"
+    finalassignments: dict,
 ):
     """
     Syncs finalassignments with Airtable using requests. 
     Parses delegate keys, searches for record IDs, updates 'Committee Assigned' via 
     select_dropdown_option_raw, and updates 'Country' text field via REST API.
     """
+    base_id = os.getenv("AirtableBaseID")
+    table_name = os.getenv("AirtableTableName")
+    if base_id is None or table_name is None:
+        raise RuntimeError("Airtable base ID or table name not set in environment variables.")
     def parse_delegate_key(delegate_key: str):
         """
         Parses a delegate key string like "School Name - #1" or "School Name - 1".
