@@ -341,22 +341,6 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
         finalassignments = update_dictionary(new_country, old_country, finalassignments, delegate_key, current_comm, Double_Committees, availableCountries)
     return finalassignments, availableCountries
 
-def parse_delegate_key(delegate_key: str):
-    """
-    Parses a delegate key string like "School Name - #1" or "School Name - 1".
-    Returns a tuple: (school_name, delegate_number_as_string)
-    """
-    if "-" in delegate_key:
-        school_part, delegate_part = delegate_key.rsplit("-", 1)
-        school_name = school_part.strip()
-        
-        # Extract digits from delegate part (e.g., "#1" -> "1")
-        match = re.search(r'\d+', delegate_part)
-        delegate_num = match.group(0) if match else delegate_part.strip()
-        return school_name, delegate_num
-    
-    return delegate_key.strip(), ""
-
 def sync_with_secondary_storage(
     finalassignments: dict, 
     base_id: str = "YOUR_BASE_ID", 
@@ -367,6 +351,22 @@ def sync_with_secondary_storage(
     Parses delegate keys, searches for record IDs, updates 'Committee Assigned' via 
     select_dropdown_option_raw, and updates 'Country' text field via REST API.
     """
+    def parse_delegate_key(delegate_key: str):
+        """
+        Parses a delegate key string like "School Name - #1" or "School Name - 1".
+        Returns a tuple: (school_name, delegate_number_as_string)
+        """
+        if "-" in delegate_key:
+            school_part, delegate_part = delegate_key.rsplit("-", 1)
+            school_name = school_part.strip()
+            
+            # Extract digits from delegate part (e.g., "#1" -> "1")
+            match = re.search(r'\d+', delegate_part)
+            delegate_num = match.group(0) if match else delegate_part.strip()
+            return school_name, delegate_num
+        
+        return delegate_key.strip(), ""
+
     for delegate_key, assignment_info in finalassignments.items():
         if not assignment_info or not isinstance(assignment_info, (list, tuple)):
             continue

@@ -97,18 +97,29 @@ def assign_new_schools():
             percentagesChecking = SheetsAPI.read_percentages_from_overview(names)
             hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
             if percentagesChecking == percentages and hashes != None:
-                Display.display("Percentages are correct. Here are the hashes. Moving on to next school, and placing name in completed CSV.")
+                Display.display("Percentages are correct. Here are the hashes.")
                 Display.display(hashes)
             else:
-                Display.display("Percentage error. Please check the sheet! Here are the hashes. Moving on to next school.")
+                Display.display("Percentage error. Please check the sheet! Here are the hashes.")
                 Display.display(registrationSheetURL)
                 Display.display(hashes)
-            unassignedSchools.remove(selectedSchool)
 
+            while (cont := Display.take_text_input("Sync with secondary storage? (yes/no)")) != "yes":
+                cont = Display.take_text_input("Sync with secondary storage? (yes/no)")
+            if cont == "no":
+                Display.display("Sync skipped. Please make sure to sync manually.")
+            else:
+                AssignmentsFunctions.sync_with_secondary_storage(finalassignments)
+            
             while (cont := Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")) != "yes":
                 cont = Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")
+            if cont == "no":
+                Display.display("Roster generation skipped. Please make it manually.")
+                sys.exit()
             new_roster_ID = RosterConnector.generate_roster_and_add_assignments_to_it(finalassignments, selectedSchool)
             Display.display(f"Roster generated and assignments added. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
+
+            unassignedSchools.remove(selectedSchool)
 
 def add_delegates():
     # Goal: Add delegates to a school that already exists. Scan the sheet for user Display.take_text_inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
@@ -197,11 +208,13 @@ def add_delegates():
         if cont == "yes":
             hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
             Display.display(hashes)
-            cont = Display.take_text_input("Proceed to add these delegates to the roster? (yes/no)")
+            cont = Display.take_text_input("Proceed to add these delegates to the roster and sync with Airtable? (yes/no)")
             while cont not in ["yes", "no"]:
                 cont = Display.take_text_input("Proceed to add these delegates to the roster? (yes/no)")
             if cont == "yes":
                 new_roster_ID = RosterConnector.add_delegates_to_existing_school_roster(selectedSchool, finalassignments)
+                AssignmentsFunctions.sync_with_secondary_storage(finalassignments)
+                Display.display("Delegates added to roster and synced with secondary storage.")
                 Display.display(f"Delegates added to roster. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
             else:
                 Display.display("Aborting roster update. Please check the sheet manually.")
@@ -267,6 +280,7 @@ def drop_delegates():
                 Display.display(f"Deleted {delegate} with hash: {hash_value}")
             school_roster_ID = RosterConnector.find_existing_school_roster_ID(selectedSchool)
             Display.display(f"Go into the roster and delete the delegates manually: https://docs.google.com/spreadsheets/d/{school_roster_ID}/edit")
+            Display.display("Also, go into Airtable and make sure changes are done.")
         else:
             Display.display("No delegates were deleted. Please check the server response for errors.")
             SheetsAPI.push_values(backup)
