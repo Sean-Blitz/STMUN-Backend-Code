@@ -625,6 +625,8 @@ class SheetAPI(GoogleAPIs):
                 for col_offset, cell_value in enumerate(row):
 
                     country_name = cell_value.strip()
+                    if "(" in country_name:
+                        country_name = country_name.split("(", 1)[0].strip()
 
                     # Ignore empty cells or placeholders
                     if not country_name or country_name.lower() == "unassigned":
@@ -647,4 +649,3 @@ class SheetAPI(GoogleAPIs):
                     ]
 
         return availability_map
-
