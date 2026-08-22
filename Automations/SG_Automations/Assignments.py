@@ -6,6 +6,7 @@ sys.path.append(current_dir)
 from Assignments_Sheets_Adapter import Assignments_to_Sheets, registration_sheet_ID
 from Automations.Infrastructure import DisplayClass
 from difflib import get_close_matches
+from dotenv import load_dotenv; load_dotenv()
 from . import ServerRequests
 from . import AssignmentsFunctions
 from . import RosterConnector
@@ -13,7 +14,7 @@ from . import generateSuggestions
 
 # ---------- CONTROLS -----------
 # For things related to the sheets, visit SheetsAPIManager.py to change the information.
-DoubleGAs = "yes" #type yes or no, depending on if there are double delegate GA's this year.
+DoubleGAs = os.getenv("DOUBLE_GAs") # yes or no, depending on if there are double delegate GA's this year. Simply used to determine if the user input was correct for the number of delegates in GA.
 # -------------------------------
 
 SheetsAPI = Assignments_to_Sheets()
