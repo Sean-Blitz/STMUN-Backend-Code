@@ -1,14 +1,18 @@
+import os
+
 from Automations.Infrastructure import SheetAPI
 from Automations.Infrastructure import DisplayClass
 from Automations.Infrastructure import DriveAPI
+from dotenv import load_dotenv; load_dotenv()
 
 SheetsAPI = SheetAPI()
 Display = DisplayClass()
 Drive = DriveAPI()
 
 # ------------- Controls -----------------------
-AssignmentFolderID = "1g0k7r5J8X6j3Z9v2L4m5n6o7p8q9r0s1"  # Replace with the actual folder ID for assignments
-model_roster_sheet_ID = "1SDKOVIh_QMu5_vpVcQaEY3l1nd704Vi8_XyydTqLdCc"  # Replace with the actual sheet ID for the model roster
+AttendingFolderID = os.getenv("AttendingFolderID")
+model_roster_sheet_ID = os.getenv("model_roster_sheet_ID")
+YearName = os.getenv("YearName")  # Replace with the actual year name, e.g., "2024"
 
 def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list], schoolname: str):
     """
@@ -16,12 +20,16 @@ def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list],
 
     First move the roster into the school's folder, rename it, and then add the assignments to the roster.
     """
-    school_folder_ID = Drive.find_subfolder_id(AssignmentFolderID, schoolname)
+    school_folder_ID = Drive.find_subfolder_id(AttendingFolderID, schoolname)
     if school_folder_ID is None:
         raise RuntimeError(f"Could not find folder for school '{schoolname}'.")
 
+    this_year_folder_ID = Drive.find_subfolder_id(school_folder_ID, YearName)
+    if this_year_folder_ID is None:
+        raise RuntimeError(f"Could not find folder for year '{YearName}' in school '{schoolname}'.")
+
     # Copy the model roster into the school's folder
-    new_roster_ID = Drive.copy_drive_file(model_roster_sheet_ID, school_folder_ID, f"{schoolname} Roster")
+    new_roster_ID = Drive.copy_drive_file(model_roster_sheet_ID, this_year_folder_ID, f"{schoolname} Roster")
     if new_roster_ID is None:
         raise RuntimeError(f"Could not copy roster for school '{schoolname}'.")
 
@@ -46,11 +54,15 @@ def add_delegates_to_existing_school_roster(schoolname: str, new_delegates: dict
     """
     Finds the roster ID for this school, reads down the roster the find the next row, and add the new delegates to the roster.
     """
-    school_folder_ID = Drive.find_subfolder_id(AssignmentFolderID, schoolname)
+    school_folder_ID = Drive.find_subfolder_id(AttendingFolderID, schoolname)
     if school_folder_ID is None:
         raise RuntimeError(f"Could not find folder for school '{schoolname}'.")
 
-    school_roster_ID = Drive.find_sheet_id_by_name_contains(school_folder_ID, f"{schoolname} Roster")
+    this_year_folder_ID = Drive.find_subfolder_id(school_folder_ID, YearName)
+    if this_year_folder_ID is None:
+        raise RuntimeError(f"Could not find folder for year '{YearName}' in school '{schoolname}'.")
+
+    school_roster_ID = Drive.find_sheet_id_by_name_contains(this_year_folder_ID, f"{schoolname} Roster")
     if school_roster_ID is None:
         raise RuntimeError(f"Could not find roster for school '{schoolname}'.")
 
@@ -81,11 +93,15 @@ def find_existing_school_roster_ID(schoolname: str):
     """
     Finds the roster ID for this school
     """
-    school_folder_ID = Drive.find_subfolder_id(AssignmentFolderID, schoolname)
+    school_folder_ID = Drive.find_subfolder_id(AttendingFolderID, schoolname)
     if school_folder_ID is None:
         raise RuntimeError(f"Could not find folder for school '{schoolname}'.")
 
-    school_roster_ID = Drive.find_sheet_id_by_name_contains(school_folder_ID, f"{schoolname} Roster")
+    this_year_folder_ID = Drive.find_subfolder_id(school_folder_ID, YearName)
+    if this_year_folder_ID is None:
+        raise RuntimeError(f"Could not find folder for year '{YearName}' in school '{schoolname}'.")
+
+    school_roster_ID = Drive.find_sheet_id_by_name_contains(this_year_folder_ID, f"{schoolname} Roster")
     if school_roster_ID is None:
         raise RuntimeError(f"Could not find roster for school '{schoolname}'.")
 
