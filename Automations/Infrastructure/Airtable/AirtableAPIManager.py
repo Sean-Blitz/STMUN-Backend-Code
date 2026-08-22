@@ -3,6 +3,7 @@ import json
 import datetime
 import os
 from dotenv import load_dotenv
+from urllib.parse import quote
 load_dotenv()
 
 finance_table_id = os.getenv("FINANCE_TABLE_ID")  # Ensure this is set in your .env file
@@ -292,3 +293,66 @@ class AirtableAPI:
             print(f"Error searching Airtable: {response.status_code} - {response.text}")
             
         return None
+
+    def link_record_by_name(
+        self,
+        base_id: str,
+        main_table_name: str,
+        record_id: str,
+        field_name: str,
+        target_table_name: str,
+        target_name_field: str,
+        search_string: str,
+    ):
+        """Searches a target table for a matching record name and links it to a main record.
+
+        :param base_id: Base ID (e.g., 'appEySB2x9jqHy16Q')
+        :param main_table_name: Name of table containing the record to update
+        (e.g., 'Advisors')
+        :param record_id: ID of the main record being updated (e.g., 'recXXXXXX')
+        :param field_name: Name of the Linked Record column in the main table
+        :param target_table_name: Name of the table being linked TO (e.g.,
+        'Schools')
+        :param target_name_field: Name of the primary text column in the target
+        table
+        :param search_string: The string value to search for and match
+        """
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json",
+        }
+
+        # Encodes table names so spaces/special characters work in URLs
+        main_table_encoded = quote(main_table_name)
+        target_table_encoded = quote(target_table_name)
+
+        # Step 1: Search the target table using filterByFormula
+        search_clean = search_string.strip().lower()
+        search_url = f"https://api.airtable.com/v0/{base_id}/{target_table_encoded}"
+
+        params = {
+            "filterByFormula": f"LOWER({{{target_name_field}}}) = '{search_clean}'",
+            "maxRecords": 1,
+        }
+
+        search_resp = requests.get(search_url, headers=headers, params=params)
+        search_resp.raise_for_status()
+
+        records = search_resp.json().get("records", [])
+
+        if not records:
+            print(
+                f"No matching record found for '{search_string}' in '{target_table_name}'."
+            )
+            return None
+
+        target_record_id = records[0]["id"]
+
+        # Step 2: Patch the main record with the target record ID
+        update_url = f"https://api.airtable.com/v0/{base_id}/{main_table_encoded}/{record_id}"
+        payload = {"fields": {field_name: [target_record_id]}}
+
+        update_resp = requests.patch(update_url, headers=headers, json=payload)
+        update_resp.raise_for_status()
+
+        return update_resp.json()

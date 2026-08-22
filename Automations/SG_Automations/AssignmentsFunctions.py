@@ -390,12 +390,14 @@ def sync_with_secondary_storage(
 
         # 1. Update 'Committee Assigned' using your dropdown helper method
         if committee:
-            SecondaryStorage.select_dropdown_option_raw(
+            SecondaryStorage.link_record_by_name(
                 base_id=base_id,
-                table_name=table_name,
+                main_table_name=table_name,
                 record_id=record_id,
                 field_name="Committee Assigned",
-                target_option=committee
+                target_table_name = "Committees",
+                target_name_field = "Committee Name",
+                search_string = committee
             )
 
         # 2. Update 'Country' (text field) via HTTP PATCH request
