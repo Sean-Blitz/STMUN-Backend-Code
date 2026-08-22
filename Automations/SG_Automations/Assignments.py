@@ -13,7 +13,7 @@ from . import generateSuggestions
 
 # ---------- CONTROLS -----------
 # For things related to the sheets, visit SheetsAPIManager.py to change the information.
-DoubleGAs = "no" #type yes or no, depending on if there are double delegate GA's this year.
+DoubleGAs = "yes" #type yes or no, depending on if there are double delegate GA's this year.
 # -------------------------------
 
 SheetsAPI = Assignments_to_Sheets()
@@ -24,10 +24,13 @@ def assign_new_schools():
     unassignedSchools = SheetsAPI.find_schools_not_yet_assigned("Responses", "Assignments")
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
-        names, percentages, spots, availableCountries, double, Committeetype, output = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
+        names, percentages, spots, double, Committeetype, output = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
+        availableCountries, _ = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool)
         single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
-        CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels = output; numdels = int(numdels)
-        GA, Specialized, Crisis = AssignmentsFunctions.print_data_to_terminal_with_prompt(DoubleGAs, CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels, newschool=False)
+        RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
+        CountryPrefs = [country1, country2, country3, country4, country5]
+        AssignmentsFunctions.print_data_to_terminal_with_prompt(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=True)
+        GA, Specialized, Crisis = AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, numdels)
 
         if GA + Specialized > numdels:
             Display.display("Error: The total number of delegates does not match the expected count.")
@@ -119,10 +122,13 @@ def add_delegates():
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
         selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
 
-    names, percentages, spots, availableCountries, double, Committeetype, output = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
+    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool)
+    names, percentages, spots, double, Committeetype, output = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
     single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
-    CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, _ = output
-    GA, Specialized, Crisis = AssignmentsFunctions.print_data_to_terminal_with_prompt(DoubleGAs, CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, committeeCount, newschool=False)
+    RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
+    CountryPrefs = [country1, country2, country3, country4, country5]
+    AssignmentsFunctions.print_data_to_terminal_with_prompt(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=False)
+    GA, Specialized, Crisis = AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, committeeCount)
     
     i = 0; iterator = 0
     finalassignments = {} # dictionary with a value being a list of two elements, the committee and the country assigned.
@@ -191,14 +197,19 @@ def add_delegates():
             hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
             Display.display(hashes)
             cont = Display.take_text_input("Proceed to add these delegates to the roster? (yes/no)")
+            while cont not in ["yes", "no"]:
+                cont = Display.take_text_input("Proceed to add these delegates to the roster? (yes/no)")
             if cont == "yes":
                 new_roster_ID = RosterConnector.add_delegates_to_existing_school_roster(selectedSchool, finalassignments)
                 Display.display(f"Delegates added to roster. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
             else:
                 Display.display("Aborting roster update. Please check the sheet manually.")
+                SheetsAPI.push_values(backup)  # Rollback the changes made to the sheet.
+                Display.display("Rolled back the changes made to the sheet. Please check the sheet manually.")
                 sys.exit()
         else:
-            Display.display("Aborting database update. Please check the sheet manually.")
+            Display.display("Aborting database update. Sheet rolled back.")
+            SheetsAPI.push_values(backup)  # Rollback the changes made to the sheet.
             sys.exit()
 
 def drop_delegates():

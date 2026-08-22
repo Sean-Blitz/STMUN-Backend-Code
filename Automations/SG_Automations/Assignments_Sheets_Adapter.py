@@ -176,15 +176,11 @@ class Assignments_to_Sheets:
         return names, percentages, spots, double, type, ranges, raw_ranges
 
     def read_school_and_current_committees_data(self, selectedSchool):
-        names, percentages, spots, double, Committeetype, ranges, raw_ranges = self.read_overview()
-        self.available_countries_and_coordinates = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID) # format: {"Sheet_coordinate": ["committee", "country_name"]}
+        names, percentages, spots, double, Committeetype, _, _ = self.read_overview()
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)
-        output = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!X{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
-
-        availableCountries = []
-        for values in self.available_countries_and_coordinates.values():
-            availableCountries.append(values)
-        return names, percentages, spots, availableCountries, double, Committeetype, output
+        output = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
+        #RegionBloc, CountryPref1, CountryPref2, CountryPref3, CountryPref4, CountryPref5, SecurityCouncil, numdels
+        return names, percentages, spots, double, Committeetype, output
 
     def map_cells(self, finalassignments: dict, new_list_of_countries_and_committees: list[list[str]]):
         availableCountries = self.available_countries_and_coordinates

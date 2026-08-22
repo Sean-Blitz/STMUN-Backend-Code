@@ -184,19 +184,15 @@ def update_dictionary(new_country, old_country, finalassignments, delegate_key, 
                     availableCountries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries, for the twin delegate.
     return finalassignments
 
-def print_data_to_terminal_with_prompt(doubleGAs, CountryPrefs, MiddleEasternBloc, AmericanBloc, EuropeanBloc, AsianBloc, AfricanBloc, PacificBloc, SecurityCouncil, numdels, newschool=True):
-    Display.display("Top 5 country preferences:", "\033[1m" + CountryPrefs + "\033[0m") #Display.display country preferences in bold for visibility.
-    Display.display("Middle Eastern Bloc:", "\033[1m" + MiddleEasternBloc + "\033[0m")
-    Display.display("American Bloc:", "\033[1m" + AmericanBloc + "\033[0m")
-    Display.display("European Bloc:", "\033[1m" + EuropeanBloc + "\033[0m")
-    Display.display("Asian Bloc:", "\033[1m" + AsianBloc + "\033[0m")
-    Display.display("African Country Bloc:", "\033[1m" + AfricanBloc + "\033[0m")
-    Display.display("Pacific Country Bloc:", "\033[1m" + PacificBloc + "\033[0m")
+def print_data_to_terminal_with_prompt(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=True):
+    Display.display("Region block most preferred:", "\033[1m" + RegionBloc + "\033[0m") #Display.display country preferences in bold for visibility.
+    for i, country in enumerate(CountryPrefs):
+        Display.display(f"Country preference {i + 1}:", "\033[1m" + country + "\033[0m")
     Display.display("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
     if newschool == True:
         Display.display("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
 
-    #data science: school awards from past
+def get_input_for_committee_assignment_counts(doubleGAs, numdels):
     GA = Display.take_text_input("How many delegates to put in GA?")
     Specialized = Display.take_text_input("How many delegates to put in Specialized?")
     GA, Specialized = verify_committee_number_input(GA, Specialized, doubleGAs)
