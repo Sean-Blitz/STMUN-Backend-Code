@@ -1,10 +1,14 @@
+import os
 import sys
+from dotenv import load_dotenv; load_dotenv()
 from Infrastructure import DisplayClass
 from Infrastructure import SheetAPI
 
 # ---------------- Controls --------------------
-registration_sheet_ID = "1LgQxP67-pe6JW0lixWacp3ou5UV1f2vmSGVI8j5IPIs" # link to your registration Sheet, for assignments.
-award_sheet_ID = "1qrqM4EdBO-aqebxhbQ-4NTXnEvpIhSkBfw9lLBY9BMw"
+env1 = os.getenv("registration_sheet_ID")
+env2 = os.getenv("award_sheet_ID")
+registration_sheet_ID = env1 if env1 is not None else sys.exit("Error: 'registration_sheet_ID' not found in environment variables. Please set this variable in your .env file.")
+award_sheet_ID = env2 if env2 is not None else sys.exit("Error: 'award_sheet_ID' not found in environment variables. Please set this variable in your .env file.")
 registrationSheetResponsesName = "Responses" # Name of the tab in the registration sheet that contains the responses.
 # ----------------------------------------------
 
