@@ -3,7 +3,7 @@ from googleapiclient.discovery import build
 
 class SlideAPI(GoogleAPIs):
     def __init__(self):
-        super().__init__(CREDENTIALS_FILE="credentials.json", TOKEN_FILE = "token.json", SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents'])
+        super().__init__(SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents'])
         creds = self.authenticate()
         self.presentations = build('slides', 'v1', credentials=creds)
 

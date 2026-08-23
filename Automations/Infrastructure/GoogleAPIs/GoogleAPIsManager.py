@@ -2,11 +2,13 @@ import os
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from pathlib import Path
 
 class GoogleAPIs:
-    def __init__(self, CREDENTIALS_FILE="credentials.json", TOKEN_FILE = "token.json", SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents']):
-        self.CREDENTIALS_FILE = CREDENTIALS_FILE
-        self.TOKEN_FILE = TOKEN_FILE
+    def __init__(self, SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents']):
+        BASE_DIR = Path(__file__).resolve().parent
+        self.CREDENTIALS_FILE = str(BASE_DIR / "credentials.json")
+        self.TOKEN_FILE = str(BASE_DIR / "token.json")
         self.SCOPES = SCOPES
     
     def authenticate(self):

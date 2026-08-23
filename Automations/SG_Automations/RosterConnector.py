@@ -1,9 +1,9 @@
 import os
 
-from Automations.Infrastructure import SheetAPI
-from Automations.Infrastructure import DisplayClass
-from Automations.Infrastructure import DriveAPI
-from Automations.Infrastructure import DocAPI
+from Infrastructure import SheetAPI
+from Infrastructure import DisplayClass
+from Infrastructure import DriveAPI
+from Infrastructure import DocAPI
 from dotenv import load_dotenv; load_dotenv()
 
 SheetsAPI = SheetAPI()

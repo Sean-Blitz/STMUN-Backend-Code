@@ -194,7 +194,7 @@ def request_hashes_for_school(school_name: str) -> dict[str, str]:
         print(f"Error communicating with server: {e}")
         return {}
 
-def request_all_awards_data() -> dict[tuple[str, str], str]: # returns a dictionary where keys are (country, committee) tuples and values are award names.
+def request_all_awards_data() -> dict[str, list[tuple[str, str]]]: # returns a dictionary where keys are (country, committee) tuples and values are award names.
     """
     Fetches all award data from FastAPI and formats it into a dictionary 
     where keys are (country, committee) tuples and values are award names.
@@ -202,7 +202,7 @@ def request_all_awards_data() -> dict[tuple[str, str], str]: # returns a diction
     Matching FastAPI function should: 
     1. accept bearer header token.
     2. Be located on the /awards endpoint.
-    3. return a list with each item being a dictionary with keys "country", "committee", and "award".
+    3. return a dictionary formatted as: {"CommitteeName": [(CountryName, AwardName), ...], ...}. Each individual dictionary key-value pair is a committee.
     4. return appropriate HTTP status codes (200, 401, 403, 400, 422, 500, etc.)
     5. return an optional message with things like "X committee(s) don't have awards yet".
     """
@@ -239,7 +239,7 @@ def request_all_awards_data() -> dict[tuple[str, str], str]: # returns a diction
             
         # Parse list of items from 'data' and construct tuple-keyed dict
         # Expecting 'data' to be a list of objects like:
-        # [{"country": "USA", "committee": "DISEC", "award": "Best Delegate"}, ...]
+        # {"CommitteeName": [(CountryName, AwardName), ...], ...}
         raw_awards_list = payload.get("data", [])
 
         return raw_awards_list

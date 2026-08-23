@@ -3,8 +3,8 @@ import sys
 import random
 from collections import Counter
 from dotenv import load_dotenv
-from Automations.Infrastructure import DisplayClass
-from Assignments_Sheets_Adapter import Assignments_to_Sheets
+from Infrastructure import DisplayClass
+from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets
 
 load_dotenv()
 Display = DisplayClass()

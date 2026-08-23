@@ -1,7 +1,16 @@
 import sys
-from . import Assignments
-from . import ServerRequests
-from .Assignments import Display
+from pathlib import Path
+
+# Locate the root 'Automations' directory relative to this script file
+# main.py is in Automations/main_app/main.py, so parent.parent points to Automations/
+AUTOMATIONS_DIR = Path(__file__).resolve().parent.parent
+
+# Inject the path into sys.path if it isn't already present
+if str(AUTOMATIONS_DIR) not in sys.path:
+    sys.path.insert(0, str(AUTOMATIONS_DIR))
+from SG_Automations import Assignments
+from SG_Automations import ServerRequests
+from SG_Automations.Assignments import Display
 
 def main():
     options = ["Assignments", "Hashes", "Database Management", "Awards", "Exit"]

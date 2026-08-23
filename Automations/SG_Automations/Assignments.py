@@ -1,16 +1,14 @@
 import os
 import sys
 import time
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
-from Assignments_Sheets_Adapter import Assignments_to_Sheets, registration_sheet_ID
-from Automations.Infrastructure import DisplayClass
+from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets, registration_sheet_ID
+from Infrastructure import DisplayClass
 from difflib import get_close_matches
 from dotenv import load_dotenv; load_dotenv()
-from . import ServerRequests
-from . import AssignmentsFunctions
-from . import RosterConnector
-from . import generateSuggestions
+from SG_Automations import ServerRequests
+from SG_Automations import AssignmentsFunctions
+from SG_Automations import RosterConnector
+from SG_Automations import generateSuggestions
 
 # ---------- CONTROLS -----------
 # For things related to the sheets, visit SheetsAPIManager.py to change the information.

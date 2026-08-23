@@ -1,12 +1,10 @@
 import os
 import sys
 import re
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
-from Assignments_Sheets_Adapter import Assignments_to_Sheets
-from Automations.Infrastructure import DisplayClass
-from Automations.Infrastructure import CSV
-from Automations.Infrastructure import AirtableAPI
+from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets
+from Infrastructure import DisplayClass
+from Infrastructure import CSV
+from Infrastructure import AirtableAPI
 from dotenv import load_dotenv; load_dotenv()
 
 SheetsAPI = Assignments_to_Sheets()
