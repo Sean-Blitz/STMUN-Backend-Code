@@ -10,6 +10,8 @@ load_dotenv()
 Display = DisplayClass()
 SheetsAPI = Assignments_to_Sheets()
 
+top5 = {"China", "United States", "Russia", "United Kingdom", "France"}
+
 def generate_dictionary_of_suggestions(finalassignments: dict, numdels: int, availableCountries: list, schoolname: str, preferences: list[str]) -> dict[str, list[str]] | None:
     """
     Generates up to 5 suggested available countries for each delegate in a GA committee,
@@ -35,7 +37,6 @@ def generate_dictionary_of_suggestions(finalassignments: dict, numdels: int, ava
             "Iraq","Kazakhstan","Senegal","Czech Rep.","Dominican Republic","Algeria","Bangladesh","Cambodia","Iceland","Indonesia","Kenya","Malaysia",
             "Lebanon","Luxembourg","Haiti","Paraguay","Panama","Nigeria","Myanmar","Mongolia","Ethiopia","Estonia","Bulgaria","D.R.C.","Qatar","Ecuador",
             "Uruguay","D.P.R.K.","Iran","Israel","Cuba","Costa Rica","Philippines","Lithuania"}
-    top5 = {"China", "United States", "Russia", "United Kingdom", "France"}
 
     blacklist = os.getenv("BLACKLIST")
     if blacklist is not None:
@@ -142,7 +143,7 @@ def generate_suggestions_for_delegates(finalassignments, tier1, tier2, available
             continue
 
         # 1. Filter available countries specifically for this delegate's committee
-        available_for_comm = [country.strip().upper() for comm, country in availableCountries if comm.strip().lower() == committee.lower()]
+        available_for_comm = [country.strip() for comm, country in availableCountries if comm.strip().lower() == committee.lower()]
 
         if committee in committee_availability.keys():
             tiers = committee_availability[committee]
@@ -157,14 +158,14 @@ def generate_suggestions_for_delegates(finalassignments, tier1, tier2, available
                             tiers["tier2"][:] = [name for name in tiers["tier2"] if name != repeated_country]
                         if repeated_country in tiers["tier3"]:
                             tiers["tier3"][:] = [name for name in tiers["tier3"] if name != repeated_country]
-                        ignored_countries.append(repeated_country)
+                        ignored_countries.append(repeated_country) 
             unique_available_tier1 = committee_availability[committee]["tier1"]
             unique_available_tier2 = committee_availability[committee]["tier2"]
             unique_available_tier3 = committee_availability[committee]["tier3"]
         else:
             unique_available_tier1 = list(set([country for country in available_for_comm if country in tier1]))
             unique_available_tier2 = list(set([country for country in available_for_comm if country in tier2]))
-            unique_available_tier3 = list(set([country for country in available_for_comm if country not in tier1 and country not in tier2]))
+            unique_available_tier3 = list(set([country for country in available_for_comm if country not in tier1 and country not in tier2 and country not in top5]))
             committee_availability[committee] = {"tier1": unique_available_tier1, "tier2": unique_available_tier2, "tier3": unique_available_tier3}
             tiers = committee_availability[committee]
             assigned_number_of_times = Counter(already_suggested_countries)

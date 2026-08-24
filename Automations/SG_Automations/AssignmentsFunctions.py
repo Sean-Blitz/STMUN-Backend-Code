@@ -20,8 +20,8 @@ def verify_committee_number_input(GA, Specialized, DoubleGAs):
         # keeps only the actual digits typed; ignores letters and ANSI escape sequences.
         Specialized = ''.join(c for c in Specialized if c.isdigit())
     GA = int(GA); Specialized = int(Specialized)
-    while DoubleGAs == "no" and GA % 2 != 0: #if no double delegate GAs and the Display.take_text_input is odd
-        GA = Display.take_text_input("How many delegates to put in GA? Display.take_text_input must be even.")
+    while DoubleGAs == "yes" and GA % 2 != 0: #if no double delegate GAs and the Display.take_text_input is odd
+        GA = Display.take_text_input("How many delegates to put in GA? Input must be even.")
         Specialized = Display.take_text_input("How many delegates to put in Specialized?")
         if '\x1b' in Specialized:
             # keeps only the actual digits typed; ignores letters and ANSI escape sequences.
@@ -115,18 +115,9 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
         #------------------------------------------------------------------
 
         #update dictionary with new choice
-        if new_committee and new_committee.strip() != current_assignment:
-            if new_committee in GA_Names and finalassignments[delegate_key][1].lower() == "ga":
-                finalassignments[delegate_key][0] = new_committee.strip()
-                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-            elif new_committee in Spec_Names and finalassignments[delegate_key][1].lower() == "specialized":
-                finalassignments[delegate_key][0] = new_committee.strip()
-                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-            elif new_committee in Crisis_Names and finalassignments[delegate_key][1].lower() == "crisis":
-                finalassignments[delegate_key][0] = new_committee.strip()
-                check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
-            else:
-                Display.display("Your selected assignment is not the correct committee type or is not a committee name. Please try again.")
+        if new_committee and new_committee.strip() != current_assignment and new_committee in GA_Names + Spec_Names + Crisis_Names:
+            finalassignments[delegate_key][0] = new_committee.strip()
+            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
         else:
             Display.display("No changes made or invalid committee name entered. Please try again.")
     return finalassignments
@@ -150,7 +141,8 @@ def update_dictionary(new_country, old_country, finalassignments, delegate_key, 
     
             # 2. TWIN LINKING LOGIC FOR DOUBLE DELEGATION COMMITTEES
         if finalassignments[delegate_key][0] in Double_Committees:
-            
+
+            twin_delegate = None
             # Scan the dict for the other partner delegate in the exact same committee
             for other_delegate, details in finalassignments.items():
 
@@ -165,22 +157,16 @@ def update_dictionary(new_country, old_country, finalassignments, delegate_key, 
                     if other_old_country == old_country:
                         twin_delegate = other_delegate
                         break # this part ensures that you only flag the other delegate once, so that there is only one twin.
-                    else:
-                        twin_delegate = None
+
+            if twin_delegate is not None:
+                if len(finalassignments[twin_delegate]) > 2:
+                    finalassignments[twin_delegate][2] = new_country
                 else:
-                    twin_delegate = None
-
-                if twin_delegate is not None:
-                    twin_details = finalassignments[twin_delegate]
-
-                    if len(finalassignments[twin_details]) > 2:
-                        finalassignments[twin_details][2] = new_country
-                    else:
-                        finalassignments[twin_details].append(new_country)
-                    if old_country is not None and old_country.strip() != "": 
-                        # If the delegate already had an assignment, return it to availableCountries
-                        availableCountries.append([current_comm, old_country])
-                    availableCountries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries, for the twin delegate.
+                    finalassignments[twin_delegate].append(new_country)
+                if old_country is not None and old_country.strip() != "": 
+                    # If the delegate already had an assignment, return it to availableCountries
+                    availableCountries.append([current_comm, old_country])
+                availableCountries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries, for the twin delegate.
     return finalassignments
 
 def print_data_to_terminal_with_prompt(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=True):
@@ -262,8 +248,9 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
         old_country = finalassignments[delegate_key][2] if len(finalassignments[delegate_key]) > 2 else None
 
         current_suggestions = []
+        selected_option = selected_choice.split(" │ ")[0].strip()
         if suggestions_matrix:
-            current_suggestions = suggestions_matrix[selected_choice] if suggestions_matrix[selected_choice] else None
+            current_suggestions = suggestions_matrix[selected_option] if selected_option in suggestions_matrix.keys() else None
 
         new_country = None
 
@@ -272,7 +259,8 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
             Display.go_one_line_up(); Display.clear_current_line()
             input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
-            while not (current_comm, input.strip()) in availableCountries:
+            lookup_pair = [current_comm.strip(), input.strip()]
+            while not lookup_pair in availableCountries:
                 Display.display("Entered country is not in the list of available countries. Try checking spelling or capitalization.")
                 input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
@@ -284,11 +272,14 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
             
             # 1. Display.display out the available options as a clear text menu block
             Display.display(f"Suggestions for {delegate_key} ({current_comm}):")
-            for i, country in enumerate(current_suggestions):
+            for i, country in enumerate(current_suggestions[0]):
                 Display.display(f"  [{i + 1}] {country}")
             Display.display("  [M] Type a custom country manually")
             Display.display("  [B] Go back to main menu")
 
+            Display.display("These are the countries that are preferred by the school and available for this committee. You may type these in manually.")
+            for country in current_suggestions[1]:
+                Display.display(f"  {country}")
             # 2. Collect a single clean text input instead of a selection menu
             user_input = Display.typing_with_pre_fill("Select an option number/shortcut:", "")
 
@@ -321,8 +312,8 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
                 # Validate if the user actually typed a valid option integer
                 try:
                     selection_idx = int(user_input) - 1
-                    if 0 <= selection_idx < len(current_suggestions):
-                        suggested_name = current_suggestions[selection_idx]
+                    if 0 <= selection_idx < len(current_suggestions[0]):
+                        suggested_name = current_suggestions[0][selection_idx]
                         lookup_pair = [current_comm.strip(), suggested_name.strip()]
                         
                         # FIXED: Tuple evaluation instead of zip()

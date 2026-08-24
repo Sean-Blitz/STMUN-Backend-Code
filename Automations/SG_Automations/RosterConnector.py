@@ -16,7 +16,7 @@ AttendingFolderID = os.getenv("AttendingFolderID")
 model_roster_sheet_ID = os.getenv("model_roster_sheet_ID")
 email_folder_ID = os.getenv("RosterEmailsFolderID")
 email_template_ID = os.getenv("EmailTemplateID")
-YearName = os.getenv("YearName")  # Replace with the actual year name, e.g., "2024"
+YearName = os.getenv("YearName") 
 
 def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list], schoolname: str):
     """

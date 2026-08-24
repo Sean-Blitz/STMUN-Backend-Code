@@ -24,7 +24,7 @@ def assign_new_schools():
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
         names, percentages, spots, double, Committeetype, output, advisorEmail, HeadDelegateEmail = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
-        availableCountries, _ = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool)
+        availableCountries, _ = SheetsAPI.get_available_countries_and_backup_storage()
         single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
         RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
         CountryPrefs = [country1, country2, country3, country4, country5]
@@ -49,7 +49,7 @@ def assign_new_schools():
                 data = (names, percentages, double, spots, Committeetype)
                 finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
             iterator = 0
-            if SecurityCouncil.lower() != "yes":
+            if SecurityCouncil.lower() != "true" or SecurityCouncil.lower() != "yes":
                 CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
             else:
                 CrisisInd = CrisisIndices
@@ -138,7 +138,7 @@ def add_delegates():
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
         selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
 
-    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool)
+    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage_for_already_assigned_school(selectedSchool)
     names, percentages, spots, double, Committeetype, output, _, _ = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
     single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
     RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
@@ -157,7 +157,7 @@ def add_delegates():
         data = (names, percentages, double, spots, Committeetype)
         finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
     iterator = 0
-    if SecurityCouncil.lower() != "yes":
+    if SecurityCouncil.lower() != "yes" or SecurityCouncil.lower() != "true":
         CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
     else:
         CrisisInd = CrisisIndices
@@ -235,7 +235,7 @@ def drop_delegates():
     # Finally, insert them back into the original pool by reading their committee name, and slotting them back to the first empty cell. Request that these assignments be deleted from the database.
     selectedSchool = Display.take_text_input("Please input the school to drop delegates from.")
     CurrentSchools = SheetsAPI.get_list_of_current_schools_names()
-    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool)
+    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage_for_already_assigned_school(selectedSchool)
     while selectedSchool not in CurrentSchools: #closest match logic for input errors.
         ClosestMatch = get_close_matches(selectedSchool, CurrentSchools, n=1, cutoff=0.6)
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")

@@ -84,7 +84,7 @@ class Assignments_to_Sheets:
         SheetsAPI.write_values_to_sheet_from_dict(registration_sheet_ID, {cell_address: school_name})
 
     def find_new_school_row_in_assignments_sheet(self) -> int:
-        new_row_in_assignment_sheet = SheetsAPI.get_column_odd_cells(registration_sheet_ID, "Assignments", "A", 1) + 2
+        new_row_in_assignment_sheet = SheetsAPI.get_column_odd_cells(registration_sheet_ID, "Assignments", "A", 1) + 1
         return new_row_in_assignment_sheet
 
     def find_existing_school_row_in_assignments_sheet(self, school_name: str) -> int:
@@ -115,13 +115,13 @@ class Assignments_to_Sheets:
         for coordinate, [committee, country] in availableCountries.items():
             if [committee, country] in new_list_of_countries_and_committees:
                 #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
-                cell_map[coordinate] = country
+                cell_map[coordinate] = f"{country} ({committee})"
             elif [committee, country] not in new_list_of_countries_and_committees:
                 cell_map[coordinate] = ""
         del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
         return finalassignments, cell_map, assigned_cell_map
 
-    def get_available_countries_and_backup_storage(self, selectedSchool: str):
+    def get_available_countries_and_backup_storage_for_already_assigned_school(self, selectedSchool: str):
         names = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2) # Use this function to also detect number of committees
         raw_ranges = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!H{i+2}" for i in range(len(names))])
         ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
@@ -132,6 +132,23 @@ class Assignments_to_Sheets:
         formatted_ranges = [f"Remaining Assignments!{r}" for r in raw_ranges if r] # this block of code saves a backup as a dictionary. Key: cell coordinate. Value: cell value.
         formatted_ranges.append(f"Assignments!B{schoolrow}:AE{schoolrow}")
         formatted_ranges.append(f"Assignments!B{schoolrow+1}:AE{schoolrow+1}")
+        backup = SheetsAPI.read_data_for_backup(registration_sheet_ID, formatted_ranges)
+
+        availableCountries = []
+        for values in self.available_countries_and_coordinates.values():
+            availableCountries.append(values)
+
+        return availableCountries, backup
+
+    def get_available_countries_and_backup_storage(self):
+        names = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2) # Use this function to also detect number of committees
+        raw_ranges = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!H{i+2}" for i in range(len(names))])
+        ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
+
+        self.available_countries_and_coordinates = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID)  # Populate availableCountries map
+
+        formatted_ranges = [f"Remaining Assignments!{r}" for r in raw_ranges if r] # this block of code saves a backup as a dictionary. Key: cell coordinate. Value: cell value.
+
         backup = SheetsAPI.read_data_for_backup(registration_sheet_ID, formatted_ranges)
 
         availableCountries = []
@@ -203,7 +220,7 @@ class Assignments_to_Sheets:
             j += 1
         for coordinate, [committee, country] in availableCountries.items():
             if [committee, country] in new_list_of_countries_and_committees:
-                cell_map[coordinate] = country
+                cell_map[coordinate] = f"{country} ({committee})"
             elif [committee, country] not in new_list_of_countries_and_committees:
                 cell_map[coordinate] = ""
         del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
