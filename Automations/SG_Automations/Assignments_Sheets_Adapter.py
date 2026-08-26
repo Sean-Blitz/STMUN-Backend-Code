@@ -366,3 +366,13 @@ class Assignments_to_Sheets:
             Display.display("Cells returned nothing or function encountered an error. Check the code and sheet.")
             Display.display("We will default to returning \"good\" for this school.")
             return "good"
+
+    def find_committees_wanting_suggestions(self) -> list[str]:
+        """
+        Reads the Overview sheet to find committees that have suggestions enabled.
+        Returns a list of committee names that want suggestions.
+        """
+        committees = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2)
+        suggestions_flags = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!I{i+2}" for i in range(len(committees))])
+        committees_wanting_suggestions = [committees[i] for i in range(len(committees)) if suggestions_flags[i].strip().lower() == "true" or suggestions_flags[i].strip().lower() == "yes"]
+        return committees_wanting_suggestions
