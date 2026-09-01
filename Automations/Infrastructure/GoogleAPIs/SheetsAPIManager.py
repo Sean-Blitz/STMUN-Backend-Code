@@ -1,6 +1,7 @@
 import string
 from googleapiclient.discovery import build
 from .GoogleAPIsManager import GoogleAPIs
+from Infrastructure.utilities import retry_on_http_error
 import sys
 
 class SheetAPI(GoogleAPIs):
@@ -8,7 +9,8 @@ class SheetAPI(GoogleAPIs):
         super().__init__(SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents'])
         creds = self.authenticate()
         self.service = build('sheets', 'v4', credentials=creds)
-    
+
+    @retry_on_http_error()
     def write_values_to_sheet_from_dict(self, spreadsheet_id, cell_value_map, value_input_option="USER_ENTERED"):
         """
         Writes different values to different cells/ranges in one API call.
@@ -40,6 +42,7 @@ class SheetAPI(GoogleAPIs):
             body=body
         ).execute()
 
+    @retry_on_http_error()
     def read_single_cell(self, spreadsheet_id, cell_range):
         """
         Reads a single cell from a Google Sheet.
@@ -63,6 +66,7 @@ class SheetAPI(GoogleAPIs):
 
         return values[0][0]
 
+    @retry_on_http_error()
     def read_single_unformatted_cell(self, spreadsheet_id, cell_range):
         """
         Reads a single cell from a Google Sheet (unformatted value).
@@ -82,6 +86,7 @@ class SheetAPI(GoogleAPIs):
 
         return values[0][0]
 
+    @retry_on_http_error()
     def read_cells(self, spreadsheet_id: str, cell_list: list):
         """
         Reads multiple individual cells from a Google Sheet and returns their values
@@ -114,6 +119,7 @@ class SheetAPI(GoogleAPIs):
 
         return output
 
+    @retry_on_http_error()
     def get_column_until_empty(self, sheet_id, sheet_name, column_letter, start_row):
         """
         Reads down a specific column in Google Sheets and returns all values 
@@ -142,6 +148,7 @@ class SheetAPI(GoogleAPIs):
             
         return len(collected_data)
 
+    @retry_on_http_error()
     def get_column_data_until_empty(self, sheet_id, sheet_name, column_letter, start_row):
         """
         Reads down a specific column in Google Sheets and returns all values 
@@ -170,6 +177,7 @@ class SheetAPI(GoogleAPIs):
             
         return collected_data
 
+    @retry_on_http_error()
     def find_row_by_string(self, spreadsheet_id, sheet_name, column_letter, search_string):
         """
         Searches down a specific column in Google Sheets for a string value
@@ -215,7 +223,7 @@ class SheetAPI(GoogleAPIs):
         except Exception as e:
             print(f"API Error searching column {column_letter}: {e}")
             return None
-        
+
     def sheets_alphabet(self, n):
         """
         Takes a number as input and returns the corresponding column letter.
@@ -228,6 +236,7 @@ class SheetAPI(GoogleAPIs):
             result = alphabet[(n//26)-1] + alphabet[n % 26]
         return result
 
+    @retry_on_http_error()
     def get_column_odd_cells(self, sheet_id, sheet_name, column_letter, start_row):
         """
         Reads down a specific column in Google Sheets and returns all values 
@@ -267,6 +276,7 @@ class SheetAPI(GoogleAPIs):
             
         return len(collected_data)
     
+    @retry_on_http_error()
     def get_column_odd_cells_data(self, sheet_id, sheet_name, column_letter, start_row) -> list:
         """
         Reads down a specific column in Google Sheets and returns all values 
@@ -305,7 +315,8 @@ class SheetAPI(GoogleAPIs):
             collected_data.append(values[i][0])
             
         return collected_data
-    
+
+    @retry_on_http_error()
     def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, currentRow, registrationSheetID):
         # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
         cell_map = {}
@@ -333,7 +344,8 @@ class SheetAPI(GoogleAPIs):
             elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
                 cell_map[coordinate] = country
         return finalassignments, cell_map, assigned_cell_map
-    
+
+    @retry_on_http_error()
     def read_headers_until_blank(self, spreadsheet_id, sheet_name):
         """
         Reads the first row (header) from the worksheet, stopping at the first blank cell.
@@ -367,7 +379,8 @@ class SheetAPI(GoogleAPIs):
             header_values.append(cell)
 
         return header_values
-    
+
+    @retry_on_http_error()
     def read_columns_until_blank(self, spreadsheet_id, sheet_name, num_columns):
         """
         Read values from the leftmost `num_columns` columns of a Google Sheet worksheet,
@@ -408,6 +421,7 @@ class SheetAPI(GoogleAPIs):
 
         return result
 
+    @retry_on_http_error()
     def read_row_from(
         self, 
         spreadsheet_id: str, 
@@ -447,6 +461,7 @@ class SheetAPI(GoogleAPIs):
         
         return []
 
+    @retry_on_http_error()
     def clear_row_from(
         self, 
         spreadsheet_id: str, 
@@ -485,6 +500,7 @@ class SheetAPI(GoogleAPIs):
 
         return response
 
+    @retry_on_http_error()
     def read_data_for_backup(self, spreadsheet_id: str, ranges_list: list) -> dict:
         """
         Reads multiple ranges from a Google Sheet in a single API call and maps 
@@ -558,6 +574,7 @@ class SheetAPI(GoogleAPIs):
 
         return backup_map
 
+    @retry_on_http_error()
     def pull_sheet_data(self, ranges, sheet_id):
         """
         Pulls all data from ranges into RAM.
