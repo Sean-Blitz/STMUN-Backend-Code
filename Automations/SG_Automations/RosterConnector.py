@@ -26,7 +26,11 @@ def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list],
     """
     school_folder_ID = Drive.find_subfolder_id(AttendingFolderID, schoolname)
     if school_folder_ID is None:
-        raise RuntimeError(f"Could not find folder for school '{schoolname}'.")
+        try:
+            schoolname = Display.take_text_input(f"Could not find folder for school '{schoolname}'. Please enter the correct school folder name in the drive: https://drive.google.com/drive/folders/{AttendingFolderID}.")
+            school_folder_ID = Drive.find_subfolder_id(AttendingFolderID, schoolname)
+        except Exception as e:
+            raise RuntimeError(f"Could not find folder for school '{schoolname}'.") from e
 
     this_year_folder_ID = Drive.find_subfolder_id(school_folder_ID, YearName)
     if this_year_folder_ID is None:
