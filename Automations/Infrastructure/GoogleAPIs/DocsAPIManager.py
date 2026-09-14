@@ -3,7 +3,7 @@ from googleapiclient.discovery import build
 
 class DocAPI(GoogleAPIs):
     def __init__(self):
-        super().__init__(SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents'])
+        super().__init__(SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents', "https://www.googleapis.com/auth/script.projects"])
         creds = self.authenticate()
         self.docs_service = build('docs', 'v1', credentials=creds)
 

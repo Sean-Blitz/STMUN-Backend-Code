@@ -60,11 +60,7 @@ class DriveAPI(GoogleAPIs):
         if new_name:
             metadata['name'] = new_name
 
-        copied_file = self.service.files().copy(
-            fileId=file_id,
-            body=metadata,
-            fields='id'
-        ).execute()
+        copied_file = self.service.files().copy(fileId=file_id,body=metadata,supportsAllDrives=True,fields='id').execute()
 
         return copied_file['id']
 

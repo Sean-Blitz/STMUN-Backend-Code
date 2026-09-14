@@ -5,7 +5,7 @@ from google.oauth2.credentials import Credentials
 from pathlib import Path
 
 class GoogleAPIs:
-    def __init__(self, SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents']):
+    def __init__(self, SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents', "https://www.googleapis.com/auth/script.projects"]):
         BASE_DIR = Path(__file__).resolve().parent
         self.CREDENTIALS_FILE = str(BASE_DIR / "credentials.json")
         self.TOKEN_FILE = str(BASE_DIR / "token.json")

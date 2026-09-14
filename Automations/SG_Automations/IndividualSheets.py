@@ -18,15 +18,18 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 from Infrastructure import SheetAPI
 from Infrastructure import DriveAPI
+from Infrastructure import AppScriptAPI
 
 GDriveAPI = DriveAPI()
 SheetsAPI = SheetAPI()
+AppScript = AppScriptAPI()
 
 #-------------- Controls ------------
 print(f"For example, if the URL is https://docs.google.com/spreadsheets/d/1a2b3c4d5e6f7g8h9i0j/edit, the ID is 1a2b3c4d5e6f7g8h9i0j")
 mastersheetID = input("What is the master sheet ID? Find it in the Google URL.")
 mastersheet = f"docs.google.com/spreadsheets/d/{mastersheetID}"
 template = "16T80NITxS63Q8ZzL9dl2tVOdMfKiYHJfxGpowbQA4CA"
+ScriptID = input("What is the script ID? Find it in the template sheet: extensions, app script, settings, scroll down.")
 #------------------------------------
 
 def generate_sheet(i, token):
@@ -36,6 +39,7 @@ def generate_sheet(i, token):
     name = f"{firstname} {lastname}"
     print(f"Generating sheet for {name}...")
     newsheet = GDriveAPI.copy_drive_file(template, new_name=f"{name} - Individualized Dashboard")
+    AppScript.attach_script_to_sheet(newsheet, ScriptID)
 
     dictofvalues = {"G3": token}
     print(f"Writing token to sheet for {name}...")
