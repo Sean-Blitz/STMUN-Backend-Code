@@ -1,5 +1,6 @@
 from .GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
+from Infrastructure.utilities import retry_on_http_error
 
 class DocAPI(GoogleAPIs):
     def __init__(self):
@@ -7,6 +8,7 @@ class DocAPI(GoogleAPIs):
         creds = self.authenticate()
         self.docs_service = build('docs', 'v1', credentials=creds)
 
+    @retry_on_http_error()
     def fill_doc_placeholders(self, document_id, aEmail, schoolName, sheeturl, headDelegateEmail):
         """
         Replaces three hardcoded placeholders in a Google Doc.
@@ -61,6 +63,7 @@ class DocAPI(GoogleAPIs):
             body={"requests": requests}
         ).execute()
 
+    @retry_on_http_error()
     def fill_doc_placeholders_from_dictionary(self, document_id, replacements: dict):
         """
         Replaces placeholders in a Google Doc based on a dictionary of replacements.

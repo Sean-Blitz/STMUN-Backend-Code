@@ -1,5 +1,6 @@
 from .GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
+from Infrastructure.utilities import retry_on_http_error
 
 class SlideAPI(GoogleAPIs):
     def __init__(self):
@@ -7,7 +8,7 @@ class SlideAPI(GoogleAPIs):
         creds = self.authenticate()
         self.presentations = build('slides', 'v1', credentials=creds)
 
-    
+    @retry_on_http_error()
     def duplicate_slide(self, presentation_id, slide_object_id):
         """
         Duplicates a slide in a Google Slides presentation and returns the new slide's object ID.
@@ -32,6 +33,7 @@ class SlideAPI(GoogleAPIs):
         new_slide_id = response["replies"][0]["duplicateObject"]["objectId"]
         return new_slide_id
 
+    @retry_on_http_error()
     def replace_placeholders(self, service, presentation_id, value_map):
         """
         Replace placeholders in a Google Slides presentation.
@@ -64,6 +66,7 @@ class SlideAPI(GoogleAPIs):
 
         return response
 
+    @retry_on_http_error()
     def replace_two_placeholders_on_slide(self,presentation_id,slide_id,old_placeholder_1,new_placeholder_1,old_placeholder_2,new_placeholder_2):
         """
         Replaces two different placeholders on a specific slide with new placeholder names.
@@ -106,6 +109,7 @@ class SlideAPI(GoogleAPIs):
 
         return reply1, reply2
 
+    @retry_on_http_error()
     def get_first_slide_id(self, presentation_id):
         """
         Returns the object ID of the first slide in a Google Slides presentation.
@@ -118,6 +122,7 @@ class SlideAPI(GoogleAPIs):
         first_slide = presentation["slides"][0]
         return first_slide["objectId"]
 
+    @retry_on_http_error()
     def create_slide_copies(self, presentation_id, template_slide_id, number_of_copies):
         """
         Duplicates a template slide N times.
@@ -137,6 +142,7 @@ class SlideAPI(GoogleAPIs):
 
         return len(created_slide_ids), created_slide_ids
 
+    @retry_on_http_error()
     def move_slides_to_indexes(self, presentation_id, slide_ids, target_indexes):
         if len(slide_ids) != len(target_indexes):
             raise ValueError("slide_ids and target_indexes must match length.")
@@ -171,6 +177,7 @@ class SlideAPI(GoogleAPIs):
 
         print("Finished moving slides.")
 
+    @retry_on_http_error()
     def get_slide_id_by_index(self, presentation_id, index):
         """
         Returns the objectId of the slide at the given index.
@@ -200,6 +207,7 @@ class SlideAPI(GoogleAPIs):
 
         return slides[index]["objectId"]
 
+    @retry_on_http_error()
     def replace_placeholders_on_slide(
         self,
         presentation_id,
@@ -246,6 +254,7 @@ class SlideAPI(GoogleAPIs):
             body=body
         ).execute()
 
+    @retry_on_http_error()
     def get_slide_count(self, presentation_id):
         """
         Returns the number of slides in a Google Slides presentation.
@@ -266,6 +275,7 @@ class SlideAPI(GoogleAPIs):
         slides = presentation.get("slides", [])
         return len(slides)
 
+    @retry_on_http_error()
     def reverse_all_slides(self, presentation_id):
         """
         Reverses the order of all slides in a presentation.
@@ -301,6 +311,7 @@ class SlideAPI(GoogleAPIs):
             body={"requests": requests}
         ).execute()
 
+    @retry_on_http_error()
     def delete_slide(self, presentation_id, slide_id):
         """
         Deletes a slide from a presentation using its object ID.

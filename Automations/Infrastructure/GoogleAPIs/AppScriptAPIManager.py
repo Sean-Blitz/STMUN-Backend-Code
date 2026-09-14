@@ -1,5 +1,6 @@
 from .GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
+from Infrastructure.utilities import retry_on_http_error
 
 class AppScriptAPI(GoogleAPIs):
     def __init__(self):
@@ -7,6 +8,7 @@ class AppScriptAPI(GoogleAPIs):
         creds = self.authenticate()
         self.service = build('script', 'v1', credentials=creds)
 
+    @retry_on_http_error()
     def attach_script_to_sheet(self, new_sheet_id: str, TEMPLATE_SCRIPT_ID: str):
         """Copies the Apps Script code from the template project into a new sheet."""
         
