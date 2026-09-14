@@ -666,3 +666,26 @@ class SheetAPI(GoogleAPIs):
                     ]
 
         return availability_map
+
+    @retry_on_http_error()
+    def get_column_data(self, sheet_id, sheet_name, column_letter, start_row):
+        """
+        Reads down a specific column in Google Sheets and returns all values 
+        """    
+        # 2. Construct the range string (e.g., "Sheet1!A2:A" fetches to the bottom)
+        range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
+        
+        # 3. Make a single API call to fetch the data
+        sheet = self.service.spreadsheets()
+        result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
+        
+        # The API returns a list of lists, like [['Data1'], ['Data2'], [], ['Data4']]
+        values = result.get('values', [])
+        
+        collected_data = []
+        
+        # 4. Loop through the fetched values and stop at the first blank
+        for row in values:
+            collected_data.append(row[0])
+            
+        return collected_data
