@@ -13,6 +13,11 @@ AUTOMATIONS_DIR = Path(__file__).resolve().parent.parent
 if str(AUTOMATIONS_DIR) not in sys.path:
     sys.path.insert(0, str(AUTOMATIONS_DIR))
 
+"""
+A few notes on using this: first of all, token file needs to be with the same google account as the script and sheet owner. Otherwise, script WON'T COPY OVER.
+Also, the script ID is not the same as the sheet ID. The script ID is found in the template sheet: extensions, app script, settings, scroll down.
+The top of the Google Apps Script contains the mappings of the master sheet to individual sheets. If you change either, you need to update that code.
+"""
 from typing import List, Any
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
@@ -29,7 +34,7 @@ print(f"For example, if the URL is https://docs.google.com/spreadsheets/d/1a2b3c
 mastersheetID = input("What is the master sheet ID? Find it in the Google URL.")
 mastersheet = f"docs.google.com/spreadsheets/d/{mastersheetID}"
 template = "16T80NITxS63Q8ZzL9dl2tVOdMfKiYHJfxGpowbQA4CA"
-ScriptID = input("What is the script ID? Find it in the template sheet: extensions, app script, settings, scroll down.")
+# ScriptID = input("What is the script ID? Find it in the template sheet: extensions, app script, settings, scroll down.")
 #------------------------------------
 
 def generate_sheet(i, token):
@@ -39,7 +44,7 @@ def generate_sheet(i, token):
     name = f"{firstname} {lastname}"
     print(f"Generating sheet for {name}...")
     newsheet = GDriveAPI.copy_drive_file(template, new_name=f"{name} - Individualized Dashboard")
-    AppScript.attach_script_to_sheet(newsheet, ScriptID)
+    # AppScript.attach_script_to_sheet(newsheet, ScriptID)
 
     dictofvalues = {"G3": token}
     print(f"Writing token to sheet for {name}...")
@@ -142,3 +147,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
