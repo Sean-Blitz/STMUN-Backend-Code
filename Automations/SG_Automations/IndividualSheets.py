@@ -17,6 +17,7 @@ if str(AUTOMATIONS_DIR) not in sys.path:
 A few notes on using this: first of all, token file needs to be with the same google account as the script and sheet owner. Otherwise, script WON'T COPY OVER.
 Also, the script ID is not the same as the sheet ID. The script ID is found in the template sheet: extensions, app script, settings, scroll down.
 The top of the Google Apps Script contains the mappings of the master sheet to individual sheets. If you change either, you need to update that code.
+Note that those without any email in the sheet will not even be generated.
 """
 from typing import List, Any
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,15 +34,11 @@ AppScript = AppScriptAPI()
 print(f"For example, if the URL is https://docs.google.com/spreadsheets/d/1a2b3c4d5e6f7g8h9i0j/edit, the ID is 1a2b3c4d5e6f7g8h9i0j")
 mastersheetID = input("What is the master sheet ID? Find it in the Google URL.")
 mastersheet = f"docs.google.com/spreadsheets/d/{mastersheetID}"
-template = "16T80NITxS63Q8ZzL9dl2tVOdMfKiYHJfxGpowbQA4CA"
+template = "13JolO1XDGI1bqeT-vwQkPrileKMaLO7MORYyKtHVZCQ"
 # ScriptID = input("What is the script ID? Find it in the template sheet: extensions, app script, settings, scroll down.")
 #------------------------------------
 
-def generate_sheet(i, token):
-    lastname, firstname, email = SheetsAPI.read_cells(mastersheetID, [f"Master Roster Contact Info!A{i+5}", f"Master Roster Contact Info!B{i+5}", f"Master Roster Contact Info!E{i+5}"])
-    if email is None or email == "":
-        print(f"Warning: No email found for {firstname} {lastname}. The sheet will be generated but not shared.")
-    name = f"{firstname} {lastname}"
+def generate_sheet(token, name):
     print(f"Generating sheet for {name}...")
     newsheet = GDriveAPI.copy_drive_file(template, new_name=f"{name} - Individualized Dashboard")
     # AppScript.attach_script_to_sheet(newsheet, ScriptID)
@@ -50,7 +47,7 @@ def generate_sheet(i, token):
     print(f"Writing token to sheet for {name}...")
     SheetsAPI.write_values_to_sheet_from_dict(newsheet, dictofvalues, value_input_option="USER_ENTERED")
     print(f"Finished sheet. Link: https://docs.google.com/spreadsheets/d/{newsheet}/edit")
-    return newsheet, name, email
+    return newsheet, name
 
 def export_lists_to_csv(list1: List[Any], list2: List[Any], filename: str = "output.csv") -> None:
     """
@@ -81,33 +78,39 @@ def export_lists_to_csv(list1: List[Any], list2: List[Any], filename: str = "out
             
     print(f"Successfully wrote data to {filename}")
 
-def generate_for_person(number: int) -> None:
+def generate_for_person(number: int):
     token = secrets.token_hex(8)
-    newsheet, name, email = generate_sheet(int(number)-5, token)
+    first_name = SheetsAPI.read_single_cell(mastersheetID, f"Master Roster Contact Info!B{int(number)}")
+    last_name = SheetsAPI.read_single_cell(mastersheetID, f"Master Roster Contact Info!A{int(number)}")
+    name = f"{first_name} {last_name}"
+    newsheet, name = generate_sheet(token, name)
+    email = SheetsAPI.read_single_cell(mastersheetID, f"Master Roster Contact Info!E{int(number)}")
     SheetsAPI.write_values_to_sheet_from_dict(mastersheetID, {f"Master Roster Contact Info!I{int(number)}": token}, value_input_option="USER_ENTERED")
-    if email is not None and email != "":
-        while input("Share sheets? (y/n): ").strip().lower() != "y":
-            print("Please type 'y' to continue. If you wish to quit, press Ctrl+C.")
-        GDriveAPI.share_spreadsheet(newsheet, email, role="writer")
-    else:
-        print(f"Skipping sharing for sheet {newsheet} as no email is provided.")
+
+    return newsheet, name, email
 
 def main():
     print("Warning: do not use this while the sheet is updating in ANY way!")
     action = input("Would you like to generate all sheets or add one person? (all/person/remaining persons): ").strip().lower()
 
     if action == "all":
-        peoplecount = SheetsAPI.get_column_until_empty(mastersheetID, "Master Roster Contact Info", "A", 5)
+        lastnames = SheetsAPI.get_column_data(mastersheetID, "Master Roster Contact Info", "A", 5)
+        firstnames = SheetsAPI.get_column_data(mastersheetID, "Master Roster Contact Info", "B", 5)
+        names = [f"{first} {last}" for first, last in zip(firstnames, lastnames)]
+        emails = SheetsAPI.get_column_data(mastersheetID, "Master Roster Contact Info", "E", 5)
+        count = min(len(lastnames), len(firstnames), len(names), len(emails))
+        
         sheetstoshare = {}
-        names = []
         tokens_to_push = {}
-        for i in range(peoplecount):
+        for i in range(count):
+            if emails[i] is None or emails[i] == "":
+                print(f"No email found for {firstnames[i]} {lastnames[i]}. Skipping this person.")
+                continue  # Skip this iteration if email is missing, as nothing will be shared anyways
             token = secrets.token_hex(8)
-            newsheet, name, email = generate_sheet(i, token)
-            sheetstoshare[newsheet] = email
-            names.append(name)
+            newsheet, name = generate_sheet(token, names[i])
+            sheetstoshare[newsheet] = emails[i]
             tokens_to_push[f"Master Roster Contact Info!I{i+5}"] = token
-            time.sleep(2)
+            time.sleep(1)
 
         SheetsAPI.write_values_to_sheet_from_dict(mastersheetID, tokens_to_push, value_input_option="USER_ENTERED")
         while input("Share sheets? (y/n): ").strip().lower() != "y":
@@ -120,12 +123,9 @@ def main():
         sheeturls = []
         for sheet in sheetstoshare:
             sheeturls.append(f"https://docs.google.com/spreadsheets/d/{sheet}/edit")
-        export_lists_to_csv(names, sheeturls, filename="names_and_emails.csv")
     elif action == "person":
-        number = input("Enter the person's row number (from Master Roster Contact Info): ").strip()
-        token = secrets.token_hex(8)
-        newsheet, name, email = generate_sheet(int(number)-5, token)
-        SheetsAPI.write_values_to_sheet_from_dict(mastersheetID, {f"Master Roster Contact Info!I{int(number)}": token}, value_input_option="USER_ENTERED")
+        number = input("What is the row number of the person in the master sheet? (Starting from 5): ").strip()
+        newsheet, name, email = generate_for_person(int(number))
         if email is not None and email != "":
             while input("Share sheets? (y/n): ").strip().lower() != "y":
                 print("Please type 'y' to continue. If you wish to quit, press Ctrl+C.")
@@ -134,13 +134,33 @@ def main():
             print(f"Skipping sharing for sheet {newsheet} as no email is provided.")
     elif action == "remaining persons":
         rows = SheetsAPI.get_column_data(mastersheetID, "Master Roster Contact Info", "I", 5)
-        tokenless_rows = [i for i, val in enumerate(rows, start=5) if not val or val == ""]
-        if not tokenless_rows:
+        tokenless_indexes = [i for i, val in enumerate(rows) if not val or val == ""]
+        if not tokenless_indexes:
             print("All persons already have tokens. No remaining persons to generate sheets for.")
             return
-        for row in tokenless_rows:
-            generate_for_person(row)
-            time.sleep(2)  # Optional: Add a small delay to avoid overwhelming the API
+
+        emails = SheetsAPI.get_column_data(mastersheetID, "Master Roster Contact Info", "E", 5)
+        lastnames = SheetsAPI.get_column_data(mastersheetID, "Master Roster Contact Info", "A", 5)
+        firstnames = SheetsAPI.get_column_data(mastersheetID, "Master Roster Contact Info", "B", 5)
+        names = [f"{first} {last}" for first, last in zip(firstnames, lastnames)]
+        sheetstoshare = {}
+        tokens = {}
+        for index in tokenless_indexes:
+            if emails[index] is None or emails[index] == "":
+                print(f"No email found for {names[index]}. Skipping this person.")
+                continue  # Skip this iteration if email is missing, as nothing will be shared anyways
+            token = secrets.token_hex(8)
+            newsheet, name = generate_sheet(token, names[index])
+            sheetstoshare[newsheet] = emails[index]
+            tokens[f"Master Roster Contact Info!I{index + 5}"] = token
+            time.sleep(1)
+        SheetsAPI.write_values_to_sheet_from_dict(mastersheetID, tokens, value_input_option="USER_ENTERED")
+
+        while input("Share sheets? (y/n): ").strip().lower() != "y":
+            print("Please type 'y' to continue. If you wish to quit, press Ctrl+C.")
+        for newsheet, email in sheetstoshare.items():
+            if email is not None and email != "":
+                GDriveAPI.share_spreadsheet(newsheet, email, role="writer")
 
     else:
         print("Invalid input. Please enter 'all' or 'person'.")

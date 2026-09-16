@@ -686,6 +686,8 @@ class SheetAPI(GoogleAPIs):
         
         # 4. Loop through the fetched values and stop at the first blank
         for row in values:
-            collected_data.append(row[0])
+            # If row is empty, it's a blank cell; otherwise take the cell value
+            cell_value = row[0] if row else ""
+            collected_data.append(cell_value)
             
         return collected_data
