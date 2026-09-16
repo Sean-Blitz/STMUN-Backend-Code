@@ -49,35 +49,6 @@ def generate_sheet(token, name):
     print(f"Finished sheet. Link: https://docs.google.com/spreadsheets/d/{newsheet}/edit")
     return newsheet, name
 
-def export_lists_to_csv(list1: List[Any], list2: List[Any], filename: str = "output.csv") -> None:
-    """
-    Writes two lists into two separate columns of a CSV file.
-    
-    Parameters:
-    list1 (list): Data for the first column.
-    list2 (list): Data for the second column.
-    filename (str): The name of the CSV file to create.
-    """
-    # Check that the two lists are the same length
-    if len(list1) != len(list2):
-        raise ValueError(
-            f"Length mismatch: list1 has {len(list1)} items, but list2 has {len(list2)} items. "
-            "Both lists must be the same length."
-        )
-    
-    # Open the file and write the data
-    with open(filename, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        
-        # Optional: Add headers if you want them (e.g., Column 1, Column 2)
-        # writer.writerow(["Column A", "Column B"])
-        
-        # zip() pairs the elements from both lists row by row
-        for row in zip(list1, list2):
-            writer.writerow(row)
-            
-    print(f"Successfully wrote data to {filename}")
-
 def generate_for_person(number: int):
     token = secrets.token_hex(8)
     first_name = SheetsAPI.read_single_cell(mastersheetID, f"Master Roster Contact Info!B{int(number)}")
