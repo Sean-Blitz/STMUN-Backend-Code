@@ -27,6 +27,7 @@ STMUN-Backend-Code
    |-- generateSuggestions.py
    |-- RosterConnector.py
    |-- ServerRequests.py
+   |-- .env
    |-- Individual_Sheets
       |-- .env
       |-- mappings.py
