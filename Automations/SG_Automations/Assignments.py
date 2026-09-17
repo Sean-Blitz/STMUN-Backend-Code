@@ -114,7 +114,25 @@ def assign_new_schools():
             if cont == "no":
                 Display.display("Roster generation skipped. Please make it manually.")
                 sys.exit()
-            new_roster_ID, this_year_folder_ID = RosterConnector.generate_roster_and_add_assignments_to_it(finalassignments, selectedSchool)
+
+            new_roster_ID, this_year_folder_ID = None, None
+            while True:
+                try:
+                    successflag = True
+                    new_roster_ID, this_year_folder_ID = RosterConnector.generate_roster_and_add_assignments_to_it(finalassignments, selectedSchool)
+                except Exception as e:
+                    successflag = False
+                    Display.display(f"Error generating roster: {e}")
+                    cont = Display.take_text_input("Would you like to retry generating the roster? (yes/no)")
+                    if cont.lower() == "no":        
+                        Display.display("Roster generation aborted. Please check the error and try again.")
+                        sys.exit()
+                if successflag == True:
+                    break
+            if new_roster_ID is None or this_year_folder_ID is None:
+                Display.display("Error: Roster generation failed. Please check the code and try again.")
+                sys.exit()
+                
             Display.display(f"Roster generated and assignments added. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
             while (cont := Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")) != "yes":
                 cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")

@@ -19,7 +19,6 @@ Also, the script ID is not the same as the sheet ID. The script ID is found in t
 The top of the Google Apps Script contains the mappings of the master sheet to individual sheets. If you change either, you need to update that code.
 Note that those without any email in the sheet will not even be generated.
 """
-from typing import List, Any
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 from Infrastructure import SheetAPI
@@ -37,6 +36,7 @@ mastersheet = f"docs.google.com/spreadsheets/d/{mastersheetID}"
 template = "13JolO1XDGI1bqeT-vwQkPrileKMaLO7MORYyKtHVZCQ"
 # ScriptID = input("What is the script ID? Find it in the template sheet: extensions, app script, settings, scroll down.")
 #------------------------------------
+
 
 def generate_sheet(token, name):
     print(f"Generating sheet for {name}...")

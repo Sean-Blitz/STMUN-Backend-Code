@@ -5,8 +5,14 @@ from Infrastructure.utilities import retry_on_http_error
 import sys
 
 class SheetAPI(GoogleAPIs):
-    def __init__(self):
-        super().__init__(SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents', "https://www.googleapis.com/auth/script.projects"])
+    def __init__(self, SCOPES = None, CREDENTIALS_FILE = None, TOKEN_FILE = None):
+        if SCOPES is None:
+            super().__init__(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
+            # As defined in the parent class, if Credentials or Token file is none, it will default to the standard locations.
+        elif SCOPES is not None:
+            super().__init__(SCOPES=SCOPES, CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
+        else:
+            raise ValueError("SCOPES must be a list of scopes or None.")
         creds = self.authenticate()
         self.service = build('sheets', 'v4', credentials=creds)
 
