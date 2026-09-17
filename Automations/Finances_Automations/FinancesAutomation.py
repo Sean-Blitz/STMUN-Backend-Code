@@ -2,21 +2,27 @@
 import os
 import datetime
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-os.chdir(SCRIPT_DIR)
+from pathlib import Path
+AUTOMATIONS_DIR = Path(__file__).resolve().parent.parent
+
+# Inject the path into sys.path if it isn't already present
+if str(AUTOMATIONS_DIR) not in sys.path:
+    sys.path.insert(0, str(AUTOMATIONS_DIR))
 
 from dotenv import load_dotenv
-from Automations.Infrastructure import GmailAPI
-from Automations.Infrastructure import DriveAPI
-from Automations.Infrastructure import SheetAPI
-from Automations.Infrastructure import DocAPI
-from Automations.Infrastructure import AirtableAPI
+from Infrastructure import GmailAPI
+from Infrastructure import DriveAPI
+from Infrastructure import SheetAPI
+from Infrastructure import DocAPI
+from Infrastructure import AirtableAPI
+BASE_DIR = Path(__file__).resolve().parent
+CREDENTIALS_FILE = str(BASE_DIR / "credentials.json")
+TOKEN_FILE = str(BASE_DIR / "token.json")
 
-mailAPI = GmailAPI()
-CloudStorageAPI = DriveAPI()
-Sheets = SheetAPI()
-Document = DocAPI()
+mailAPI = GmailAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
+CloudStorageAPI = DriveAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
+Sheets = SheetAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
+Document = DocAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
 Database = AirtableAPI()
 load_dotenv()
 
@@ -112,10 +118,7 @@ i=0
 for i in range(len(mail_school_names)):
     record_id = Database.get_field_by_name(search_name=mail_school_names[i], search_column="School Name")
 
-    _, _, _, _, _, date, _ = Database.view_latest_record(record_id) #first view latest record. DO NOT USE THESE VARIABLES EXCEPT DATE.
-    #This is a bug to fix. Currently it pulls date from the most recent record, but we want it from specifically that school.
-
-    sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee, head_delegate_email = Database.search_records(record_id)
+    sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee, head_delegate_email, date = Database.search_records(record_id)
     city, state, zipCode, DelCount = Database.search_formResponse(record_id)
     state = statename(state)
 
@@ -136,7 +139,20 @@ for i in range(len(mail_school_names)):
                 destination_folder_id=yearfolder,
                 new_name_template="Invoice {n}" + (" - Independent" if independent == "y" else ""),
                 sName = sName)
-    
+
+    if "-" in str(date):
+        splitter = "-"
+    elif "/" in str(date):
+        splitter = "/"
+    else:
+        print("Date format error. Check Airtable.")
+        print("Date: " + str(date))
+        sys.exit()
+    month = int(date.split(splitter)[1])
+    day = int(date.split(splitter)[2])
+    year = int(date.split(splitter)[0])
+    date = datetime.date(year, month, day)
+
     if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
         newInvoice = CreateInvoice(template1_independent if independent == "y" else template1_school, independent)
         checkcell = "B25"

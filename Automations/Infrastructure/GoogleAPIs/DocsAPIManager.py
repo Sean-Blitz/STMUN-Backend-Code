@@ -2,8 +2,14 @@ from .GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
 
 class DocAPI(GoogleAPIs):
-    def __init__(self):
         super().__init__(SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/gmail.modify', 'https://www.googleapis.com/auth/documents'])
+        if SCOPES is None:
+            super().__init__(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
+            # As defined in the parent class, if Credentials or Token file is none, it will default to the standard locations.
+        elif SCOPES is not None:
+            super().__init__(SCOPES=SCOPES, CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
+        else:
+            raise ValueError("SCOPES must be a list of scopes or None.")
         creds = self.authenticate()
         self.docs_service = build('docs', 'v1', credentials=creds)
 

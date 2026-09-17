@@ -1,7 +1,23 @@
 import csv
 import os
 import time
-from typing import List, Any
+import secrets
+from pathlib import Path
+
+# Locate the root 'Automations' directory relative to this script file
+# main.py is in Automations/main_app/main.py, so parent.parent points to Automations/
+AUTOMATIONS_DIR = Path(__file__).resolve().parent.parent
+
+# Inject the path into sys.path if it isn't already present
+if str(AUTOMATIONS_DIR) not in sys.path:
+    sys.path.insert(0, str(AUTOMATIONS_DIR))
+
+"""
+A few notes on using this: first of all, token file needs to be with the same google account as the script and sheet owner. Otherwise, script WON'T COPY OVER.
+Also, the script ID is not the same as the sheet ID. The script ID is found in the template sheet: extensions, app script, settings, scroll down.
+The top of the Google Apps Script contains the mappings of the master sheet to individual sheets. If you change either, you need to update that code.
+Note that those without any email in the sheet will not even be generated.
+"""
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(SCRIPT_DIR)
 from ..Infrastructure import SheetAPI

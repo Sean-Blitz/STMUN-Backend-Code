@@ -31,6 +31,7 @@ class AirtableAPI:
         head_delegate_email = fields.get("Head Delegate Email")
         DelegateCount = fields.get("Number of Delegates (Initial)")
         finance_record_id = fields.get("Finance (Linked)")
+        date = fields.get("Registration Date")
         finance_record_id = finance_record_id[0] if finance_record_id else None  # Get the first linked record ID
 
         # 2. Fetch record from the second (Finance) table
@@ -49,7 +50,7 @@ class AirtableAPI:
         Subtotal = int(fin_fields.get("Subtotal", 0))
         DelFee = int(fin_fields.get("Delegation Fee", 0))
 
-        return sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, DelFee, head_delegate_email
+        return sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, DelFee, head_delegate_email, date
 
     def search_formResponse(self, rID):
         url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/{form_response_table_id}/{rID}" #change this next year.
@@ -148,9 +149,8 @@ class AirtableAPI:
         aPhoneNumber = fields["Advisor Phone Number"]
         aEmail = fields["Advisor Email"]
         DelegateCount = fields["Number of Delegates (Initial)"]
-        timestamp = fields["Timestamp"]
-        date = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ").date()
-        datestr = str(date.month)+"/"+str(date.day)+"/"+str(date.year)
+        date = fields["Registration Date"]
+        datestr = date
 
         print(sName + "\n" + sAddress + "\n" + aPhoneNumber + "\n" + aEmail + "\nNumber of delegates: " + str(DelegateCount) + "\n" + datestr)
         return sName, sAddress, aPhoneNumber, aEmail, DelegateCount, date, datestr
