@@ -370,6 +370,9 @@ def sync_with_secondary_storage(
         # Parse "School Name - #1"
         school_name, delegate_num = parse_delegate_key(delegate_key)
 
+        if '\'' in school_name or '\"' in school_name:
+            school_name = school_name.replace('\'', '\\\'').replace('\"', '\\\"')
+
         # Retrieve record_id from Airtable
         record_id = SecondaryStorage.find_airtable_record_id(base_id=base_id, table_name=table_name, school_name=school_name, delegate_num=delegate_num)
 

@@ -11,6 +11,8 @@ if str(AUTOMATIONS_DIR) not in sys.path:
 from SG_Automations import Assignments
 from SG_Automations import ServerRequests
 from SG_Automations.Assignments import Display
+from Infrastructure.todolistManager import todolist
+todo = todolist()
 
 def main():
     options = ["Assignments", "Hashes", "Database Management", "Awards", "Exit"]

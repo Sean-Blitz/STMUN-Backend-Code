@@ -26,7 +26,11 @@ def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list],
     """
     school_folder_ID = Drive.find_subfolder_id(AttendingFolderID, schoolname)
     if school_folder_ID is None:
-        raise RuntimeError(f"Could not find folder for school '{schoolname}'.")
+        try:
+            schoolname = Display.take_text_input(f"Could not find folder for school '{schoolname}'. Please enter the correct school folder name in the drive: https://drive.google.com/drive/folders/{AttendingFolderID}.")
+            school_folder_ID = Drive.find_subfolder_id(AttendingFolderID, schoolname)
+        except Exception as e:
+            raise RuntimeError(f"Could not find folder for school '{schoolname}'.") from e
 
     this_year_folder_ID = Drive.find_subfolder_id(school_folder_ID, YearName)
     if this_year_folder_ID is None:
@@ -41,7 +45,7 @@ def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list],
     cell_map_of_committee = {}
     i = 0
     for school_name_and_number, [committee, committeetype, country] in finalassignments.items():
-        cell_map_of_committee[f"D{i+21}"] = f"{committee} ({committeetype})"
+        cell_map_of_committee[f"D{i+21}"] = f"{country} ({committee})"
         i += 1
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_committee)
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, {"B16": schoolname})
@@ -77,7 +81,7 @@ def add_delegates_to_existing_school_roster(schoolname: str, new_delegates: dict
     cell_map_of_country = {}
     i = row
     for school_name_and_number, [committee, committeetype, country] in new_delegates.items():
-        cell_map_of_committee[f"D{i+21}"] = f"{committee} ({committeetype})"
+        cell_map_of_committee[f"D{i+21}"] = f"{country} ({committee})"
         i += 1
     SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, cell_map_of_committee)
 

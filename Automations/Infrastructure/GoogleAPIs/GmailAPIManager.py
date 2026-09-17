@@ -1,6 +1,7 @@
 import base64
 from Infrastructure.GoogleAPIs.GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
+from Infrastructure.utilities import retry_on_http_error
 
 class GmailAPI(GoogleAPIs):
     def __init__(self, SCOPES = None, CREDENTIALS_FILE = None, TOKEN_FILE = None):
@@ -14,7 +15,7 @@ class GmailAPI(GoogleAPIs):
         creds = self.authenticate()
         self.service = build('gmail', 'v1', credentials=creds)
 
-
+    @retry_on_http_error()
     def extract_strings_and_remove_label(self, message_ids):
         """
         Scans Gmail messages, extracts text between two known strings,
@@ -79,6 +80,7 @@ class GmailAPI(GoogleAPIs):
 
         return extracted_values
 
+    @retry_on_http_error()
     def find_emails_from_sender_with_label(self):
         """
         Finds Gmail messages from a specific sender that have

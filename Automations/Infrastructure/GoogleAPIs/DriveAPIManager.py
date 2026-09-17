@@ -1,6 +1,7 @@
 from googleapiclient.discovery import build
 import re
 from Infrastructure.GoogleAPIs.GoogleAPIsManager import GoogleAPIs
+from Infrastructure.utilities import retry_on_http_error
 
 class DriveAPI(GoogleAPIs):
     def __init__(self, SCOPES = None, CREDENTIALS_FILE = None, TOKEN_FILE = None):
@@ -13,7 +14,8 @@ class DriveAPI(GoogleAPIs):
             raise ValueError("SCOPES must be a list of scopes or None.")
         creds = self.authenticate()
         self.service = build('drive', 'v3', credentials=creds)
-    
+
+    @retry_on_http_error()
     def create_drive_folder(self, name, mime_type, parent_id=None):
         """
         Creates a folder (or any Drive file type).
@@ -42,6 +44,7 @@ class DriveAPI(GoogleAPIs):
 
         return file['id']
 
+    @retry_on_http_error()
     def copy_drive_file(self, file_id, destination_folder_id = None, new_name=None):
         """
         Copies a file in Google Drive.
@@ -66,14 +69,11 @@ class DriveAPI(GoogleAPIs):
         if new_name:
             metadata['name'] = new_name
 
-        copied_file = self.service.files().copy(
-            fileId=file_id,
-            body=metadata,
-            fields='id'
-        ).execute()
+        copied_file = self.service.files().copy(fileId=file_id,body=metadata,supportsAllDrives=True,fields='id').execute()
 
         return copied_file['id']
 
+    @retry_on_http_error()
     def find_subfolder_id(self, parent_folder_id, search_string) -> str | None:
         """
         Finds a single subfolder in a given parent folder whose name contains the search string.
@@ -106,6 +106,7 @@ class DriveAPI(GoogleAPIs):
 
         return None  # No match found
 
+    @retry_on_http_error()
     def move_drive_folder(self, folder_id, new_parent_folder_id):
         """
         Moves a folder into another folder in Google Drive.
@@ -136,6 +137,7 @@ class DriveAPI(GoogleAPIs):
 
         return moved_folder["id"]
 
+    @retry_on_http_error()
     def share_doc_with_user(self, document_id, email, role="writer"):
         """
         Shares a Google Doc with another Google account.
@@ -159,7 +161,7 @@ class DriveAPI(GoogleAPIs):
             sendNotificationEmail=True
         ).execute()
 
-
+    @retry_on_http_error()
     def get_subfolders_as_dict(self, PARENT_FOLDER_ID):
         """
         Returns a dictionary of subfolder names to IDs inside a designated Drive folder,
@@ -194,6 +196,7 @@ class DriveAPI(GoogleAPIs):
 
         return folders
 
+    @retry_on_http_error()
     def find_sheet_id_by_name_contains(self, folder_id, name_contains):
         """
         Searches a specific Drive folder for a Google Sheet whose name
@@ -227,6 +230,7 @@ class DriveAPI(GoogleAPIs):
         # Assume only one match
         return files[0]["id"]
 
+    @retry_on_http_error()
     def list_google_sheet_ids(self, folder_id: str) -> list:
         """
         Returns a list of Google Sheet file IDs inside a Google Drive folder.
@@ -265,6 +269,7 @@ class DriveAPI(GoogleAPIs):
 
         return sheet_ids
 
+    @retry_on_http_error()
     def share_spreadsheet(self, file_id, email, role="commenter"):
         """
         Shares a Google Sheet/File with a specific email address.
@@ -300,6 +305,7 @@ class DriveAPI(GoogleAPIs):
             print(f"An error occurred: {e}")
             return None
 
+    @retry_on_http_error()
     def copy_drive_file_with_number(self, original_file_id, destination_folder_id, new_name_template, sName):
         """
         Copies a Drive file and extracts a number from the original file name.
