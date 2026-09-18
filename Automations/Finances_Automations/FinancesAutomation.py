@@ -15,6 +15,7 @@ from Infrastructure import DriveAPI
 from Infrastructure import SheetAPI
 from Infrastructure import DocAPI
 from Infrastructure import AirtableAPI
+from Infrastructure import TodoList
 BASE_DIR = Path(__file__).resolve().parent
 CREDENTIALS_FILE = str(BASE_DIR / "credentials.json")
 TOKEN_FILE = str(BASE_DIR / "token.json")
@@ -24,6 +25,7 @@ CloudStorageAPI = DriveAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_F
 Sheets = SheetAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
 Document = DocAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
 Database = AirtableAPI()
+Todo = TodoList()
 load_dotenv()
 
 # ----------------------- Controls -----------------------
@@ -157,14 +159,17 @@ for i in range(len(mail_school_names)):
         newInvoice = CreateInvoice(template1_independent if independent == "y" else template1_school, independent)
         checkcell = "B25"
         inputCell = "B28"
+        invoiceNumber = 1
     elif date.month == 12 and date.day <= 20 or date.month == 11 and date.day >= 2: 
         newInvoice = CreateInvoice(template2_independent if independent == "y" else template2_school, independent)
         checkcell = "B26"
         inputCell = "B29"
+        invoiceNumber = 2
     elif date.month == 1 and date.day <= 26 or date.month == 12 and date.day >= 21:
         newInvoice = CreateInvoice(template3_independent if independent == "y" else template3_school, independent)
         checkcell = "B27"
         inputCell = "B30"
+        invoiceNumber = 3
     else:
         print("Today's date error for delegate fee.")
         sys.exit()
@@ -195,6 +200,7 @@ for i in range(len(mail_school_names)):
 
     sheeturl = "https://docs.google.com/spreadsheets/d/" + newInvoice
     print(sheeturl)
+    Todo.place_invoice_link_in_todolist(sName, invoiceNumber, sheeturl)
 
     docID = CloudStorageAPI.copy_drive_file(
         file_id=emailtemplate,

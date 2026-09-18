@@ -5,6 +5,7 @@ from .GoogleAPIs.GmailAPIManager import GmailAPI
 from .GoogleAPIs.DocsAPIManager import DocAPI
 from .GoogleAPIs.SlidesAPIManager import SlideAPI
 from .GoogleAPIs.AppScriptAPIManager import AppScriptAPI
+from todolistManager import TodoList 
 
 from .GoogleAPIs import SheetsAPIManager
 
