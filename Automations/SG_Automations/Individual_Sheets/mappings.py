@@ -1,11 +1,11 @@
 import os
 import time
 import sys
+from typing import cast
 from dotenv import load_dotenv; load_dotenv()
-AttendanceSheetID = os.getenv("AttendanceSheetID")
-if AttendanceSheetID is None:
-    raise ValueError("AttendanceSheetID is not set in the environment variables. Please ensure it is defined in the .env file.")
 from SG_Automations.Individual_Sheets.IndividualSheets import SheetsAPI
+
+AttendanceSheetID = os.environ["AttendanceSheetID"]
 
 def write_data_to_individual_sheet(i, ):
     pass
@@ -58,6 +58,39 @@ def pull_data_from_master_sheet(start_row):
     dmunc_applied = read("Fundraising/Deposits", "AQ")
 
     cells_list = ["Fundraising/Deposits!AT6", "Fundraising/Deposits!AT7", "Fundraising/Deposits!AT8", "Fundraising/Deposits!AT9", "Fundraising/Deposits!AT10", "Fundraising/Deposits!AT11", "Fundraising/Deposits!AT12", "Fundraising/Deposits!AT13"] 
-    SheetsAPI.read_cells(AttendanceSheetID, cells_list)
+    cost_per_conference = SheetsAPI.read_cells(AttendanceSheetID, cells_list)
+
+    gmunc_attendance = read("Conference Attd/Award", "F"); time.sleep(1)
+    gmunc_award = read("Conference Attd/Award", "G")
+    gmunc_points = read("Conference Attd/Award", "H"); time.sleep(1)
+    smunc_attendance = read("Conference Attd/Award", "I")
+    smunc_award = read("Conference Attd/Award", "J"); time.sleep(1)
+    smunc_points = read("Conference Attd/Award", "K")
+    pacmun_attendance = read("Conference Attd/Award", "L")
+    pacmun_award = read("Conference Attd/Award", "M"); time.sleep(1)
+    pacmun_points = read("Conference Attd/Award", "N")
+    scvmun_attendance = read("Conference Attd/Award", "Q"); time.sleep(1)
+    scvmun_award = read("Conference Attd/Award", "R")
+    scvmun_points = read("Conference Attd/Award", "S"); time.sleep(1)
+    nhsmun_attendance = read("Conference Attd/Award", "W")
+    nhsmun_award = read("Conference Attd/Award", "X"); time.sleep(1)
+    nhsmun_points = read("Conference Attd/Award", "Y")
+    international_attendance = read("Conference Attd/Award", "Z"); time.sleep(1)
+    international_award = read("Conference Attd/Award", "AA")
+    international_points = read("Conference Attd/Award", "AB"); time.sleep(1)
+    bmun_attendance = read("Conference Attd/Award", "T")
+    bmun_award = read("Conference Attd/Award", "U"); time.sleep(1)
+    bmun_points = read("Conference Attd/Award", "V")
+    dmunc_attendance = read("Conference Attd/Award", "AC"); time.sleep(1)
+    dmunc_award = read("Conference Attd/Award", "AD")
+    dmunc_points = read("Conference Attd/Award", "AE"); time.sleep(1)
+
+    end_column = SheetsAPI.read_row_from(AttendanceSheetID, "Thursday Meeting Attd", start_row, "F")
+    end_column = [cell for cell in end_column if cell == "Thu"][-1] 
+    thursday_attendances = SheetsAPI.get_2d_range(AttendanceSheetID, "Thursday Meeting Attd", "F5", f"{end_column}{len(first_names) + 4}"); time.sleep(1)
+
+    end_column = SheetsAPI.read_row_from(AttendanceSheetID, "Mock/Training Attd", start_row, "F"); time.sleep(1)
+    end_column = [cell for cell in end_column if cell == "Wed"][-1]
+    training_attendances = SheetsAPI.get_2d_range(AttendanceSheetID, "Mock/Training Attd", "F5", f"{end_column}{len(first_names) + 4}"); time.sleep(1)
 
     names = [f"{first} {last}" for first, last in zip(first_names, last_names)]
