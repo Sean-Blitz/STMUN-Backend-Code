@@ -40,7 +40,7 @@ def assign_new_schools():
             Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
             
             i = 0; iterator = 0
-            finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
+            finalassignments = {} #dictionary with a value being a list of three elements, the committee, commitee type and the country assigned.
             committeeCounts = (GA, Specialized, Crisis)
             while iterator < GA:
                 data = (names, percentages, double, spots, Committeetype)
