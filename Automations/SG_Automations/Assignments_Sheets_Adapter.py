@@ -184,25 +184,39 @@ class Assignments_to_Sheets:
         SheetsAPI.clear_row_from(registration_sheet_ID, "Assignments", schoolrow, "B", num_columns=30)
         SheetsAPI.clear_row_from(registration_sheet_ID, "Assignments", schoolrow + 1, "B", num_columns=30)
 
-    def read_overview(self):
-        names = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2) # Use this function to also detect number of committees
+    def read_conference_information_from_overview(self, ConferenceInfo, ):
+        names: list[str] = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2) # Use this function to also detect number of committees
         percentages = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!D{i+2}" for i in range(len(names))])
         percentages = [float(p.strip('%')) for p in percentages] # Convert "45%" to 45.0
         spots = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!C{i+2}" for i in range(len(names))])
         spots = [int(s) for s in spots] # Convert spot counts to integers
         double = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!E{i+2}" for i in range(len(names))])
-        type = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!F{i+2}" for i in range(len(names))])
+        type: list[int] = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!F{i+2}" for i in range(len(names))])
         raw_ranges = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!H{i+2}" for i in range(len(names))])
         ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
-        return names, percentages, spots, double, type, ranges, raw_ranges
+        committees_wanting_suggestions = self.find_committees_wanting_suggestions()
 
-    def read_school_and_current_committees_data(self, selectedSchool):
-        names, percentages, spots, double, Committeetype, _, _ = self.read_overview()
+        for i in range(len(names)):
+            if double[i] == "TRUE" or double[i] == "True":
+                double_status = True
+            elif double[i] == "FALSE" or double[i] == "False":
+                double_status = False
+            else:
+                Display.display("Error in sheet Overview, where needing suggestions status is neither TRUE/True or FALSE/False")
+                sys.exit(0)
+            if names[i] in committees_wanting_suggestions:
+                need_suggestion = True
+            else:
+                need_suggestion = False 
+            ConferenceInfo.add_committee(names[i], spots[i], percentages[i],
+                      type[i], double_status, need_suggestion)
+
+    def read_school_and_current_committees_data(self, selectedSchool, schoolInfo):
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)
-        output = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
-        #RegionBloc, CountryPref1, CountryPref2, CountryPref3, CountryPref4, CountryPref5, SecurityCouncil, numdels
+        RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
+        countryprefs = [country1, country2, country3, country4, country5]
         advisorEmail, HeadDelegateEmail = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!K{row}", f"Responses!O{row}"])
-        return names, percentages, spots, double, Committeetype, output, advisorEmail, HeadDelegateEmail
+        schoolInfo.add_school(advisorEmail, HeadDelegateEmail, selectedSchool, countryprefs, RegionBloc, SecurityCouncil,int(numdels))
 
     def map_cells(self, finalassignments: dict, new_list_of_countries_and_committees: list[list[str]]):
         availableCountries = self.available_countries_and_coordinates

@@ -23,7 +23,11 @@ def assign_new_schools():
     unassignedSchools = SheetsAPI.find_schools_not_yet_assigned("Responses", "Assignments")
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
-        names, percentages, spots, double, Committeetype, output, advisorEmail, HeadDelegateEmail = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
+        Delegates = SchoolDelegates()
+        SchoolInfo = SchoolInformation()
+        ConferenceInfo = ConferenceInformation()
+        names, percentages, spots, double, Committeetype, output, advisorEmail, HeadDelegateEmail = SheetsAPI.read_school_and_current_committees_data(selectedSchool, SchoolInfo)
+        SheetsAPI.read_conference_information_from_overview(ConferenceInfo, )
         availableCountries, _ = SheetsAPI.get_available_countries_and_backup_storage()
         single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
         RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)

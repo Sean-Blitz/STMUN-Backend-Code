@@ -38,7 +38,6 @@ def generate_dictionary_of_suggestions(finalassignments: dict, numdels: int, ava
             "Lebanon","Luxembourg","Haiti","Paraguay","Panama","Nigeria","Myanmar","Mongolia","Ethiopia","Estonia","Bulgaria","D.R.C.","Qatar","Ecuador",
             "Uruguay","D.P.R.K.","Iran","Israel","Cuba","Costa Rica","Philippines","Lithuania"}
 
-    committees_wanting_suggestions = SheetsAPI.find_committees_wanting_suggestions()
     blacklist = os.getenv("BLACKLIST")
     if blacklist is not None:
         blacklist = [school.strip() for school in blacklist.lower().split(",") if school.strip()]
