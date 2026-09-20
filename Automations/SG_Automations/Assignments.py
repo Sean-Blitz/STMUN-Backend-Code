@@ -10,6 +10,7 @@ from SG_Automations import ServerRequests
 from SG_Automations import AssignmentsFunctions
 from SG_Automations import RosterConnector
 from SG_Automations import generateSuggestions
+from DataManager import SchoolDelegates, SchoolInformation, ConferenceInformation
 
 # ---------- CONTROLS -----------
 # For things related to the sheets, visit SheetsAPIManager.py to change the information.

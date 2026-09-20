@@ -25,7 +25,14 @@ class SchoolInformation:
 
     def add_school(self, advisor, advisor_email, head_del_email, schoolname, 
                    country_preferences, region_bloc, security_council_preference, numdels):
-        pass
+        self.advisor = advisor
+        self.advisor_email = advisor_email
+        self.head_del_email = head_del_email
+        self.schoolname = schoolname
+        self.country_preferences = country_preferences
+        self.region_bloc = region_bloc
+        self.security_council_preference = security_council_preference
+        self.numdels = numdels
 
 class ConferenceInformation:
     def __init__(self, available_countries):
