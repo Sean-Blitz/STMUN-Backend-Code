@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from Automations.SG_Automations.Entrypoint import Todo
 from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets, registration_sheet_ID
 from Infrastructure import DisplayClass
 from difflib import get_close_matches
@@ -9,6 +10,7 @@ from SG_Automations import ServerRequests
 from SG_Automations import AssignmentsFunctions
 from SG_Automations import RosterConnector
 from SG_Automations import generateSuggestions
+from DataManager import SchoolDelegates, SchoolInformation, ConferenceInformation
 
 # ---------- CONTROLS -----------
 # For things related to the sheets, visit SheetsAPIManager.py to change the information.
@@ -43,7 +45,7 @@ def assign_new_schools():
             Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
             
             i = 0; iterator = 0
-            finalassignments = {} #dictionary with a value being a list of two elements, the committee and the country assigned.
+            finalassignments = {} #dictionary with a value being a list of three elements, the committee, commitee type and the country assigned.
             committeeCounts = (GA, Specialized, Crisis)
             while iterator < GA:
                 data = (names, percentages, double, spots, Committeetype)
@@ -136,16 +138,21 @@ def assign_new_schools():
             if new_roster_ID is None or this_year_folder_ID is None:
                 Display.display("Error: Roster generation failed. Please check the code and try again.")
                 sys.exit()
-                
-            Display.display(f"Roster generated and assignments added. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
+
+            roster_link = "https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit"
+            Display.display(f"Roster generated and assignments added. Please check it for errors: {roster_link}")
             while (cont := Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")) != "yes":
                 cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")
             if cont == "no":
                 Display.display("Email draft skipped. Please make it manually.")
                 sys.exit()
-            new_email_doc_ID = RosterConnector.draft_email_for_school_and_share_roster(selectedSchool, advisorEmail, HeadDelegateEmail, new_roster_ID, this_year_folder_ID)
+            school_row = new_email_doc_ID = RosterConnector.draft_email_for_school_and_share_roster(selectedSchool, advisorEmail, HeadDelegateEmail, new_roster_ID, this_year_folder_ID)
             Display.display(f"Email draft created: https://docs.google.com/document/d/{new_email_doc_ID}/edit")
             unassignedSchools.remove(selectedSchool)
+            Todo.flag_assignments_made_and_place_roster_link(selectedSchool, roster_link)
+            shared = Display.take_text_input("Roster email sent? (y/n)")
+            if shared != "n":
+                Todo.flag_roster_sent(school_row)
 
 def add_delegates():
     # Goal: Add delegates to a school that already exists. Scan the sheet for user Display.take_text_inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
