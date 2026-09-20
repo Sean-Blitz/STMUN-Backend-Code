@@ -100,7 +100,9 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
 
         delegate_key = selected_choice.split(":")[0].strip() #read result
         current_assignment = finalassignments[delegate_key][0]
-        new_committee = Display.typing_with_pre_fill(f"Enter new committee for {delegate_key} (Current: {current_assignment}):", current_assignment)
+        new_committee = Display.display_list_of_selections(GA_Names + Spec_Names + Crisis_Names, "Choose new committee", "Exit (keep same committee)")
+        if new_committee == "Exit":
+            new_committee = current_assignment
 
         #Helper function to check double committees.
         def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):

@@ -11,8 +11,8 @@ if str(AUTOMATIONS_DIR) not in sys.path:
 from SG_Automations import Assignments
 from SG_Automations import ServerRequests
 from SG_Automations.Assignments import Display
-from Infrastructure.todolistManager import todolist
-todo = todolist()
+from Infrastructure import TodoList
+Todo = TodoList()
 
 def main():
     options = ["Assignments", "Hashes", "Database Management", "Awards", "Exit"]
@@ -23,8 +23,6 @@ def main():
         action = Display.select_option_with_pointer(options, "Great! Select the specific option.", "SCVMUN CLI - Assignments Menu")
         if action == "Assign New Schools":
             Assignments.assign_new_schools()
-            #todo.flag_assignments_made()
-            #todo.flag_roster_made_with_link()
         elif action == "Add Delegates to a School":
             Assignments.add_delegates()
         elif action == "Drop Delegates from a School":

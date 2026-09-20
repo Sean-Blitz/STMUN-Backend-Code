@@ -1,3 +1,4 @@
+import re
 import string
 from googleapiclient.discovery import build
 from .GoogleAPIsManager import GoogleAPIs
@@ -235,7 +236,7 @@ class SheetAPI(GoogleAPIs):
         Takes a number as input and returns the corresponding column letter.
         """
         alphabet = string.ascii_uppercase
-        result = ""
+        result = None
         if n >= 0 and n <= 25:
             result = alphabet[n]
         if n > 25:
@@ -698,6 +699,58 @@ class SheetAPI(GoogleAPIs):
             
         return collected_data
 
+    def set_cell_background_color(self, spreadsheet_id, sheet_id, row, col, red=1.0, green=1.0, blue=1.0):
+        """
+        Changes the background color of a specific cell in a Google Sheet.
+
+        Args:
+            service: Authenticated Google Sheets API service object.
+            spreadsheet_id (str): The ID of the spreadsheet.
+            sheet_id (int): The numeric ID of the specific sheet/tab (gid).
+            row (int): 0-indexed row number (e.g., row 1 is index 0).
+            col (int): 0-indexed column number (e.g., column A is index 0).
+            red (float): Red color component from 0.0 to 1.0.
+            green (float): Green color component from 0.0 to 1.0.
+            blue (float): Blue color component from 0.0 to 1.0.
+        """
+        body = {
+            "requests": [{"repeatCell": {"range": {"sheetId": sheet_id,"startRowIndex": row,"endRowIndex": row + 1,"startColumnIndex": col,"endColumnIndex": col + 1,},
+                        "cell": {"userEnteredFormat": {"backgroundColor": {"red": red,"green": green,"blue": blue,}}},
+                        "fields": "userEnteredFormat.backgroundColor",}}]}
+
+        return self.service.spreadsheets().batchUpdate(
+            spreadsheet_id=spreadsheet_id,
+            body=body
+        ).execute()
+
+    def a1_to_rowcol(self, a1_string, zero_indexed=True):
+        """
+        Converts an A1 notation string (e.g., "B3", "$C$10") to (row, column) numbers.
+        Handles absolute '$' references automatically.
+        """
+        # Remove any absolute cell reference signs ($)
+        clean_string = a1_string.replace('$', '').upper()
+        
+        # Match the column letter part and the row number part
+        match = re.match(r"^([A-Z]+)([0-9]+)$", clean_string)
+        if not match:
+            raise ValueError(f"Invalid A1 notation format: {a1_string}")
+            
+        col_str, row_str = match.groups()
+        
+        # Convert column letters to a number (Base 26)
+        col = 0
+        for char in col_str:
+            col = col * 26 + (ord(char) - ord('A') + 1)
+            
+        row = int(row_str)
+        
+        # Adjust for zero-indexing if requested
+        if zero_indexed:
+            return row - 1, col - 1
+        
+        return row, col
+      
     def get_2d_range(self, spreadsheet_id: str, sheet_name: str, top_left: str, bottom_right: str) -> list[list]:
         """
         Reads a rectangular range from a Google Sheet and returns a 2D list of values.
