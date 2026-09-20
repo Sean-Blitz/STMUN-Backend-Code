@@ -15,11 +15,42 @@ STMUN-Backend-Code
    |-- CopyingInvoices.py
    |-- FinancesAutomation.py
    |-- InvoiceFinalData.py
+   |-- .env
 |-- PR Automations
    |-- CopyBadges.py
    |-- CopyPlacards.py
 |-- SG Automations
+   |-- Entrypoint.py
    |-- Assignments.py
-   |-- IndividualSheets.py
+   |-- Assignments_Sheets_Adapter.py
+   |-- AssignmentsFunctions.py
+   |-- generateSuggestions.py
+   |-- RosterConnector.py
+   |-- ServerRequests.py
+   |-- .env
+   |-- Individual_Sheets
+      |-- .env
+      |-- mappings.py
+      |-- IndividualSheets.py
+|-- Infrastructure
+   |-- Airtable
+      |-- AirtableAPIManager.py
+      |-- .env
+   |-- CSV
+      |-- CSVManager.py
+   |-- Display
+      |-- DisplayManager.py
+   |-- GoogleAPIs
+      |-- AppScriptAPIManager.py
+      |-- DocsAPIManager.py
+      |-- DriveAPIManager.py
+      |-- GmailAPIManager.py
+      |-- GoogleAPIsManager.py
+      |-- SheetsAPIManager.py
+      |-- SlidesAPIManager.py
+      |-- credentials.json
+      |-- tokens.json
+   |-- todolistManager.py
+   |-- utilities.py
 
 `````

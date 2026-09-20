@@ -750,3 +750,28 @@ class SheetAPI(GoogleAPIs):
             return row - 1, col - 1
         
         return row, col
+      
+    def get_2d_range(self, spreadsheet_id: str, sheet_name: str, top_left: str, bottom_right: str) -> list[list]:
+        """
+        Reads a rectangular range from a Google Sheet and returns a 2D list of values.
+        
+        :param service: An authorized Google Sheets API service object
+        :param spreadsheet_id: The ID of the spreadsheet
+        :param sheet_name: Name of the sheet tab (e.g., "Sheet1")
+        :param top_left: Top-left cell coordinate (e.g., "A1")
+        :param bottom_right: Bottom-right cell coordinate (e.g., "D10")
+        :return: A 2D list where each inner list represents a row of cell values
+        """
+        # Construct A1 notation range (e.g., "Sheet1!A1:D10")
+        range_name = f"{sheet_name}!{top_left}:{bottom_right}"
+        
+        # Call the Sheets API
+        result = self.service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=range_name
+        ).execute()
+        
+        # Extract row values; returns empty list if range contains no data
+        rows = result.get('values', [])
+        
+        return rows
