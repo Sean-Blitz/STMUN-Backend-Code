@@ -10,6 +10,11 @@ from SG_Automations import ServerRequests
 from SG_Automations import AssignmentsFunctions
 from SG_Automations import RosterConnector
 from SG_Automations import generateSuggestions
+
+#Storage objects. SchoolDelegates stores information for delegates assigned with this current session of the program.
+#SchoolInformation stores information for the current school being assigned.
+#ConferenceInformation stores information for the conference as a whole, including committee names, available countries, and other information.
+#Ensure that you initialize them new every time you switch to a new school, otherwise the data will be stale and incorrect!
 from DataManager import SchoolDelegates, SchoolInformation, ConferenceInformation
 
 # ---------- CONTROLS -----------
@@ -28,55 +33,51 @@ def assign_new_schools():
         Delegates = SchoolDelegates()
         SchoolInfo = SchoolInformation()
         ConferenceInfo = ConferenceInformation()
-        names, percentages, spots, double, Committeetype, output, advisorEmail, HeadDelegateEmail = SheetsAPI.read_school_and_current_committees_data(selectedSchool, SchoolInfo)
-        SheetsAPI.read_conference_information_from_overview(ConferenceInfo, )
-        availableCountries, _ = SheetsAPI.get_available_countries_and_backup_storage()
-        single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
-        RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
-        CountryPrefs = [country1, country2, country3, country4, country5]
-        AssignmentsFunctions.print_data_to_terminal_with_prompt(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=True)
-        GA, Specialized, Crisis = AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, numdels)
+        SheetsAPI.read_school_and_current_committees_data(selectedSchool, SchoolInfo)
+        SheetsAPI.read_conference_information_from_overview(ConferenceInfo)
+        SheetsAPI.get_available_countries_and_backup_storage(ConferenceInfo)
+        AssignmentsFunctions.print_data_to_terminal(SchoolInfo.region_bloc, SchoolInfo.country_preferences, SchoolInfo.security_council_preference, SchoolInfo.numdels, newschool=True)
+        GA, Specialized, Crisis = AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, SchoolInfo.numdels)
 
-        if GA + Specialized > numdels:
+        if GA + Specialized > SchoolInfo.numdels:
             Display.display("Error: The total number of delegates does not match the expected count.")
             sys.exit()
+        Display.go_one_line_up(); Display.clear_current_line(); Display.go_one_line_up(); Display.clear_current_line()
+        Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
+        
+        i = 0; iterator = 0
+        finalassignments = {} #dictionary with a value being a list of three elements, the committee, commitee type and the country assigned.
+        committeeCounts = (GA, Specialized, Crisis)
+        while iterator < GA:
+            data = (names, percentages, double, spots, Committeetype)
+            finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
+        iterator = 0
+        while iterator < Specialized:
+            data = (names, percentages, double, spots, Committeetype)
+            finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
+        iterator = 0
+        if SecurityCouncil.lower() != "true" or SecurityCouncil.lower() != "yes":
+            CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
         else:
-            Display.go_one_line_up(); Display.clear_current_line(); Display.go_one_line_up(); Display.clear_current_line()
-            Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
-            
-            i = 0; iterator = 0
-            finalassignments = {} #dictionary with a value being a list of three elements, the committee, commitee type and the country assigned.
-            committeeCounts = (GA, Specialized, Crisis)
-            while iterator < GA:
-                data = (names, percentages, double, spots, Committeetype)
-                finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
-            iterator = 0
-            while iterator < Specialized:
-                data = (names, percentages, double, spots, Committeetype)
-                finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
-            iterator = 0
-            if SecurityCouncil.lower() != "true" or SecurityCouncil.lower() != "yes":
-                CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
+            CrisisInd = CrisisIndices
+        while iterator < Crisis:
+            data = (names, percentages, double, spots, Committeetype)
+            finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts) 
+        
+        GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
+        all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
+        for i in range(len(names)): #build the lists above to pass into functions for verification.
+            if i in GaIndices:
+                GA_Names.append(names[i])
+            elif i in SpecIndices:
+                Spec_Names.append(names[i])
+            elif i in CrisisIndices:
+                Crisis_Names.append(names[i])
             else:
-                CrisisInd = CrisisIndices
-            while iterator < Crisis:
-                data = (names, percentages, double, spots, Committeetype)
-                finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts) 
-            
-            GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
-            all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
-            for i in range(len(names)): #build the lists above to pass into functions for verification.
-                if i in GaIndices:
-                    GA_Names.append(names[i])
-                elif i in SpecIndices:
-                    Spec_Names.append(names[i])
-                elif i in CrisisIndices:
-                    Crisis_Names.append(names[i])
-                else:
-                    Display.display("There is a committee name error.")
-                    sys.exit()
-                if not i in all_single_indices:
-                    Double_Committees.add(names[i])
+                Display.display("There is a committee name error.")
+                sys.exit()
+            if not i in all_single_indices:
+                Double_Committees.add(names[i])
 
             Display.display("Assignments for this school:")
             finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
@@ -167,8 +168,10 @@ def add_delegates():
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
         selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
 
-    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage_for_already_assigned_school(selectedSchool)
-    names, percentages, spots, double, Committeetype, output, _, _ = SheetsAPI.read_school_and_current_committees_data(selectedSchool)
+    SchoolInfo = SchoolInformation()
+    ConferenceInfo = ConferenceInformation()
+    SheetsAPI.read_school_and_current_committees_data(selectedSchool, SchoolInfo)
+    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage(ConferenceInfo, selectedSchool, already_assigned_school=True)
     single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
     RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
     CountryPrefs = [country1, country2, country3, country4, country5]
@@ -264,7 +267,7 @@ def drop_delegates():
     # Finally, insert them back into the original pool by reading their committee name, and slotting them back to the first empty cell. Request that these assignments be deleted from the database.
     selectedSchool = Display.take_text_input("Please input the school to drop delegates from.")
     CurrentSchools = SheetsAPI.get_list_of_current_schools_names()
-    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage_for_already_assigned_school(selectedSchool)
+    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool, already_assigned_school=True)
     while selectedSchool not in CurrentSchools: #closest match logic for input errors.
         ClosestMatch = get_close_matches(selectedSchool, CurrentSchools, n=1, cutoff=0.6)
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")

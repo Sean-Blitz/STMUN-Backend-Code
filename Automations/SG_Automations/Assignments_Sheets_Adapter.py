@@ -121,26 +121,7 @@ class Assignments_to_Sheets:
         del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
         return finalassignments, cell_map, assigned_cell_map
 
-    def get_available_countries_and_backup_storage_for_already_assigned_school(self, selectedSchool: str):
-        names = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2) # Use this function to also detect number of committees
-        raw_ranges = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!H{i+2}" for i in range(len(names))])
-        ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
-
-        self.available_countries_and_coordinates = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID)  # Populate availableCountries map
-        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
-
-        formatted_ranges = [f"Remaining Assignments!{r}" for r in raw_ranges if r] # this block of code saves a backup as a dictionary. Key: cell coordinate. Value: cell value.
-        formatted_ranges.append(f"Assignments!B{schoolrow}:AE{schoolrow}")
-        formatted_ranges.append(f"Assignments!B{schoolrow+1}:AE{schoolrow+1}")
-        backup = SheetsAPI.read_data_for_backup(registration_sheet_ID, formatted_ranges)
-
-        availableCountries = []
-        for values in self.available_countries_and_coordinates.values():
-            availableCountries.append(values)
-
-        return availableCountries, backup
-
-    def get_available_countries_and_backup_storage(self):
+    def get_available_countries_and_backup_storage(self, ConferenceInfo, selectedSchool = None, already_assigned_school = False):
         names = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2) # Use this function to also detect number of committees
         raw_ranges = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!H{i+2}" for i in range(len(names))])
         ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
@@ -148,6 +129,10 @@ class Assignments_to_Sheets:
         self.available_countries_and_coordinates = SheetsAPI.pull_sheet_data(ranges, registration_sheet_ID)  # Populate availableCountries map
 
         formatted_ranges = [f"Remaining Assignments!{r}" for r in raw_ranges if r] # this block of code saves a backup as a dictionary. Key: cell coordinate. Value: cell value.
+        if already_assigned_school and selectedSchool:
+            schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+            formatted_ranges.append(f"Assignments!B{schoolrow}:AE{schoolrow}")
+            formatted_ranges.append(f"Assignments!B{schoolrow+1}:AE{schoolrow+1}")
 
         backup = SheetsAPI.read_data_for_backup(registration_sheet_ID, formatted_ranges)
 
@@ -155,7 +140,8 @@ class Assignments_to_Sheets:
         for values in self.available_countries_and_coordinates.values():
             availableCountries.append(values)
 
-        return availableCountries, backup
+        ConferenceInfo.add_available_assignments(availableCountries)
+        ConferenceInfo.add_backup(backup)
 
     def get_existing_assignments_as_list(self, selectedSchool: str):
         """
@@ -184,14 +170,14 @@ class Assignments_to_Sheets:
         SheetsAPI.clear_row_from(registration_sheet_ID, "Assignments", schoolrow, "B", num_columns=30)
         SheetsAPI.clear_row_from(registration_sheet_ID, "Assignments", schoolrow + 1, "B", num_columns=30)
 
-    def read_conference_information_from_overview(self, ConferenceInfo, ):
+    def read_conference_information_from_overview(self, ConferenceInfo):
         names: list[str] = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2) # Use this function to also detect number of committees
         percentages = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!D{i+2}" for i in range(len(names))])
         percentages = [float(p.strip('%')) for p in percentages] # Convert "45%" to 45.0
         spots = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!C{i+2}" for i in range(len(names))])
         spots = [int(s) for s in spots] # Convert spot counts to integers
         double = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!E{i+2}" for i in range(len(names))])
-        type: list[int] = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!F{i+2}" for i in range(len(names))])
+        type: list[str] = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!F{i+2}" for i in range(len(names))])
         raw_ranges = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!H{i+2}" for i in range(len(names))])
         ranges = {names[i]: raw_ranges[i] for i in range(len(names))}
         committees_wanting_suggestions = self.find_committees_wanting_suggestions()
@@ -208,8 +194,7 @@ class Assignments_to_Sheets:
                 need_suggestion = True
             else:
                 need_suggestion = False 
-            ConferenceInfo.add_committee(names[i], spots[i], percentages[i],
-                      type[i], double_status, need_suggestion)
+            ConferenceInfo.add_committee(names[i], spots[i], percentages[i], ranges[names[i]], type[i], double_status, need_suggestion)
 
     def read_school_and_current_committees_data(self, selectedSchool, schoolInfo):
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)

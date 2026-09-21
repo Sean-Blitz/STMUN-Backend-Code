@@ -36,20 +36,23 @@ class SchoolInformation:
 class ConferenceInformation:
     def __init__(self):
         self.committee_names: list = []
-        self.available_countries: list[str]
+        self.available_countries: list[list[str]]
         self.single_committee_names: list[str] = []
         self.committee_types: list[str] = []
         self.committee_percentage_filled: list[float] = []
         self.committee_spots = []
         self.needing_suggestions_committee_names: list[str] = []
+        self.ranges: list[str] = []
+        self.backup: dict[str, str] = {}
 
-    def add_committee(self, committee_name: str, spots: int, percentage_filled: float,
+    def add_committee(self, committee_name: str, spots: int, percentage_filled: float, range,
                       type="GA", single_committee=False, need_suggestion = False):
         if committee_name not in self.committee_names:
             self.committee_names.append(committee_name)
             self.committee_spots.append(spots)
             self.committee_percentage_filled.append(percentage_filled)
             self.committee_types.append(type)
+            self.ranges.append(range)
         else:
             raise ValueError(f"Committee name {committee_name} is not unique. Ensure that names in sheets are not repeated.")
         
@@ -72,3 +75,6 @@ class ConferenceInformation:
 
     def add_available_assignments(self, available_countries):
         self.available_countries = available_countries
+
+    def add_backup(self, backup):
+        self.backup = backup

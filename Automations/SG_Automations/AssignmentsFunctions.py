@@ -171,7 +171,7 @@ def update_dictionary(new_country, old_country, finalassignments, delegate_key, 
                 availableCountries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries, for the twin delegate.
     return finalassignments
 
-def print_data_to_terminal_with_prompt(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=True):
+def print_data_to_terminal(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=True):
     Display.display("Region block most preferred:", "\033[1m" + RegionBloc + "\033[0m") #Display.display country preferences in bold for visibility.
     for i, country in enumerate(CountryPrefs):
         Display.display(f"Country preference {i + 1}:", "\033[1m" + country + "\033[0m")
@@ -185,24 +185,6 @@ def get_input_for_committee_assignment_counts(doubleGAs, numdels):
     GA, Specialized = verify_committee_number_input(GA, Specialized, doubleGAs)
     Crisis = numdels - GA - Specialized
     return GA, Specialized, Crisis
-
-def read_committees_overview_from_sheet(Committeetype, double):
-    indices = {"ga": [], "specialized": [], "crisis": []}
-    single_indices = {"ga": [], "specialized": [], "crisis": []}
-    for index, (kind, is_double) in enumerate(zip(Committeetype, double)):
-        kind = kind.lower().replace(".", "").strip()  # Normalize the committee type string
-
-        if kind in indices:
-            indices[kind].append(index)
-
-            if is_double.lower() == "false":
-                single_indices[kind].append(index)
-
-    GaIndices = indices["ga"]
-    SpecIndices = indices["specialized"]
-    CrisisIndices = indices["crisis"]
-
-    return single_indices, GaIndices, SpecIndices, CrisisIndices
 
 def add_assignments(finalassignments, availableCountries, Double_Committees, suggestions_matrix=None):
     """
