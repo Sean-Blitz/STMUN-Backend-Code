@@ -13,6 +13,7 @@ roster_sent = "Roster Sent"
 invoice_column_names = ["Invoice 1", "Invoice 2", "Invoice 3", "Final Invoice"]
 invoice_sent_column_names = ["Sent (1)", "Sent (2)", "Sent (3)", "Sent (F)"]
 invoice_email_col_name = "Email Doc"
+countries_assigned_col_name = "Countries Assigned"
 
 class TodoList():
     def __init__(self):
@@ -87,3 +88,14 @@ class TodoList():
 
         self.__place_value_in_cell(school_row, invoice_link_col, link)
         self.__mark_or_unmark_to_do(school_row, invoice_email_link_col, todo=True)  # Mark the to-do for invoice email sending
+
+    def place_countries_assigned_in_todolist(self, school_name, countries: set):
+        """Places the countries assigned in the to-do list for a specific school."""
+        school_row = SheetsAPI.find_row_by_string(self.todolist_sheet_id, todolist_sheetname, "A", school_name)
+        # Find column letter for roster_link header
+        country_col = self.__get_header_column(countries_assigned_col_name)
+
+        # Convert set of countries to a comma-separated string
+        countries_str = ", ".join(sorted(countries))
+
+        self.__place_value_in_cell(school_row, country_col, countries_str)
