@@ -1,5 +1,3 @@
-import os
-
 from Infrastructure.GoogleAPIs.DriveAPIManager import DriveAPI
 from Infrastructure.GoogleAPIs.SheetsAPIManager import SheetAPI
 from dotenv import load_dotenv; load_dotenv()
@@ -19,7 +17,7 @@ class TodoList():
     def __init__(self):
         self.drive = DriveAPI()
         self.sheet = SheetAPI()
-        self.todolist_sheet_id = os.getenv("todolist_sheet_id")
+        self.todolist_sheet_id = "1XNjgYkJc57aOl0QUSuX5Vt-otWIj2CHeKMKKLApqM48"
         self.headers = self.__get_header_columns_list()
 
     def __get_header_columns_list(self):
@@ -33,7 +31,7 @@ class TodoList():
 
     def __place_value_in_cell(self, row, column, value):
         """Places a value in a specific cell in the to-do list."""
-        cell_address = f"{column}{row}"
+        cell_address = f"{todolist_sheetname}!{column}{row}"
         cell_value_map = {cell_address: value}
         SheetsAPI.write_values_to_sheet_from_dict(spreadsheet_id=self.todolist_sheet_id, cell_value_map=cell_value_map)
 
@@ -43,9 +41,9 @@ class TodoList():
         cell = f"{col_number}{school_row}"
         row, col = SheetsAPI.a1_to_rowcol(cell) # returns 0 indexed int conversions
         if todo == True:
-            SheetsAPI.set_cell_background_color(self.todolist_sheet_id, row, col, 1.0, 1.0, 0.0)  # Yellow color
+            SheetsAPI.set_cell_background_color(self.todolist_sheet_id, todolist_sheetname, row, col, 1.0, 1.0, 0.0)  # Yellow color
         elif todo == False:
-            SheetsAPI.set_cell_background_color(self.todolist_sheet_id, row, col, 1.0, 1.0, 1.0)  # White color
+            SheetsAPI.set_cell_background_color(self.todolist_sheet_id, todolist_sheetname, row, col, 1.0, 1.0, 1.0)  # White color
         else:
             raise ValueError("Invalid value for variable 'todo'. Must be True or False.")
 
@@ -58,8 +56,8 @@ class TodoList():
         roster_sent_col = self.__get_header_column(roster_sent)
 
         # Construct A1 notation cell references using school_row
-        assignments_cell = f"{assignments_col}{school_row}"
-        roster_link_cell = f"{roster_link_col}{school_row}"
+        assignments_cell = f"{todolist_sheetname}!{assignments_col}{school_row}"
+        roster_link_cell = f"{todolist_sheetname}!{roster_link_col}{school_row}"
 
         # Map cell addresses to their new values (True checks the checkbox in Sheets)
         cell_value_map = {assignments_cell: True,roster_link_cell: link}
@@ -84,10 +82,8 @@ class TodoList():
         # Find column letter for roster_link header, based on invoice number
         invoice_column = invoice_column_names[invoice_number - 1]  # Adjust for 0-based index
         invoice_link_col = self.__get_header_column(invoice_column)
-        invoice_email_link_col = self.__get_header_column(invoice_email_col_name)
 
         self.__place_value_in_cell(school_row, invoice_link_col, link)
-        self.__mark_or_unmark_to_do(school_row, invoice_email_link_col, todo=True)  # Mark the to-do for invoice email sending
 
     def place_countries_assigned_in_todolist(self, school_name, countries: set):
         """Places the countries assigned in the to-do list for a specific school."""

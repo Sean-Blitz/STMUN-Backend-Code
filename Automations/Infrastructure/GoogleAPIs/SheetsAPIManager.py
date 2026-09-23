@@ -699,7 +699,15 @@ class SheetAPI(GoogleAPIs):
             
         return collected_data
 
-    def set_cell_background_color(self, spreadsheet_id, sheet_id, row, col, red=1.0, green=1.0, blue=1.0):
+    def get_sheet_id_by_name(self, spreadsheet_id: str, sheet_name: str) -> int:
+        """Fetches the numeric sheetId (gid) for a given sheet/tab name."""
+        spreadsheet = self.service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+        for sheet in spreadsheet.get('sheets', []):
+            if sheet['properties']['title'] == sheet_name:
+                return sheet['properties']['sheetId']
+        raise ValueError(f"Sheet with name '{sheet_name}' not found.")
+
+    def set_cell_background_color(self, spreadsheet_id, sheet_name, row, col, red=1.0, green=1.0, blue=1.0):
         """
         Changes the background color of a specific cell in a Google Sheet.
 
@@ -713,13 +721,14 @@ class SheetAPI(GoogleAPIs):
             green (float): Green color component from 0.0 to 1.0.
             blue (float): Blue color component from 0.0 to 1.0.
         """
+        sheet_id = self.get_sheet_id_by_name(spreadsheet_id, sheet_name)
         body = {
             "requests": [{"repeatCell": {"range": {"sheetId": sheet_id,"startRowIndex": row,"endRowIndex": row + 1,"startColumnIndex": col,"endColumnIndex": col + 1,},
                         "cell": {"userEnteredFormat": {"backgroundColor": {"red": red,"green": green,"blue": blue,}}},
                         "fields": "userEnteredFormat.backgroundColor",}}]}
 
         return self.service.spreadsheets().batchUpdate(
-            spreadsheet_id=spreadsheet_id,
+            spreadsheetId=spreadsheet_id,
             body=body
         ).execute()
 
