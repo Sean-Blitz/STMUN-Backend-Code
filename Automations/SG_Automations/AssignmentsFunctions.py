@@ -5,6 +5,7 @@ from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets
 from Infrastructure import DisplayClass
 from Infrastructure import CSV
 from Infrastructure import AirtableAPI
+from SG_Automations.DataManager import ConferenceInformation, SchoolInformation, SchoolDelegates
 from dotenv import load_dotenv; load_dotenv()
 
 SheetsAPI = Assignments_to_Sheets()
@@ -33,43 +34,38 @@ def verify_committee_number_input(GA, Specialized, DoubleGAs):
         Specialized = int(Specialized)
     return GA, Specialized
     
-def assign_committee(CommitteeTypeSelection, Indices: list, data: tuple, finalassignments: dict, iterator, i, singleIndices: dict, selectedSchool, committeeCount: tuple):
+def assign_committee(ConferenceInfo: ConferenceInformation, SchoolInfo: SchoolInformation, Delegates: SchoolDelegates, iterator, i, CommitteeTypeSelection):
     """
     Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
     """
     #sets up variables
     if CommitteeTypeSelection == "GA":
-        singleIndices = singleIndices["ga"]
-        committeeCount = committeeCount[0]
+        committeeCount = SchoolInfo.GA_count
     elif CommitteeTypeSelection == "Specialized":
-        singleIndices = singleIndices["specialized"]
-        committeeCount = committeeCount[1]
+        committeeCount = SchoolInfo.Spec_count
     elif CommitteeTypeSelection == "Crisis":
-        singleIndices = singleIndices["crisis"]
-        committeeCount = committeeCount[2]
+        committeeCount = SchoolInfo.Crisis_count
     else:
         Display.display("Error in Committee Type Selection.")
         sys.exit()
-    names, percentages, double, spots, Committeetype = data
 
-    row = min(Indices, key = lambda x: percentages[x]) #find the lowest percentage GA committee
-    committee = names[row]
-    if double[row].lower() == "true" and committeeCount - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
-        finalassignments[f"{selectedSchool} - #{i+2}"] = [committee, Committeetype[row], ""]
-        percentages[row] += 2 * (100/spots[row]) #update percentage as if two delegates were added.
+    committee = ConferenceInfo.get_lowest_committee_percentage_for_type(CommitteeTypeSelection)
+    if ConferenceInfo.committee_double_status[committee] == True and committeeCount - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
+        Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+1)
+        Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+2)
+        ConferenceInfo.committee_percentage_filled[committee] += (2 * 100/ ConferenceInfo.committee_spots[committee])
         i = i + 2 #skip the next delegate since we just assigned it.
         iterator = iterator + 2
-    elif double[row].lower() == "true" and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
-        row = min(singleIndices, key = lambda x: percentages[x]) #only scans single del GA's
-        committee = names[row]
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
-        percentages[names.index(committee)] += (100/spots[names.index(committee)])
+    elif ConferenceInfo.committee_double_status[committee] == True and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
+        committee = min([name for name in ConferenceInfo.committee_names if ConferenceInfo.committee_types[name] == "GA"], key = lambda name: ConferenceInfo.committee_percentage_filled[name]) 
+        #only scans single del GA's. Finds another committee that is a single del GA this time.
+        Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+1)
+        ConferenceInfo.committee_percentage_filled[committee] += (100/ ConferenceInfo.committee_spots[committee])
         i = i +1
         iterator = iterator + 1
-    elif double[row].lower() == "false": #if single delegate committee
-        finalassignments[f"{selectedSchool} - #{i+1}"] = [committee, Committeetype[row], ""]
-        percentages[row] += (100/spots[row])
+    elif ConferenceInfo.committee_double_status[committee] == False: #if single delegate committee
+        Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+1)
+        ConferenceInfo.committee_percentage_filled[committee] += (100/ ConferenceInfo.committee_spots[committee])
         i = i + 1
         iterator = iterator + 1
     elif iterator == 0:
@@ -83,15 +79,13 @@ def assign_committee(CommitteeTypeSelection, Indices: list, data: tuple, finalas
     else:
         Display.display("Error in making committees for GA at values of i and iterator:", i, iterator)
         i = i + 1
-    return finalassignments, i, percentages, iterator
+    return i, iterator
 
-def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees):
+def confirm_committees(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInformation):
     while True:
         menu_choices = []
-        for delegate, details in finalassignments.items():
-            current_committee = details[0]
-            committee_type = details[1]
-            choice_text = f"{delegate}: {current_committee} ({committee_type})"
+        for number, committee, committee_type, country in zip(Delegates.number, Delegates.committee, Delegates.committee_type, Delegates.country):
+            choice_text = f"{number}: {committee} ({committee_type})"
             menu_choices.append(choice_text)
         selected_choice = Display.display_list_of_selections(menu_choices, "Select a delegate to modify committee (if desired)", "Save and Exit")
 
@@ -99,77 +93,70 @@ def confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Dou
             break
 
         delegate_key = selected_choice.split(":")[0].strip() #read result
-        current_assignment = finalassignments[delegate_key][0]
-        new_committee = Display.display_list_of_selections(GA_Names + Spec_Names + Crisis_Names, "Choose new committee", "Exit (keep same committee)")
-        if new_committee == "Exit":
-            new_committee = current_assignment
+        current_committee = Delegates.committee[Delegates.number.index(int(delegate_key))]
+        new_committee = Display.display_list_of_selections(ConferenceInfo.committee_names, "Choose new committee", "Exit (keep same committee)")
+        if new_committee == "Exit (keep same committee)":
+            new_committee = current_committee
 
         #Helper function to check double committees.
-        def check_doubles(current_assignment: str, Double_Committees: set, new_committee: str, delegate_key):
-            if current_assignment in Double_Committees and new_committee in Double_Committees:
+        def check_doubles(current_assignment: str, new_committee: str, delegate_key, ConferenceInfo: ConferenceInformation):
+            if current_assignment and ConferenceInfo.committee_double_status[current_assignment] == True and new_committee and ConferenceInfo.committee_double_status[new_committee] == True:
                 Display.display("The old committee was a double committee, and so is the new one. Change the other delegate!")
-            elif new_committee in Double_Committees:
+            elif ConferenceInfo.committee_double_status[new_committee] == True:
                 Display.display("The new committee is a double committee. You should find a pair for this delegate, if possible.")
-            elif current_assignment in Double_Committees:
+            elif ConferenceInfo.committee_double_status[current_assignment] == True:
                 Display.display("The old committee was a double committee. Make sure pairings are still correct!")
             else:
                 Display.display(f"Updated {delegate_key} to {new_committee.strip()}")
         #------------------------------------------------------------------
 
         #update dictionary with new choice
-        if new_committee and new_committee.strip() != current_assignment and new_committee in GA_Names + Spec_Names + Crisis_Names:
-            finalassignments[delegate_key][0] = new_committee.strip()
-            check_doubles(current_assignment, Double_Committees, new_committee, delegate_key)
+        if new_committee and new_committee.strip() != current_committee and new_committee in ConferenceInfo.committee_names:
+            Delegates.committee[Delegates.number.index(int(delegate_key))] = new_committee
+            check_doubles(current_committee, new_committee, delegate_key, ConferenceInfo)
         else:
             Display.display("No changes made or invalid committee name entered. Please try again.")
-    return finalassignments
 
-def update_dictionary(new_country, old_country, finalassignments, delegate_key, current_comm, Double_Committees, availableCountries):
+def update_delegates(new_country: str, old_country: str | None, delegate_key: int, current_comm: str, ConferenceInfo: ConferenceInformation, Delegates: SchoolDelegates):
     # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
     if new_country:
-        new_country = new_country.strip(); old_country = old_country.strip()
+        new_country = new_country.strip()
         if new_country is not None and new_country != old_country:
             if old_country is not None and old_country.strip() != "":
                 # If the delegate already had an assignment, return it to availableCountries
-                availableCountries.append([current_comm, old_country])
-            availableCountries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries
+                ConferenceInfo.available_countries.append([current_comm, old_country])
+            ConferenceInfo.available_countries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries
         # 1. Update the selected delegate
-        if len(finalassignments[delegate_key]) > 2:
-            finalassignments[delegate_key][2] = new_country
-        else:
-            finalassignments[delegate_key].append(new_country)
+        Delegates.country[delegate_key] = new_country
             
         Display.display(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
     
             # 2. TWIN LINKING LOGIC FOR DOUBLE DELEGATION COMMITTEES
-        if finalassignments[delegate_key][0] in Double_Committees:
+        if ConferenceInfo.committee_double_status[current_comm] == True:
 
             twin_delegate = None
             # Scan the dict for the other partner delegate in the exact same committee
-            for other_delegate, details in finalassignments.items():
+            for other_delegate_number in Delegates.number:
 
                 # Skip the one we literally just manually updated
-                if other_delegate == delegate_key:
+                if other_delegate_number == delegate_key:
                     continue
                     
                 # If it's the same committee, copy the country over!
-                if details[0] == current_comm:
-                    other_old_country = (details[2] if len(details) > 2 else "")
+                if Delegates.committee[other_delegate_number] == current_comm:
+                    other_old_country = Delegates.country.get(other_delegate_number)
                     other_old_country = other_old_country.strip() if other_old_country else ""
                     if other_old_country == old_country:
-                        twin_delegate = other_delegate
+                        twin_delegate = other_delegate_number
                         break # this part ensures that you only flag the other delegate once, so that there is only one twin.
 
             if twin_delegate is not None:
-                if len(finalassignments[twin_delegate]) > 2:
-                    finalassignments[twin_delegate][2] = new_country
-                else:
-                    finalassignments[twin_delegate].append(new_country)
-                if old_country is not None and old_country.strip() != "": 
+                Delegates.country[twin_delegate] = new_country
+                Display.display(f"\033[K Assigned {new_country} to twin delegate {twin_delegate}")
+                if old_country is not None and old_country.strip() != "":
                     # If the delegate already had an assignment, return it to availableCountries
-                    availableCountries.append([current_comm, old_country])
-                availableCountries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries, for the twin delegate.
-    return finalassignments
+                    ConferenceInfo.available_countries.append([current_comm, old_country])
+                ConferenceInfo.available_countries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries, for the twin delegate.
 
 def print_data_to_terminal(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=True):
     Display.display("Region block most preferred:", "\033[1m" + RegionBloc + "\033[0m") #Display.display country preferences in bold for visibility.
@@ -179,14 +166,19 @@ def print_data_to_terminal(RegionBloc, CountryPrefs, SecurityCouncil, numdels, n
     if newschool == True:
         Display.display("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
 
-def get_input_for_committee_assignment_counts(doubleGAs, numdels):
+def get_input_for_committee_assignment_counts(doubleGAs, SchoolInfo: SchoolInformation):
     GA = Display.take_text_input("How many delegates to put in GA?")
     Specialized = Display.take_text_input("How many delegates to put in Specialized?")
     GA, Specialized = verify_committee_number_input(GA, Specialized, doubleGAs)
-    Crisis = numdels - GA - Specialized
-    return GA, Specialized, Crisis
+    Crisis = SchoolInfo.numdels - GA - Specialized
+    if GA + Specialized > SchoolInfo.numdels:
+        raise ValueError("The total number of delegates assigned to GA and Specialized exceeds the total number of delegates for the school.")
+    SchoolInfo.GA_count = GA
+    SchoolInfo.Spec_count = Specialized
+    SchoolInfo.Crisis_count = Crisis
+    Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
 
-def add_assignments(finalassignments, availableCountries, Double_Committees, suggestions_matrix=None):
+def add_assignments(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInformation):
     """
     Launches an interactive interface to browse and add country assignments.
     Uses true numeric shortcut mappings via text prompts.
@@ -197,28 +189,25 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
     availableCountries is formatted as a 2D list: [["committee", "country_name"], ...]
     Finally, creates cell maps at the very end for assigned and unassigned.
     """
-    delegate_keys = list(finalassignments.keys())
 
     while True:
         menu_choices = []
-        for delegate in delegate_keys:
-            current_comm = finalassignments[delegate][0]
-            comm_type = finalassignments[delegate][1]
-            current_country = finalassignments[delegate][2] if len(finalassignments[delegate]) > 2 else "Unassigned"
-            menu_choices.append(f"{delegate} │ {current_comm} ({comm_type}) - {current_country}")
+        for number in Delegates.number:
+            current_comm = Delegates.committee[number]
+            comm_type = Delegates.committee_type[number]
+            current_country = Delegates.country.get(number) if Delegates.country.get(number) else "Unassigned"
+            menu_choices.append(f"{number} │ {current_comm} ({comm_type}) - {current_country}")
             
         selected_choice = Display.display_list_of_selections(menu_choices, "Select a delegate to give assignments", "Confirm Assignments")
 
         if selected_choice == "exit" or selected_choice is None:
         # --- CHECK IF ALL DELEGATES ARE ASSIGNED ---
             all_assigned = True
-            for details in finalassignments.values():
+            for number in Delegates.number:
                 # Check if country field is missing, empty, or None
-                if len(details) <= 2 or details[2] == "" or details[2] is None:
+                if number not in Delegates.country or Delegates.country[number] is None or Delegates.country[number].strip() == "":
                     all_assigned = False
                     break  # Found at least one unassigned delegate, stop checking
-            
-            # --- DECISION LOGIC ---
             if not all_assigned:
                 Display.display("ERROR: You have not fulfilled all assignments yet! Please assign all delegates.")
                 continue  # Keeps the user INSIDE the while loop so they can assign remaining delegates
@@ -226,15 +215,14 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
                 Display.display("\033[K Exiting and saving changes...")
                 break  # Safely breaks out of the while loop and finishes the function      
 
-        delegate_key = selected_choice.split(" │ ")[0].strip()
-        current_comm = finalassignments[delegate_key][0]
+        delegate_key = int(selected_choice.split(" │ ")[0].strip())
+        current_comm = Delegates.committee[delegate_key]
 
-        old_country = finalassignments[delegate_key][2] if len(finalassignments[delegate_key]) > 2 else None
+        old_country = Delegates.country.get(delegate_key) # safely returns None if not assigned yet
 
         current_suggestions = []
         selected_option = selected_choice.split(" │ ")[0].strip()
-        if suggestions_matrix:
-            current_suggestions = suggestions_matrix[selected_option] if selected_option in suggestions_matrix.keys() else None
+        current_suggestions = Delegates.suggestions.get(selected_option)
 
         new_country = None
 
@@ -244,7 +232,7 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
             input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
             lookup_pair = [current_comm.strip(), input.strip()]
-            while not lookup_pair in availableCountries:
+            while not lookup_pair in ConferenceInfo.available_countries:
                 Display.display("Entered country is not in the list of available countries. Try checking spelling or capitalization.")
                 input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
@@ -286,7 +274,7 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
                     raw_input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
 
                     lookup_pair = [current_comm.strip(), raw_input.strip()]
-                    if lookup_pair in availableCountries:
+                    if lookup_pair in ConferenceInfo.available_countries:
                         new_country = raw_input.strip()
                         break
                     else:
@@ -301,7 +289,7 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
                         lookup_pair = [current_comm.strip(), suggested_name.strip()]
                         
                         # FIXED: Tuple evaluation instead of zip()
-                        if lookup_pair in availableCountries: 
+                        if lookup_pair in ConferenceInfo.available_countries: 
                             new_country = suggested_name
                         else:
                             Display.display("Selected country is no longer available. Please try again.")
@@ -312,12 +300,11 @@ def add_assignments(finalassignments, availableCountries, Double_Committees, sug
                 except ValueError:
                     Display.display("Please type a valid number or menu shortcut character.")
 
-        finalassignments = update_dictionary(new_country, old_country, finalassignments, delegate_key, current_comm, Double_Committees, availableCountries)
-    return finalassignments, availableCountries
+        if type(new_country) is not str:
+            raise ValueError(f"Invalid country assignment for delegate {delegate_key}. Expected a string, got {type(new_country)}.")
+        update_delegates(new_country, old_country, delegate_key, current_comm, ConferenceInfo, Delegates)
 
-def sync_with_secondary_storage(
-    finalassignments: dict,
-):
+def sync_with_secondary_storage(SchoolInfo: SchoolInformation, Delegates: SchoolDelegates):
     """
     Syncs finalassignments with Airtable using requests. 
     Parses delegate keys, searches for record IDs, updates 'Committee Assigned' via 
@@ -327,41 +314,20 @@ def sync_with_secondary_storage(
     table_name = os.getenv("AirtableTableName")
     if base_id is None or table_name is None:
         raise RuntimeError("Airtable base ID or table name not set in environment variables.")
-    def parse_delegate_key(delegate_key: str):
-        """
-        Parses a delegate key string like "School Name - #1" or "School Name - 1".
-        Returns a tuple: (school_name, delegate_number_as_string)
-        """
-        if "-" in delegate_key:
-            school_part, delegate_part = delegate_key.rsplit("-", 1)
-            school_name = school_part.strip()
-            
-            # Extract digits from delegate part (e.g., "#1" -> "1")
-            match = re.search(r'\d+', delegate_part)
-            delegate_num = match.group(0) if match else delegate_part.strip()
-            return school_name, delegate_num
-        
-        return delegate_key.strip(), ""
 
-    for delegate_key, assignment_info in finalassignments.items():
-        if not assignment_info or not isinstance(assignment_info, (list, tuple)):
-            continue
-
-        # Extract committee and country from list/tuple
-        committee = assignment_info[0] if len(assignment_info) > 0 else ""
-        country = assignment_info[2] if len(assignment_info) > 2 else ""
+    for delegate_key, committee, country in zip(Delegates.number, Delegates.committee.values(), Delegates.country.values()):
 
         # Parse "School Name - #1"
-        school_name, delegate_num = parse_delegate_key(delegate_key)
+        school_name = SchoolInfo.schoolname
 
         if '\'' in school_name or '\"' in school_name:
             school_name = school_name.replace('\'', '\\\'').replace('\"', '\\\"')
 
         # Retrieve record_id from Airtable
-        record_id = SecondaryStorage.find_airtable_record_id(base_id=base_id, table_name=table_name, school_name=school_name, delegate_num=delegate_num)
+        record_id = SecondaryStorage.find_airtable_record_id(base_id=base_id, table_name=table_name, school_name=school_name, delegate_num=str(delegate_key))
 
         if not record_id:
-            print(f"Warning: No matching record found for '{school_name}' (Delegate #{delegate_num})")
+            print(f"Warning: No matching record found for '{school_name}' (Delegate #{delegate_key})")
             continue
 
         # 1. Update 'Committee Assigned' using your dropdown helper method

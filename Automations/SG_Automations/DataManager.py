@@ -1,16 +1,25 @@
-from Entrypoint import Display
-import sys
-
 class SchoolDelegates:
     def __init__(self):
-        self.committee: list[str] = []
-        self.committee_type: list[str] = []
-        self.country: list[str] = []
+        self.number: list[int] = []
+        self.committee: dict[int, str] = {}
+        self.committee_type: dict[int, str] = {}
+        self.country: dict[int, str] = {}
+        self.suggestions: dict[int, list[str]] = {}
+        self.preferences_in_committee: dict[int, list[str]] = {}
 
-    def add_delegate(self, committee, committee_type, country):
-        self.committee.append(committee)
-        self.committee_type.append(committee_type)
-        self.country.append(country)
+    def add_delegate(self, committee, committee_type, country, number):
+        self.number.append(number)
+        if number in self.number:
+            raise ValueError(f"Delegate number {number} is not unique. Ensure that numbers in sheets are not repeated.")
+        self.committee[number] = committee
+        self.committee_type[number] = committee_type
+        self.country[number] = country
+
+    def add_delegate_suggestion(self, number, suggestions_list, preferences_in_committee_list):
+        if number not in self.number:
+            raise ValueError(f"Delegate number {number} does not exist. Ensure that the delegate has been added before adding suggestions.")
+        self.suggestions[number] = suggestions_list
+        self.preferences_in_committee[number] = preferences_in_committee_list
 
 class SchoolInformation:
     def __init__(self):
@@ -22,6 +31,9 @@ class SchoolInformation:
         self.region_bloc: str
         self.security_council_preference: bool
         self.numdels: int
+        GA_count: int
+        Spec_count: int
+        Crisis_count: int
 
     def add_school(self, advisor_email, head_del_email, schoolname, 
                    country_preferences, region_bloc, security_council_preference, numdels):
@@ -33,45 +45,44 @@ class SchoolInformation:
         self.security_council_preference = security_council_preference
         self.numdels = numdels
 
+    def set_assignment_counts(self, GA_count, Spec_count, Crisis_count):
+        self.GA_count = GA_count
+        self.Spec_count = Spec_count
+        self.Crisis_count = Crisis_count
+        if GA_count + Spec_count + Crisis_count != self.numdels:
+            raise ValueError("The sum of GA, Specialized, and Crisis counts does not match the total number of delegates.")
+
 class ConferenceInformation:
     def __init__(self):
         self.committee_names: list = []
         self.available_countries: list[list[str]]
-        self.single_committee_names: list[str] = []
-        self.committee_types: list[str] = []
-        self.committee_percentage_filled: list[float] = []
-        self.committee_spots = []
+        self.committee_double_status: dict[str, bool] = {}
+        self.committee_types: dict[str, str] = {}
+        self.committee_percentage_filled: dict[str, float] = {}
+        self.committee_spots: dict[str, int] = {}
         self.needing_suggestions_committee_names: list[str] = []
-        self.ranges: list[str] = []
+        self.ranges: dict[str, str] = {}
         self.backup: dict[str, str] = {}
 
     def add_committee(self, committee_name: str, spots: int, percentage_filled: float, range,
                       type="GA", single_committee=False, need_suggestion = False):
         if committee_name not in self.committee_names:
             self.committee_names.append(committee_name)
-            self.committee_spots.append(spots)
-            self.committee_percentage_filled.append(percentage_filled)
-            self.committee_types.append(type)
-            self.ranges.append(range)
+            self.committee_spots[committee_name] = spots
+            self.committee_percentage_filled[committee_name] = percentage_filled
+            self.committee_types[committee_name] = type
+            self.ranges[committee_name] = range
         else:
             raise ValueError(f"Committee name {committee_name} is not unique. Ensure that names in sheets are not repeated.")
-        
-        if single_committee is True:
-            self.single_committee_names.append(committee_name)
+        self.committee_double_status[committee_name] = not single_committee
+
         if need_suggestion is True:
             self.needing_suggestions_committee_names.append(committee_name)
 
-    def get_committee_percentage(self, committee_name):
-        return self.committee_percentage_filled[self.committee_names.index(committee_name)]
-
-    def get_committee_double_status(self, committee_name):
-        if committee_name in self.single_committee_names:
-            return False
-        else:
-            return True
-
-    def get_committee_type(self, committee_name):
-        return self.committee_types[self.committee_names.index(committee_name)]
+    def get_lowest_committee_percentage_for_type(self, committee_type):
+        names = [name for name in self.committee_names if self.committee_types[name] == committee_type]
+        lowest_percentage_index = min(names, key=lambda x: self.committee_percentage_filled[x])
+        return self.committee_names[lowest_percentage_index]
 
     def add_available_assignments(self, available_countries):
         self.available_countries = available_countries

@@ -1,13 +1,15 @@
 import os
 import requests
 from dotenv import load_dotenv
+
+from Automations.SG_Automations.DataManager import SchoolDelegates
 load_dotenv()
 
 API_URL = "http://localhost:8000/hashes" #fill this in later!!! It's a base URL.
 # Basically, the FastAPI server will now need to process different requests based on the HTTP method, not just name of the endpoint.
 password = os.getenv("ServerPassword")
 
-def add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments: dict[str, list]) -> dict[str, str]:
+def add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates: SchoolDelegates) -> dict[str, str] | None:
     """
     Sends finalassignments data to the FastAPI endpoint and returns a dictionary
     mapping school identifiers to generated user hashes.
@@ -26,6 +28,9 @@ def add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassig
     }
     
     try:
+        finalassignments = {}
+        for number, (committee, country) in zip(Delegates.number, zip(Delegates.committee, Delegates.country)):
+            finalassignments[number] = {"committee": committee,"country": country}
             # Send POST request with a timeout (e.g., 5 seconds)
             response = requests.post(
                 API_URL, 

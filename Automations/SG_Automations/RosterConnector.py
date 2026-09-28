@@ -5,6 +5,7 @@ from Infrastructure import DisplayClass
 from Infrastructure import DriveAPI
 from Infrastructure import DocAPI
 from dotenv import load_dotenv; load_dotenv()
+from Automations.SG_Automations.DataManager import SchoolDelegates, SchoolInformation, ConferenceInformation
 
 SheetsAPI = SheetAPI()
 Display = DisplayClass()
@@ -18,7 +19,7 @@ email_folder_ID = os.getenv("RosterEmailsFolderID")
 email_template_ID = os.getenv("EmailTemplateID")
 YearName = os.getenv("YearName") 
 
-def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list], schoolname: str):
+def generate_roster_and_add_assignments_to_it(Delegates: SchoolDelegates, schoolname: str):
     """
     Takes finalassignments, a dictionary with the delegate number and name as the string, and a list with the committee, committeetype, and country in the dictionary, and puts it in a roster.
 
@@ -44,7 +45,7 @@ def generate_roster_and_add_assignments_to_it(finalassignments: dict[str, list],
     # Add the assignments to the new roster
     cell_map_of_committee = {}
     i = 0
-    for school_name_and_number, [committee, committeetype, country] in finalassignments.items():
+    for committee, country in zip(Delegates.committee.values(), Delegates.country.values()):
         cell_map_of_committee[f"D{i+21}"] = f"{country} ({committee})"
         i += 1
     SheetsAPI.write_values_to_sheet_from_dict(new_roster_ID, cell_map_of_committee)

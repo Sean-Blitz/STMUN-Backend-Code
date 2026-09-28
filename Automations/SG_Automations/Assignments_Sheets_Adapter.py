@@ -3,6 +3,7 @@ import sys
 from dotenv import load_dotenv; load_dotenv()
 from Infrastructure import DisplayClass
 from Infrastructure import SheetAPI
+from DataManager import SchoolDelegates, SchoolInformation, ConferenceInformation
 
 # ---------------- Controls --------------------
 env1 = os.getenv("registration_sheet_ID")
@@ -200,30 +201,29 @@ class Assignments_to_Sheets:
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)
         RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
         countryprefs = [country1, country2, country3, country4, country5]
+        if SecurityCouncil is None:
+            SecurityCouncil = False
         advisorEmail, HeadDelegateEmail = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!K{row}", f"Responses!O{row}"])
         schoolInfo.add_school(advisorEmail, HeadDelegateEmail, selectedSchool, countryprefs, RegionBloc, SecurityCouncil,int(numdels))
 
-    def map_cells(self, finalassignments: dict, new_list_of_countries_and_committees: list[list[str]]):
+    def map_cells(self, Delegates: SchoolDelegates, ConferenceInfo: ConferenceInformation):
         availableCountries = self.available_countries_and_coordinates
         new_row_in_assignment_sheet = self.find_new_school_row_in_assignments_sheet()
         cell_map = {}
         assigned_cell_map = {}
         j = 0
-        for delegate, vals in finalassignments.items():
-            if len(vals) == 3:
-                committee = vals[0]
-                country = vals[2]
-
+        for committee, country in zip(Delegates.committee, Delegates.country):
+            if committee and country:  # Ensure both are not empty
                 #construct school assignments cells
                 assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(j+1)}{new_row_in_assignment_sheet}" if j <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(j-29)}{new_row_in_assignment_sheet + 1}"] = f"{country} ({committee})"
             j += 1
         for coordinate, [committee, country] in availableCountries.items():
-            if [committee, country] in new_list_of_countries_and_committees:
+            if [committee, country] in ConferenceInfo.available_countries:
                 cell_map[coordinate] = f"{country} ({committee})"
-            elif [committee, country] not in new_list_of_countries_and_committees:
+            elif [committee, country] not in ConferenceInfo.available_countries:
                 cell_map[coordinate] = ""
         del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
-        return finalassignments, cell_map, assigned_cell_map
+        return cell_map, assigned_cell_map
 
     def prepare_list_of_assignments_for_push(self, finalassignments: list, delegates_to_drop: list, schoolname):
         schoolrow = self.find_existing_school_row_in_assignments_sheet(schoolname)

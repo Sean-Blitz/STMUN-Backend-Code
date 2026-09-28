@@ -26,134 +26,116 @@ SheetsAPI = Assignments_to_Sheets()
 Display = DisplayClass()
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registration_sheet_ID}/edit"
 
+def set_up_data(selected_school):
+    Delegates = SchoolDelegates()
+    SchoolInfo = SchoolInformation()
+    ConferenceInfo = ConferenceInformation()
+    SheetsAPI.read_school_and_current_committees_data(selected_school, SchoolInfo)
+    SheetsAPI.read_conference_information_from_overview(ConferenceInfo)
+    SheetsAPI.get_available_countries_and_backup_storage(ConferenceInfo)
+    AssignmentsFunctions.print_data_to_terminal(SchoolInfo.region_bloc, SchoolInfo.country_preferences, SchoolInfo.security_council_preference, SchoolInfo.numdels, newschool=True)
+    try:
+        AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, SchoolInfo)
+    except Exception as e:
+        Display.display(f"Error occurred while getting input for committee assignment counts: {e}")
+        sys.exit()
+    return Delegates, SchoolInfo, ConferenceInfo
+
 def assign_new_schools():
     unassignedSchools = SheetsAPI.find_schools_not_yet_assigned("Responses", "Assignments")
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
-        Delegates = SchoolDelegates()
-        SchoolInfo = SchoolInformation()
-        ConferenceInfo = ConferenceInformation()
-        SheetsAPI.read_school_and_current_committees_data(selectedSchool, SchoolInfo)
-        SheetsAPI.read_conference_information_from_overview(ConferenceInfo)
-        SheetsAPI.get_available_countries_and_backup_storage(ConferenceInfo)
-        AssignmentsFunctions.print_data_to_terminal(SchoolInfo.region_bloc, SchoolInfo.country_preferences, SchoolInfo.security_council_preference, SchoolInfo.numdels, newschool=True)
-        GA, Specialized, Crisis = AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, SchoolInfo.numdels)
+        Delegates, SchoolInfo, ConferenceInfo = set_up_data(selectedSchool)
+        i = 0 
+        iterator = 0
+        if SchoolInfo.security_council_preference != True:
+            ConferenceInfo.committee_names = [name for name in ConferenceInfo.committee_names if name.lower() != "security council" and name.lower() != "historical crisis"]
+            # edit the committee names to remove security council if the school does not want it.
+        
+        while iterator < SchoolInfo.GA_count:
+            i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="GA")
+        iterator = 0
+        while iterator < SchoolInfo.Spec_count:
+            i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="Specialized")
+        iterator = 0
+        while iterator < SchoolInfo.Crisis_count:
+            i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="Crisis") 
 
-        if GA + Specialized > SchoolInfo.numdels:
-            Display.display("Error: The total number of delegates does not match the expected count.")
+        Display.display("Assignments for this school:")
+        AssignmentsFunctions.confirm_committees(Delegates, ConferenceInfo)
+        # a business logic function that calls display functions.
+
+        #Data science function to generate countrySuggestionsDictionary!
+        generateSuggestions.generate_dictionary_of_suggestions(SchoolInfo, Delegates, ConferenceInfo)
+        AssignmentsFunctions.add_assignments(Delegates, ConferenceInfo)
+        SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(Delegates, ConferenceInfo)
+        cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
+        while cont.lower() not in {"yes", "no"}:
+            cont = Display.take_text_input("Finished building cell maps. Push?")
+        if cont != "yes":
             sys.exit()
-        Display.go_one_line_up(); Display.clear_current_line(); Display.go_one_line_up(); Display.clear_current_line()
-        Display.display(f"GA: {GA}, Specialized: {Specialized}, Crisis: {Crisis}")
+
+        #writing to the sheet the cell maps.
+        SheetsAPI.push_values(remaining_cell_map)
+        SheetsAPI.push_values(SchoolAssignmentsCells)
+        SheetsAPI.write_school_name_to_sheet(selectedSchool)
         
-        i = 0; iterator = 0
-        finalassignments = {} #dictionary with a value being a list of three elements, the committee, commitee type and the country assigned.
-        committeeCounts = (GA, Specialized, Crisis)
-        while iterator < GA:
-            data = (names, percentages, double, spots, Committeetype)
-            finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
-        iterator = 0
-        while iterator < Specialized:
-            data = (names, percentages, double, spots, Committeetype)
-            finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
-        iterator = 0
-        if SecurityCouncil.lower() != "true" or SecurityCouncil.lower() != "yes":
-            CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
+        time.sleep(5); Display.display("Checking sheet for changes...") #pause for sheet to register changes.
+        percentagesChecking = SheetsAPI.read_percentages_from_overview(ConferenceInfo.committee_names)
+        hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates)
+        if percentagesChecking == ConferenceInfo.committee_percentage_filled and hashes != None:
+            Display.display("Percentages are correct. Here are the hashes.")
+            Display.display(hashes)
         else:
-            CrisisInd = CrisisIndices
-        while iterator < Crisis:
-            data = (names, percentages, double, spots, Committeetype)
-            finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts) 
+            Display.display("Percentage error. Please check the sheet! Here are the hashes.")
+            Display.display(registrationSheetURL)
+            Display.display(hashes)
+
+        while (cont := Display.take_text_input("Sync with secondary storage? (yes/no)")) != "yes":
+            cont = Display.take_text_input("Sync with secondary storage? (yes/no)")
+        if cont == "no":
+            Display.display("Sync skipped. Please make sure to sync manually.")
+        else:
+            AssignmentsFunctions.sync_with_secondary_storage(SchoolInfo, Delegates)
         
-        GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
-        all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
-        for i in range(len(names)): #build the lists above to pass into functions for verification.
-            if i in GaIndices:
-                GA_Names.append(names[i])
-            elif i in SpecIndices:
-                Spec_Names.append(names[i])
-            elif i in CrisisIndices:
-                Crisis_Names.append(names[i])
-            else:
-                Display.display("There is a committee name error.")
-                sys.exit()
-            if not i in all_single_indices:
-                Double_Committees.add(names[i])
+        while (cont := Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")) != "yes":
+            cont = Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")
+        if cont == "no":
+            Display.display("Roster generation skipped. Please make it manually.")
+            sys.exit()
 
-            Display.display("Assignments for this school:")
-            finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees)
-            # a business logic function that calls display functions.
+        new_roster_ID, this_year_folder_ID = None, None
+        while True:
+            try:
+                successflag = True
+                new_roster_ID, this_year_folder_ID = RosterConnector.generate_roster_and_add_assignments_to_it(Delegates, selectedSchool)
+            except Exception as e:
+                successflag = False
+                Display.display(f"Error generating roster: {e}")
+                cont = Display.take_text_input("Would you like to retry generating the roster? (yes/no)")
+                if cont.lower() == "no":        
+                    Display.display("Roster generation aborted. Please check the error and try again.")
+                    sys.exit()
+            if successflag == True:
+                break
+        if new_roster_ID is None or this_year_folder_ID is None:
+            Display.display("Error: Roster generation failed. Please check the code and try again.")
+            sys.exit()
 
-            #Data science function to generate countrySuggestionsDictionary!
-            countrySuggestionsDictionary = generateSuggestions.generate_dictionary_of_suggestions(finalassignments, numdels, availableCountries, selectedSchool, CountryPrefs)
-            finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees, countrySuggestionsDictionary)
-            finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells(finalassignments, availableCountries)
-            cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
-            while cont.lower() not in {"yes", "no"}:
-                cont = Display.take_text_input("Finished building cell maps. Push?")
-            if cont != "yes":
-                sys.exit()
-
-            #writing to the sheet the cell maps.
-            SheetsAPI.push_values(remaining_cell_map)
-            SheetsAPI.push_values(SchoolAssignmentsCells)
-            SheetsAPI.write_school_name_to_sheet(selectedSchool)
-            
-            time.sleep(5); Display.display("Checking sheet for changes...") #pause for sheet to register changes.
-            percentagesChecking = SheetsAPI.read_percentages_from_overview(names)
-            hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
-            if percentagesChecking == percentages and hashes != None:
-                Display.display("Percentages are correct. Here are the hashes.")
-                Display.display(hashes)
-            else:
-                Display.display("Percentage error. Please check the sheet! Here are the hashes.")
-                Display.display(registrationSheetURL)
-                Display.display(hashes)
-
-            while (cont := Display.take_text_input("Sync with secondary storage? (yes/no)")) != "yes":
-                cont = Display.take_text_input("Sync with secondary storage? (yes/no)")
-            if cont == "no":
-                Display.display("Sync skipped. Please make sure to sync manually.")
-            else:
-                AssignmentsFunctions.sync_with_secondary_storage(finalassignments)
-            
-            while (cont := Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")) != "yes":
-                cont = Display.take_text_input("Generate a roster and add assignments to it? (yes/no)")
-            if cont == "no":
-                Display.display("Roster generation skipped. Please make it manually.")
-                sys.exit()
-
-            new_roster_ID, this_year_folder_ID = None, None
-            while True:
-                try:
-                    successflag = True
-                    new_roster_ID, this_year_folder_ID = RosterConnector.generate_roster_and_add_assignments_to_it(finalassignments, selectedSchool)
-                except Exception as e:
-                    successflag = False
-                    Display.display(f"Error generating roster: {e}")
-                    cont = Display.take_text_input("Would you like to retry generating the roster? (yes/no)")
-                    if cont.lower() == "no":        
-                        Display.display("Roster generation aborted. Please check the error and try again.")
-                        sys.exit()
-                if successflag == True:
-                    break
-            if new_roster_ID is None or this_year_folder_ID is None:
-                Display.display("Error: Roster generation failed. Please check the code and try again.")
-                sys.exit()
-
-            roster_link = "https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit"
-            Display.display(f"Roster generated and assignments added. Please check it for errors: {roster_link}")
-            while (cont := Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")) != "yes":
-                cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")
-            if cont == "no":
-                Display.display("Email draft skipped. Please make it manually.")
-                sys.exit()
-            school_row = new_email_doc_ID = RosterConnector.draft_email_for_school_and_share_roster(selectedSchool, advisorEmail, HeadDelegateEmail, new_roster_ID, this_year_folder_ID)
-            Display.display(f"Email draft created: https://docs.google.com/document/d/{new_email_doc_ID}/edit")
-            unassignedSchools.remove(selectedSchool)
-            Todo.flag_assignments_made_and_place_roster_link(selectedSchool, roster_link)
-            shared = Display.take_text_input("Roster email sent? (y/n)")
-            if shared != "n":
-                Todo.flag_roster_sent(school_row)
+        roster_link = "https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit"
+        Display.display(f"Roster generated and assignments added. Please check it for errors: {roster_link}")
+        while (cont := Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")) != "yes":
+            cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")
+        if cont == "no":
+            Display.display("Email draft skipped. Please make it manually.")
+            sys.exit()
+        school_row = new_email_doc_ID = RosterConnector.draft_email_for_school_and_share_roster(selectedSchool, SchoolInfo.advisor_email, SchoolInfo.head_del_email, new_roster_ID, this_year_folder_ID)
+        Display.display(f"Email draft created: https://docs.google.com/document/d/{new_email_doc_ID}/edit")
+        unassignedSchools.remove(selectedSchool)
+        Todo.flag_assignments_made_and_place_roster_link(selectedSchool, roster_link)
+        shared = Display.take_text_input("Roster email sent? (y/n)")
+        if shared != "n":
+            Todo.flag_roster_sent(school_row)
 
 def add_delegates():
     # Goal: Add delegates to a school that already exists. Scan the sheet for user Display.take_text_inputted school, then prompt user how many delegates to add. Finally, assign new delegates just like with new school registration.
