@@ -3,7 +3,7 @@ import time
 import sys
 from typing import cast
 from dotenv import load_dotenv; load_dotenv()
-from SG_Automations.Individual_Sheets.IndividualSheets import SheetsAPI
+from Automations.SG_Automations.Individual_Sheets.IndividualSheetsGenerator import SheetsAPI
 
 AttendanceSheetID = os.environ["AttendanceSheetID"]
 
@@ -11,7 +11,7 @@ def write_data_to_individual_sheet(i, ):
     pass
 
 
-def pull_data_from_master_sheet(start_row):
+def pull_data_from_master_sheet(start_row, length_of_thursday_attendance_row, length_of_training_attendance_row):
     def read(sheet_name, column_letter, begin = start_row):
         return SheetsAPI.get_column_data(AttendanceSheetID, sheet_name, column_letter, begin)
     
