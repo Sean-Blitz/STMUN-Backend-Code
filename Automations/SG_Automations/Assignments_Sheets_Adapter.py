@@ -94,8 +94,8 @@ class Assignments_to_Sheets:
             sys.exit()
         return schoolrow
 
-    def map_cells_for_added_delegates(self, finalassignments: dict, selectedSchool: str, new_list_of_countries_and_committees: list[list[str]]) -> tuple[dict, dict, dict]:
-        schoolrow = self.find_existing_school_row_in_assignments_sheet(selectedSchool)
+    def map_cells_for_added_delegates(self, Delegates: SchoolDelegates, ConferenceInfo: ConferenceInformation, SchoolInfo: SchoolInformation) -> tuple[dict, dict]:
+        schoolrow = self.find_existing_school_row_in_assignments_sheet(SchoolInfo.schoolname)
         availableCountries = self.available_countries_and_coordinates
         # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
         cell_map = {}
@@ -106,21 +106,19 @@ class Assignments_to_Sheets:
         else:
             print(f"Warning: Could not read the current number from Assignments!A{schoolrow+1}. Please check the sheet.")
             sys.exit(1)
-        for delegate, vals in finalassignments.items():
-            if len(vals) == 3:
-                committee = vals[0]
-                country = vals[2]
+        for committee, country in zip(Delegates.committee, Delegates.country):
+            if committee and country:  # Ensure both are not empty
                 #construct school assignments cells. Search for first empty cell (displayed in Sheet)
                 assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(current_number+1)}{schoolrow}" if current_number <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(current_number-29)}{schoolrow + 1}"] = f"{country} ({committee})"
             current_number += 1
         for coordinate, [committee, country] in availableCountries.items():
-            if [committee, country] in new_list_of_countries_and_committees:
+            if [committee, country] in ConferenceInfo.available_countries:
                 #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
                 cell_map[coordinate] = f"{country} ({committee})"
-            elif [committee, country] not in new_list_of_countries_and_committees:
+            elif [committee, country] not in ConferenceInfo.available_countries:
                 cell_map[coordinate] = ""
         del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
-        return finalassignments, cell_map, assigned_cell_map
+        return cell_map, assigned_cell_map
 
     def get_available_countries_and_backup_storage(self, ConferenceInfo, selectedSchool = None, already_assigned_school = False):
         names = SheetsAPI.get_column_data_until_empty(registration_sheet_ID, "Overview", "A", 2) # Use this function to also detect number of committees
@@ -197,7 +195,7 @@ class Assignments_to_Sheets:
                 need_suggestion = False 
             ConferenceInfo.add_committee(names[i], spots[i], percentages[i], ranges[names[i]], type[i], double_status, need_suggestion)
 
-    def read_school_and_current_committees_data(self, selectedSchool, schoolInfo):
+    def read_school_and_current_committees_data(self, selectedSchool, schoolInfo: SchoolInformation):
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)
         RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
         countryprefs = [country1, country2, country3, country4, country5]

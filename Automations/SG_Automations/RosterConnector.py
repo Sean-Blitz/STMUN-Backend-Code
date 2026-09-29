@@ -53,7 +53,7 @@ def generate_roster_and_add_assignments_to_it(Delegates: SchoolDelegates, school
 
     return new_roster_ID, this_year_folder_ID
 
-def add_delegates_to_existing_school_roster(schoolname: str, new_delegates: dict[str, list]):
+def add_delegates_to_existing_school_roster(schoolname: str, Delegates: SchoolDelegates):
     """
     Finds the roster ID for this school, reads down the roster the find the next row, and add the new delegates to the roster.
     """
@@ -77,11 +77,9 @@ def add_delegates_to_existing_school_roster(schoolname: str, new_delegates: dict
         raise RuntimeError(f"Row mismatch when adding delegates to roster for school '{schoolname}'. Check the roster for errors.")
 
     # Add the new delegates to the roster
-    cell_map_of_school_name_and_number = {}
     cell_map_of_committee = {}
-    cell_map_of_country = {}
     i = row
-    for school_name_and_number, [committee, committeetype, country] in new_delegates.items():
+    for committee, country in zip(Delegates.committee.values(), Delegates.country.values()):
         cell_map_of_committee[f"D{i+21}"] = f"{country} ({committee})"
         i += 1
     SheetsAPI.write_values_to_sheet_from_dict(school_roster_ID, cell_map_of_committee)

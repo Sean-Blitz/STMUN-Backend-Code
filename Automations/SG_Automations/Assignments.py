@@ -36,30 +36,33 @@ def set_up_data(selected_school):
     AssignmentsFunctions.print_data_to_terminal(SchoolInfo.region_bloc, SchoolInfo.country_preferences, SchoolInfo.security_council_preference, SchoolInfo.numdels, newschool=True)
     try:
         AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, SchoolInfo)
+    except ValueError: # here, if it is being called for adding schools, then the user inputted number does not match the number of delegates first registered. However, we pass as that does not need to be true.
+        pass
     except Exception as e:
-        Display.display(f"Error occurred while getting input for committee assignment counts: {e}")
+        Display.display(f"Error in getting input for committee assignment counts: {e}")
         sys.exit()
     return Delegates, SchoolInfo, ConferenceInfo
+
+def assign_all_committees(Delegates: SchoolDelegates, SchoolInfo: SchoolInformation, ConferenceInfo: ConferenceInformation):
+    i = 0; iterator = 0
+    while iterator < SchoolInfo.GA_count:
+        i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="GA")
+    iterator = 0
+    while iterator < SchoolInfo.Spec_count:
+        i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="Specialized")
+    iterator = 0
+    while iterator < SchoolInfo.Crisis_count:
+        i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="Crisis")
 
 def assign_new_schools():
     unassignedSchools = SheetsAPI.find_schools_not_yet_assigned("Responses", "Assignments")
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
         Delegates, SchoolInfo, ConferenceInfo = set_up_data(selectedSchool)
-        i = 0 
-        iterator = 0
         if SchoolInfo.security_council_preference != True:
             ConferenceInfo.committee_names = [name for name in ConferenceInfo.committee_names if name.lower() != "security council" and name.lower() != "historical crisis"]
             # edit the committee names to remove security council if the school does not want it.
-        
-        while iterator < SchoolInfo.GA_count:
-            i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="GA")
-        iterator = 0
-        while iterator < SchoolInfo.Spec_count:
-            i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="Specialized")
-        iterator = 0
-        while iterator < SchoolInfo.Crisis_count:
-            i, iterator = AssignmentsFunctions.assign_committee(ConferenceInfo, SchoolInfo, Delegates, iterator, i, CommitteeTypeSelection="Crisis") 
+        assign_all_committees(Delegates, SchoolInfo, ConferenceInfo)
 
         Display.display("Assignments for this school:")
         AssignmentsFunctions.confirm_committees(Delegates, ConferenceInfo)
@@ -142,7 +145,6 @@ def add_delegates():
     # Request for new hashes and send this new data to the database.
     
     selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
-    committeeCount = int(Display.take_text_input("How many delegates to add?"))
 
     CurrentSchools = SheetsAPI.get_list_of_current_schools_names()
     while selectedSchool not in CurrentSchools:
@@ -150,58 +152,17 @@ def add_delegates():
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
         selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
 
-    SchoolInfo = SchoolInformation()
-    ConferenceInfo = ConferenceInformation()
-    SheetsAPI.read_school_and_current_committees_data(selectedSchool, SchoolInfo)
-    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage(ConferenceInfo, selectedSchool, already_assigned_school=True)
-    single_indices, GaIndices, SpecIndices, CrisisIndices = AssignmentsFunctions.read_committees_overview_from_sheet(Committeetype, double)
-    RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = output; numdels = int(numdels)
-    CountryPrefs = [country1, country2, country3, country4, country5]
-    AssignmentsFunctions.print_data_to_terminal_with_prompt(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=False)
-    GA, Specialized, Crisis = AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, committeeCount)
-    
-    i = 0; iterator = 0
-    finalassignments = {} # dictionary with a value being a list of two elements, the committee and the country assigned.
-    committeeCounts = (GA, Specialized, Crisis)
-    while iterator < GA:
-        data = (names, percentages, double, spots, Committeetype)
-        finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("GA", GaIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
-    iterator = 0
-    while iterator < Specialized:
-        data = (names, percentages, double, spots, Committeetype)
-        finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Specialized", SpecIndices, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
-    iterator = 0
-    if SecurityCouncil.lower() != "yes" or SecurityCouncil.lower() != "true":
-        CrisisInd = [idx for idx in CrisisIndices if names[idx].lower() != "security council" and names[idx].lower() != "historical crisis"]
-    else:
-        CrisisInd = CrisisIndices
-    while iterator < Crisis:
-        data = (names, percentages, double, spots, Committeetype)
-        finalassignments, i, percentages, iterator = AssignmentsFunctions.assign_committee("Crisis", CrisisInd, data, finalassignments, iterator, i, single_indices, selectedSchool, committeeCounts)
-    
-    GA_Names = [] ; Spec_Names = [] ; Crisis_Names = [] ; Double_Committees = set()
-    for i in range(len(names)): #build the lists above to pass into functions for verification.
-        if i in GaIndices:
-            GA_Names.append(names[i])
-        elif i in SpecIndices:
-            Spec_Names.append(names[i])
-        elif i in CrisisIndices:
-            Crisis_Names.append(names[i])
-        else:
-            Display.display("There is a committee name error.")
-            sys.exit()
-        all_single_indices = set(single_indices["ga"] + single_indices["specialized"] + single_indices["crisis"])
-        if not i in all_single_indices:
-            Double_Committees.add(names[i])
+    Delegates, SchoolInfo, ConferenceInfo = set_up_data(selectedSchool)
+    assign_all_committees(Delegates, SchoolInfo, ConferenceInfo)
 
     Display.display("Assignments for this school:")
-    finalassignments = AssignmentsFunctions.confirm_committees(finalassignments, GA_Names, Spec_Names, Crisis_Names, Double_Committees) # a business logic function that calls display functions.
+    AssignmentsFunctions.confirm_committees(Delegates, ConferenceInfo) # a business logic function that calls display functions.
 
     #Data science function to generate countrySuggestionsDictionary!
-    countrySuggestionsDictionary = generateSuggestions.generate_dictionary_of_suggestions(finalassignments, GA+Specialized+Crisis, availableCountries, selectedSchool, CountryPrefs)
-    finalassignments, availableCountries = AssignmentsFunctions.add_assignments(finalassignments, availableCountries, Double_Committees, countrySuggestionsDictionary)
+    generateSuggestions.generate_dictionary_of_suggestions(SchoolInfo, Delegates, ConferenceInfo)
+    AssignmentsFunctions.add_assignments(Delegates, ConferenceInfo)
 
-    finalassignments, SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(finalassignments, selectedSchool, availableCountries)
+    SchoolAssignmentsCells, remaining_cell_map = SheetsAPI.map_cells_for_added_delegates(Delegates, ConferenceInfo, SchoolInfo)
     cont = Display.take_text_input("Finished building cell maps. Push? (yes, no)")
     while cont.lower() not in {"yes", "no"}:
         cont = Display.take_text_input("Finished building cell maps. Push?")
@@ -214,34 +175,34 @@ def add_delegates():
     SheetsAPI.write_school_name_to_sheet(selectedSchool)
     
     time.sleep(5); Display.display("Checking sheet for changes...") #pause for cloud storage system (sheets) to register changes.
-    percentagesChecking = SheetsAPI.read_percentages_from_overview(names)
-    if percentagesChecking == percentages:
+    percentagesChecking = SheetsAPI.read_percentages_from_overview(ConferenceInfo.committee_names)
+    if percentagesChecking == ConferenceInfo.committee_percentage_filled:
         Display.display("Percentages are correct. Moving on to next school.")
-        hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
+        hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates)
         Display.display(hashes)
     else:
         Display.display("Percentage error. Please check the sheet! School name placed in completed CSV.")
         Display.display(registrationSheetURL)
         cont = Display.take_text_input("Should we proceed to send new assignments to the database? (yes/no)")
         if cont == "yes":
-            hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(finalassignments)
+            hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates)
             Display.display(hashes)
             cont = Display.take_text_input("Proceed to add these delegates to the roster and sync with Airtable? (yes/no)")
             while cont not in ["yes", "no"]:
                 cont = Display.take_text_input("Proceed to add these delegates to the roster? (yes/no)")
             if cont == "yes":
-                new_roster_ID = RosterConnector.add_delegates_to_existing_school_roster(selectedSchool, finalassignments)
-                AssignmentsFunctions.sync_with_secondary_storage(finalassignments)
+                new_roster_ID = RosterConnector.add_delegates_to_existing_school_roster(selectedSchool, Delegates)
+                AssignmentsFunctions.sync_with_secondary_storage(SchoolInfo, Delegates)
                 Display.display("Delegates added to roster and synced with secondary storage.")
                 Display.display(f"Delegates added to roster. Please check it for errors: https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit")
             else:
                 Display.display("Aborting roster update. Please check the sheet manually.")
-                SheetsAPI.push_values(backup)  # Rollback the changes made to the sheet.
+                SheetsAPI.push_values(ConferenceInfo.backup)  # Rollback the changes made to the sheet.
                 Display.display("Rolled back the changes made to the sheet. Please check the sheet manually.")
                 sys.exit()
         else:
             Display.display("Aborting database update. Sheet rolled back.")
-            SheetsAPI.push_values(backup)  # Rollback the changes made to the sheet.
+            SheetsAPI.push_values(ConferenceInfo.backup)  # Rollback the changes made to the sheet.
             sys.exit()
 
 def drop_delegates():
@@ -249,7 +210,9 @@ def drop_delegates():
     # Finally, insert them back into the original pool by reading their committee name, and slotting them back to the first empty cell. Request that these assignments be deleted from the database.
     selectedSchool = Display.take_text_input("Please input the school to drop delegates from.")
     CurrentSchools = SheetsAPI.get_list_of_current_schools_names()
-    availableCountries, backup = SheetsAPI.get_available_countries_and_backup_storage(selectedSchool, already_assigned_school=True)
+    ConferenceInfo = ConferenceInformation()
+
+    SheetsAPI.get_available_countries_and_backup_storage(ConferenceInfo, selectedSchool, already_assigned_school=True)
     while selectedSchool not in CurrentSchools: #closest match logic for input errors.
         ClosestMatch = get_close_matches(selectedSchool, CurrentSchools, n=1, cutoff=0.6)
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
@@ -301,7 +264,7 @@ def drop_delegates():
             Display.display("Also, go into Airtable and make sure changes are done.")
         else:
             Display.display("No delegates were deleted. Please check the server response for errors.")
-            SheetsAPI.push_values(backup)
+            SheetsAPI.push_values(ConferenceInfo.backup)
             sys.exit()
         
     else:
