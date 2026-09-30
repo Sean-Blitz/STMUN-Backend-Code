@@ -1,15 +1,15 @@
 import os
 import sys
 import time
-from Automations.SG_Automations.Entrypoint import Todo
-from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets, registration_sheet_ID
-from Infrastructure import DisplayClass
+from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets, registration_sheet_ID; SheetsAPI = Assignments_to_Sheets()
+from Infrastructure import DisplayClass; Display = DisplayClass()
 from difflib import get_close_matches
 from dotenv import load_dotenv; load_dotenv()
 from SG_Automations import ServerRequests
 from SG_Automations import AssignmentsFunctions
 from SG_Automations import RosterConnector
 from SG_Automations import generateSuggestions
+from SG_Automations.Entrypoint import Todo
 
 #Storage objects. SchoolDelegates stores information for delegates assigned with this current session of the program.
 #SchoolInformation stores information for the current school being assigned.
@@ -22,8 +22,6 @@ from DataManager import SchoolDelegates, SchoolInformation, ConferenceInformatio
 DoubleGAs = os.getenv("DOUBLE_GAs") # yes or no, depending on if there are double delegate GA's this year. Simply used to determine if the user input was correct for the number of delegates in GA.
 # -------------------------------
 
-SheetsAPI = Assignments_to_Sheets()
-Display = DisplayClass()
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registration_sheet_ID}/edit"
 
 def set_up_data(selected_school):
@@ -125,7 +123,7 @@ def assign_new_schools():
             Display.display("Error: Roster generation failed. Please check the code and try again.")
             sys.exit()
 
-        roster_link = "https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit"
+        roster_link = f"https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit"
         Display.display(f"Roster generated and assignments added. Please check it for errors: {roster_link}")
         while (cont := Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")) != "yes":
             cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")

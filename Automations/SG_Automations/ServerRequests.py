@@ -2,7 +2,7 @@ import os
 import requests
 from dotenv import load_dotenv
 
-from Automations.SG_Automations.DataManager import SchoolDelegates
+from SG_Automations.DataManager import SchoolDelegates
 load_dotenv()
 
 API_URL = "http://localhost:8000/hashes" #fill this in later!!! It's a base URL.

@@ -106,16 +106,18 @@ class Assignments_to_Sheets:
         else:
             print(f"Warning: Could not read the current number from Assignments!A{schoolrow+1}. Please check the sheet.")
             sys.exit(1)
-        for committee, country in zip(Delegates.committee, Delegates.country):
+        assignments = []
+        for committee, country in zip(Delegates.committee.values(), Delegates.country.values()):
             if committee and country:  # Ensure both are not empty
                 #construct school assignments cells. Search for first empty cell (displayed in Sheet)
                 assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(current_number+1)}{schoolrow}" if current_number <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(current_number-29)}{schoolrow + 1}"] = f"{country} ({committee})"
+                assignments.append([committee, country])
             current_number += 1
         for coordinate, [committee, country] in availableCountries.items():
-            if [committee, country] in ConferenceInfo.available_countries:
+            if [committee, country] not in assignments:
                 #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
                 cell_map[coordinate] = f"{country} ({committee})"
-            elif [committee, country] not in ConferenceInfo.available_countries:
+            elif [committee, country] in assignments:
                 cell_map[coordinate] = ""
         del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
         return cell_map, assigned_cell_map
@@ -210,15 +212,17 @@ class Assignments_to_Sheets:
         cell_map = {}
         assigned_cell_map = {}
         j = 0
-        for committee, country in zip(Delegates.committee, Delegates.country):
+        assignments = []
+        for committee, country in zip(Delegates.committee.values(), Delegates.country.values()):
             if committee and country:  # Ensure both are not empty
                 #construct school assignments cells
                 assigned_cell_map[f"Assignments!{SheetsAPI.sheets_alphabet(j+1)}{new_row_in_assignment_sheet}" if j <= 29 else f"Assignments!{SheetsAPI.sheets_alphabet(j-29)}{new_row_in_assignment_sheet + 1}"] = f"{country} ({committee})"
+                assignments.append([committee, country])
             j += 1
         for coordinate, [committee, country] in availableCountries.items():
-            if [committee, country] in ConferenceInfo.available_countries:
+            if [committee, country] not in assignments:
                 cell_map[coordinate] = f"{country} ({committee})"
-            elif [committee, country] not in ConferenceInfo.available_countries:
+            elif [committee, country] in assignments:
                 cell_map[coordinate] = ""
         del self.available_countries_and_coordinates # makes sure that stale data is not used next time.
         return cell_map, assigned_cell_map

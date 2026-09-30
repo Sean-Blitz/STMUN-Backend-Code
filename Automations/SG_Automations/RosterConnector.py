@@ -5,7 +5,7 @@ from Infrastructure import DisplayClass
 from Infrastructure import DriveAPI
 from Infrastructure import DocAPI
 from dotenv import load_dotenv; load_dotenv()
-from Automations.SG_Automations.DataManager import SchoolDelegates, SchoolInformation, ConferenceInformation
+from SG_Automations.DataManager import SchoolDelegates, SchoolInformation, ConferenceInformation
 
 SheetsAPI = SheetAPI()
 Display = DisplayClass()

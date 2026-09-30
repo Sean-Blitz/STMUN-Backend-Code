@@ -57,7 +57,7 @@ def assign_committee(ConferenceInfo: ConferenceInformation, SchoolInfo: SchoolIn
         i = i + 2 #skip the next delegate since we just assigned it.
         iterator = iterator + 2
     elif ConferenceInfo.committee_double_status[committee] == True and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
-        committee = min([name for name in ConferenceInfo.committee_names if ConferenceInfo.committee_types[name] == "GA"], key = lambda name: ConferenceInfo.committee_percentage_filled[name]) 
+        committee = min([name for name in ConferenceInfo.committee_names if ConferenceInfo.committee_types[name] == CommitteeTypeSelection], key = lambda name: ConferenceInfo.committee_percentage_filled[name]) 
         #only scans single del GA's. Finds another committee that is a single del GA this time.
         Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+1)
         ConferenceInfo.committee_percentage_filled[committee] += (100/ ConferenceInfo.committee_spots[committee])
@@ -84,7 +84,7 @@ def assign_committee(ConferenceInfo: ConferenceInformation, SchoolInfo: SchoolIn
 def confirm_committees(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInformation):
     while True:
         menu_choices = []
-        for number, committee, committee_type, country in zip(Delegates.number, Delegates.committee, Delegates.committee_type, Delegates.country):
+        for number, committee, committee_type in zip(Delegates.number, Delegates.committee.values(), Delegates.committee_type.values()):
             choice_text = f"{number}: {committee} ({committee_type})"
             menu_choices.append(choice_text)
         selected_choice = Display.display_list_of_selections(menu_choices, "Select a delegate to modify committee (if desired)", "Save and Exit")
@@ -93,10 +93,15 @@ def confirm_committees(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInf
             break
 
         delegate_key = selected_choice.split(":")[0].strip() #read result
-        current_committee = Delegates.committee[Delegates.number.index(int(delegate_key))]
-        new_committee = Display.display_list_of_selections(ConferenceInfo.committee_names, "Choose new committee", "Exit (keep same committee)")
+        current_committee = Delegates.committee[int(delegate_key)]
+        display_list = []
+        for committee_names, committee_types in zip(ConferenceInfo.committee_names, ConferenceInfo.committee_types.values()):
+            display_list.append(f"{committee_names} - ({committee_types})")
+        new_committee = Display.display_list_of_selections(display_list, "Choose new committee", "Exit (keep same committee)")
         if new_committee == "Exit (keep same committee)":
             new_committee = current_committee
+        else:
+            new_committee = new_committee.split(" - ")[0].strip() #read result
 
         #Helper function to check double committees.
         def check_doubles(current_assignment: str, new_committee: str, delegate_key, ConferenceInfo: ConferenceInformation):
@@ -111,8 +116,8 @@ def confirm_committees(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInf
         #------------------------------------------------------------------
 
         #update dictionary with new choice
-        if new_committee and new_committee.strip() != current_committee and new_committee in ConferenceInfo.committee_names:
-            Delegates.committee[Delegates.number.index(int(delegate_key))] = new_committee
+        if new_committee and (new_committee.strip() != current_committee) and (new_committee in ConferenceInfo.committee_names):
+            Delegates.committee[int(delegate_key)] = new_committee
             check_doubles(current_committee, new_committee, delegate_key, ConferenceInfo)
         else:
             Display.display("No changes made or invalid committee name entered. Please try again.")
@@ -162,7 +167,7 @@ def print_data_to_terminal(RegionBloc, CountryPrefs, SecurityCouncil, numdels, n
     Display.display("Region block most preferred:", "\033[1m" + RegionBloc + "\033[0m") #Display.display country preferences in bold for visibility.
     for i, country in enumerate(CountryPrefs):
         Display.display(f"Country preference {i + 1}:", "\033[1m" + country + "\033[0m")
-    Display.display("Security Council interest:", "\033[1m" + SecurityCouncil + "\033[0m")
+    Display.display("Security Council interest:", "\033[1m" + str(SecurityCouncil) + "\033[0m")
     if newschool == True:
         Display.display("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
 
@@ -220,9 +225,7 @@ def add_assignments(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInform
 
         old_country = Delegates.country.get(delegate_key) # safely returns None if not assigned yet
 
-        current_suggestions = []
-        selected_option = selected_choice.split(" │ ")[0].strip()
-        current_suggestions = Delegates.suggestions.get(selected_option)
+        current_suggestions = Delegates.suggestions.get(delegate_key)
 
         new_country = None
 
@@ -244,13 +247,13 @@ def add_assignments(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInform
             
             # 1. Display.display out the available options as a clear text menu block
             Display.display(f"Suggestions for {delegate_key} ({current_comm}):")
-            for i, country in enumerate(current_suggestions[0]):
+            for i, country in enumerate(current_suggestions):
                 Display.display(f"  [{i + 1}] {country}")
             Display.display("  [M] Type a custom country manually")
             Display.display("  [B] Go back to main menu")
 
             Display.display("These are the countries that are preferred by the school and available for this committee. You may type these in manually.")
-            for country in current_suggestions[1]:
+            for country in Delegates.preferences_in_committee.get(delegate_key, []):
                 Display.display(f"  {country}")
             # 2. Collect a single clean text input instead of a selection menu
             user_input = Display.typing_with_pre_fill("Select an option number/shortcut:", "")
@@ -285,7 +288,7 @@ def add_assignments(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInform
                 try:
                     selection_idx = int(user_input) - 1
                     if 0 <= selection_idx < len(current_suggestions[0]):
-                        suggested_name = current_suggestions[0][selection_idx]
+                        suggested_name = current_suggestions[selection_idx]
                         lookup_pair = [current_comm.strip(), suggested_name.strip()]
                         
                         # FIXED: Tuple evaluation instead of zip()

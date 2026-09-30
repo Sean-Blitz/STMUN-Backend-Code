@@ -8,9 +8,9 @@ class SchoolDelegates:
         self.preferences_in_committee: dict[int, list[str]] = {}
 
     def add_delegate(self, committee, committee_type, country, number):
-        self.number.append(number)
         if number in self.number:
             raise ValueError(f"Delegate number {number} is not unique. Ensure that numbers in sheets are not repeated.")
+        self.number.append(number)
         self.committee[number] = committee
         self.committee_type[number] = committee_type
         self.country[number] = country
@@ -81,8 +81,8 @@ class ConferenceInformation:
 
     def get_lowest_committee_percentage_for_type(self, committee_type):
         names = [name for name in self.committee_names if self.committee_types[name] == committee_type]
-        lowest_percentage_index = min(names, key=lambda x: self.committee_percentage_filled[x])
-        return self.committee_names[lowest_percentage_index]
+        lowest_percentage_name = min(names, key=lambda x: self.committee_percentage_filled[x])
+        return lowest_percentage_name
 
     def add_available_assignments(self, available_countries):
         self.available_countries = available_countries
