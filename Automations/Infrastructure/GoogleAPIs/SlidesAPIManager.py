@@ -1,6 +1,9 @@
 from .GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
 from Infrastructure.utilities import retry_on_http_error
+from ..Display.DisplayManager import DisplayClass
+
+Display = DisplayClass()
 
 class SlideAPI(GoogleAPIs):
     def __init__(self, SCOPES = None, CREDENTIALS_FILE = None, TOKEN_FILE = None):
@@ -181,7 +184,7 @@ class SlideAPI(GoogleAPIs):
                 body=request
             ).execute()
 
-        print("Finished moving slides.")
+        Display.display("Finished moving slides.")
 
     @retry_on_http_error()
     def get_slide_id_by_index(self, presentation_id, index):

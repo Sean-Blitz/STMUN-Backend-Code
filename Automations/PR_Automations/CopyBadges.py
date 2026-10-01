@@ -7,10 +7,12 @@ os.chdir(SCRIPT_DIR)
 from ..Infrastructure import DriveAPI
 from ..Infrastructure import SlideAPI
 from ..Infrastructure import SheetAPI
+from ..Infrastructure import DisplayClass
 
 BadgesPaper = SlideAPI()
 CloudStorage = DriveAPI()
 Spreadsheet = SheetAPI()
+Display = DisplayClass()
 
 #------------- Controls ---------------
 fileID = "1HRvv77Ud9K1GsmNzs8-g1OtB7A2112qOkKbO_RHWmoo"
@@ -31,13 +33,13 @@ for i in range(len(dictionaryofbadges)):
     if (i+1) %2 != 0:
         countryAssignments.append(dictionaryofbadges.get(i+1, None))
         if countryAssignments[-1] is None:
-            print(f"Warning: No country assignments found for column {i+1}.")
+            Display.display(f"Warning: No country assignments found for column {i+1}.")
     elif (i+1) %2 == 0:
         committeeAssignments.append(dictionaryofbadges.get(i+1, None))
         if committeeAssignments[-1] is None:
-            print(f"Warning: No committee assignments found for column {i+1}.")
+            Display.display(f"Warning: No committee assignments found for column {i+1}.")
     else:
-        print("Error: column index out of expected range.")
+        Display.display("Error: column index out of expected range.")
 
 copied_slide_id = CloudStorage.copy_drive_file("1HRvv77Ud9K1GsmNzs8-g1OtB7A2112qOkKbO_RHWmoo", new_name="SCVMUN 2027 Badges")
 
@@ -52,18 +54,18 @@ current_slideID = None  # will point to the slide being filled
 
 for i in range(schoolCount):
     if i > 0:
-        print("Sleeping for 10 seconds to avoid hitting API rate limits...")
+        Display.display("Sleeping for 10 seconds to avoid hitting API rate limits...")
         time.sleep(10)
 
     schoolCountryAssignments = countryAssignments[i]
     schoolCommitteeAssignments = committeeAssignments[i]
 
     if len(schoolCountryAssignments) != len(schoolCommitteeAssignments):
-        print(f"Error: Mismatched number of country and committee assignments for {schoolNames[i]}.")
+        Display.display(f"Error: Mismatched number of country and committee assignments for {schoolNames[i]}.")
         sys.exit(1)
 
     schoolname = schoolNames[i]
-    print(f"Processing school {i+1}/{schoolCount}: {schoolname}")
+    Display.display(f"Processing school {i+1}/{schoolCount}: {schoolname}")
 
     badge_global_index = 0
     total_badges = len(schoolCountryAssignments)
@@ -119,7 +121,7 @@ for i in range(schoolCount):
     )
 
 
-print("Reorganizing...")
+Display.display("Reorganizing...")
 time.sleep(5) #to avoid hitting API rate limits. Adjust as needed.
 BadgesPaper.delete_slide(copied_slide_id, firstslideID)
 BadgesPaper.move_slides_to_indexes(copied_slide_id, [backsideID], [0]) #move backside to very front before reversing, so that it ends up at the very end after reversing
@@ -143,10 +145,10 @@ BadgesPaper.move_slides_to_indexes(
     createdslideIDs,
     placementlist
 )
-print(f"Inserting back slides at positions: {placementlist}")
+Display.display(f"Inserting back slides at positions: {placementlist}")
 
-print("Done! Here is the URL to the new slide deck: " + f"https://docs.google.com/presentation/d/{copied_slide_id}/edit")
-print(f"A total of {badgesDone} badges were added across {schoolCount} schools.")
+Display.display("Done! Here is the URL to the new slide deck: " + f"https://docs.google.com/presentation/d/{copied_slide_id}/edit")
+Display.display(f"A total of {badgesDone} badges were added across {schoolCount} schools.")
 
 """
 how we are going to accomplish this:

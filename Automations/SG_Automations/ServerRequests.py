@@ -3,7 +3,9 @@ import requests
 from dotenv import load_dotenv
 
 from SG_Automations.DataManager import SchoolDelegates
+from Infrastructure import DisplayClass
 load_dotenv()
+Display = DisplayClass()
 
 API_URL = "http://localhost:8000/hashes" #fill this in later!!! It's a base URL.
 # Basically, the FastAPI server will now need to process different requests based on the HTTP method, not just name of the endpoint.
@@ -41,15 +43,15 @@ def add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates:
             
             # Check specific HTTP status codes returned by the server
             if response.status_code == 401 or response.status_code == 403:
-                print("Error: Wrong password or unauthorized access.")
+                Display.display("Error: Wrong password or unauthorized access.")
                 return {}
                 
             elif response.status_code == 422 or response.status_code == 400:
-                print("Error: Data error. The sent assignments dictionary formatted incorrectly.")
+                Display.display("Error: Data error. The sent assignments dictionary formatted incorrectly.")
                 return {}
                 
             elif response.status_code >= 500:
-                print("Error: Internal server error on the FastAPI server.")
+                Display.display("Error: Internal server error on the FastAPI server.")
                 return {}
 
             # Fallback to catch any other non-200 HTTP status code
@@ -60,17 +62,17 @@ def add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates:
             hashes: dict[str, str] = payload.get("data", {})
             server_message = payload.get("message", "")
             if server_message:
-                print(f"Message from server: {server_message}")
+                Display.display(f"Message from server: {server_message}")
             return hashes
 
     # Network-level exceptions (Server unreachable or timed out)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        print("Error: No server response. Check if FastAPI is running and accessible.")
+        Display.display("Error: No server response. Check if FastAPI is running and accessible.")
         return {}
         
     # Generic catch-all for any other unexpected requests issues
     except requests.exceptions.RequestException as e:
-        print(f"Error communicating with server: {e}")
+        Display.display(f"Error communicating with server: {e}")
         return {}
 
 def drop_delegates_from_school_and_delete_hashes(delegates_to_drop: list[str]) -> dict[str, str]:
@@ -101,15 +103,15 @@ def drop_delegates_from_school_and_delete_hashes(delegates_to_drop: list[str]) -
         
         # Check specific HTTP status codes
         if response.status_code in (401, 403):
-            print("Error: Wrong password or unauthorized access.")
+            Display.display("Error: Wrong password or unauthorized access.")
             return {}
             
         elif response.status_code in (400, 422):
-            print("Error: Data error. The delegates dictionary is formatted incorrectly.")
+            Display.display("Error: Data error. The delegates dictionary is formatted incorrectly.")
             return {}
             
         elif response.status_code >= 500:
-            print("Error: Internal server error on the FastAPI server.")
+            Display.display("Error: Internal server error on the FastAPI server.")
             return {}
 
         response.raise_for_status()
@@ -119,18 +121,18 @@ def drop_delegates_from_school_and_delete_hashes(delegates_to_drop: list[str]) -
         
         # Print server message if provided
         if "message" in payload and payload["message"]:
-            print(f"Server Message: {payload['message']}")
+            Display.display(f"Server Message: {payload['message']}")
             
         # Extract and return deleted hashes mapping
         deleted_hashes: dict[str, str] = payload.get("data", {})
         return deleted_hashes
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        print("Error: No server response. Check if FastAPI is running and accessible.")
+        Display.display("Error: No server response. Check if FastAPI is running and accessible.")
         return {}
         
     except requests.exceptions.RequestException as e:
-        print(f"Error communicating with server: {e}")
+        Display.display(f"Error communicating with server: {e}")
         return {}
 
 def request_hashes_for_school(school_name: str) -> dict[str, str]:
@@ -165,19 +167,19 @@ def request_hashes_for_school(school_name: str) -> dict[str, str]:
         
         # Specific HTTP status code handling
         if response.status_code in (401, 403):
-            print("Error: Wrong password or unauthorized access.")
+            Display.display("Error: Wrong password or unauthorized access.")
             return {}
             
         elif response.status_code in (400, 422):
-            print(f"Error: Invalid query parameter or school name '{school_name}'.")
+            Display.display(f"Error: Invalid query parameter or school name '{school_name}'.")
             return {}
             
         elif response.status_code == 404:
-            print(f"Error: School '{school_name}' was not found.")
+            Display.display(f"Error: School '{school_name}' was not found.")
             return {}
             
         elif response.status_code >= 500:
-            print("Error: Internal server error on the FastAPI server.")
+            Display.display("Error: Internal server error on the FastAPI server.")
             return {}
 
         response.raise_for_status()
@@ -186,17 +188,17 @@ def request_hashes_for_school(school_name: str) -> dict[str, str]:
         
         # Print optional message from the server if present
         if "message" in payload and payload["message"]:
-            print(f"Server Message: {payload['message']}")
+            Display.display(f"Server Message: {payload['message']}")
             
         hashes: dict[str, str] = payload.get("data", {})
         return hashes
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        print("Error: No server response. Check if FastAPI is running and accessible.")
+        Display.display("Error: No server response. Check if FastAPI is running and accessible.")
         return {}
         
     except requests.exceptions.RequestException as e:
-        print(f"Error communicating with server: {e}")
+        Display.display(f"Error communicating with server: {e}")
         return {}
 
 def request_all_awards_data() -> dict[str, list[tuple[str, str]]]: # returns a dictionary where keys are (country, committee) tuples and values are award names.
@@ -227,11 +229,11 @@ def request_all_awards_data() -> dict[str, list[tuple[str, str]]]: # returns a d
         
         # Status code checks
         if response.status_code in (401, 403):
-            print("Error: Wrong password or unauthorized access.")
+            Display.display("Error: Wrong password or unauthorized access.")
             return {}
             
         elif response.status_code >= 500:
-            print("Error: Internal server error on the FastAPI server.")
+            Display.display("Error: Internal server error on the FastAPI server.")
             return {}
 
         response.raise_for_status()
@@ -240,7 +242,7 @@ def request_all_awards_data() -> dict[str, list[tuple[str, str]]]: # returns a d
         
         # Print optional server message if included
         if "message" in payload and payload["message"]:
-            print(f"Server Message: {payload['message']}")
+            Display.display(f"Server Message: {payload['message']}")
             
         # Parse list of items from 'data' and construct tuple-keyed dict
         # Expecting 'data' to be a list of objects like:
@@ -250,11 +252,11 @@ def request_all_awards_data() -> dict[str, list[tuple[str, str]]]: # returns a d
         return raw_awards_list
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        print("Error: No server response. Check if FastAPI is running and accessible.")
+        Display.display("Error: No server response. Check if FastAPI is running and accessible.")
         return {}
         
     except requests.exceptions.RequestException as e:
-        print(f"Error communicating with server: {e}")
+        Display.display(f"Error communicating with server: {e}")
         return {}
 
 def regenerate_hashes_for_delegate(committee: str, country: str) -> str:
@@ -293,15 +295,15 @@ def regenerate_hashes_for_delegate(committee: str, country: str) -> str:
         )
         
         if response.status_code in (401, 403):
-            print("Error: Wrong password or unauthorized access.")
+            Display.display("Error: Wrong password or unauthorized access.")
             return ""
             
         elif response.status_code == 404:
-            print(f"Error: Delegate ({country}, {committee}) not found.")
+            Display.display(f"Error: Delegate ({country}, {committee}) not found.")
             return ""
             
         elif response.status_code >= 500:
-            print("Error: Internal server error on the FastAPI server.")
+            Display.display("Error: Internal server error on the FastAPI server.")
             return ""
 
         response.raise_for_status()
@@ -309,7 +311,7 @@ def regenerate_hashes_for_delegate(committee: str, country: str) -> str:
         payload = response.json()
         
         if "message" in payload and payload["message"]:
-            print(f"Server Message: {payload['message']}")
+            Display.display(f"Server Message: {payload['message']}")
             
         # Extract the single new hash string from the payload
         # Expecting server JSON: {"data": "new_generated_hash_123"}
@@ -317,11 +319,11 @@ def regenerate_hashes_for_delegate(committee: str, country: str) -> str:
         return new_hash
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        print("Error: No server response. Check if FastAPI is running and accessible.")
+        Display.display("Error: No server response. Check if FastAPI is running and accessible.")
         return ""
         
     except requests.exceptions.RequestException as e:
-        print(f"Error communicating with server: {e}")
+        Display.display(f"Error communicating with server: {e}")
         return ""
 
 def regenerate_hashes_for_school(school_name: str) -> dict[str, str]:
@@ -360,19 +362,19 @@ def regenerate_hashes_for_school(school_name: str) -> dict[str, str]:
         
         # Handle specific HTTP status codes
         if response.status_code in (401, 403):
-            print("Error: Wrong password or unauthorized access.")
+            Display.display("Error: Wrong password or unauthorized access.")
             return {}
             
         elif response.status_code == 404:
-            print(f"Error: School '{school_name}' was not found.")
+            Display.display(f"Error: School '{school_name}' was not found.")
             return {}
             
         elif response.status_code in (400, 422):
-            print(f"Error: Invalid parameters for school name '{school_name}'.")
+            Display.display(f"Error: Invalid parameters for school name '{school_name}'.")
             return {}
             
         elif response.status_code >= 500:
-            print("Error: Internal server error on the FastAPI server.")
+            Display.display("Error: Internal server error on the FastAPI server.")
             return {}
 
         response.raise_for_status()
@@ -381,18 +383,18 @@ def regenerate_hashes_for_school(school_name: str) -> dict[str, str]:
         
         # Print optional server message if present
         if "message" in payload and payload["message"]:
-            print(f"Server Message: {payload['message']}")
+            Display.display(f"Server Message: {payload['message']}")
             
         # Parse updated hashes dictionary from response payload
         new_hashes: dict[str, str] = payload.get("data", {})
         return new_hashes
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        print("Error: No server response. Check if FastAPI is running and accessible.")
+        Display.display("Error: No server response. Check if FastAPI is running and accessible.")
         return {}
         
     except requests.exceptions.RequestException as e:
-        print(f"Error communicating with server: {e}")
+        Display.display(f"Error communicating with server: {e}")
         return {}
     
 def export_database_to_csv() -> None:

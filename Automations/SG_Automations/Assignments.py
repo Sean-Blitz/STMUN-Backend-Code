@@ -225,7 +225,7 @@ def drop_delegates():
             if assignment and assignment != "":
                 final_list_of_assignments.append(assignment)
                 if seen_empty == True:
-                    print("There is a hole or error in the sheets assignment list! There cannot be an empty cell except for the last few cells.")
+                    Display.display("There is a hole or error in the sheets assignment list! There cannot be an empty cell except for the last few cells.")
             else:
                 seen_empty = True
 
@@ -266,7 +266,7 @@ def drop_delegates():
             sys.exit()
         
     else:
-        print("The sheet for the school's assignments came back empty. Check the Assignments sheet.")
+        Display.display("The sheet for the school's assignments came back empty. Check the Assignments sheet.")
         sys.exit()
 
 """

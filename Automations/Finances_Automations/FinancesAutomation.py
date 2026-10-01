@@ -16,6 +16,7 @@ from Infrastructure import SheetAPI
 from Infrastructure import DocAPI
 from Infrastructure import AirtableAPI
 from Infrastructure import TodoList
+from Infrastructure import DisplayClass
 BASE_DIR = Path(__file__).resolve().parent
 CREDENTIALS_FILE = str(BASE_DIR / "credentials.json")
 TOKEN_FILE = str(BASE_DIR / "token.json")
@@ -26,6 +27,7 @@ Sheets = SheetAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
 Document = DocAPI(CREDENTIALS_FILE=CREDENTIALS_FILE, TOKEN_FILE=TOKEN_FILE)
 Database = AirtableAPI()
 Todo = TodoList()
+Display = DisplayClass()
 load_dotenv()
 
 # ----------------------- Controls -----------------------
@@ -53,7 +55,7 @@ def statename(state):
     
     state = stateabbreviation.get(state)
     if state == None:
-        print("Not a US state in address. Manually check the invoice to edit address.")
+        Display.display("Not a US state in address. Manually check the invoice to edit address.")
         state = statetempstore
     return state
 
@@ -68,7 +70,7 @@ def folderfinding(sName):
             folder_id=findfolder,
             new_parent_folder_id= AttendingFolderID
         )
-        print("Folder moved successfully. Check name regardless.")
+        Display.display("Folder moved successfully. Check name regardless.")
         yearfolder = CloudStorageAPI.create_drive_folder(
             name=YearText,
             mime_type='application/vnd.google-apps.folder',
@@ -81,39 +83,39 @@ def folderfinding(sName):
             mime_type='application/vnd.google-apps.folder',
             parent_id=AttendingFolderID
         )
-        print("Folder created successfully. Check name regardless.")
+        Display.display("Folder created successfully. Check name regardless.")
         yearfolder = CloudStorageAPI.create_drive_folder(
             name=YearText, 
             mime_type='application/vnd.google-apps.folder',
             parent_id=createdfolder
         )
     else:
-        print("Error in finding folder.")
-        tryagain = input("Try again? y/n").lower().strip()
+        Display.display("Error in finding folder.")
+        tryagain = Display.take_text_input("Try again? y/n").lower().strip()
         while not tryagain in ["y", "n"]:
-            tryagain = input("Invalid input. Try again? y/n").lower().strip()
+            tryagain = Display.take_text_input("Invalid input. Try again? y/n").lower().strip()
         if tryagain == "y":
             folderfinding(sName)
         else:            
-            print("Process cancelled.")
+            Display.display("Process cancelled.")
             sys.exit()
     
     return yearfolder # type: ignore
 
 def keepgoing():
-    keepgoing = input("Share? y/n")
+    keepgoing = Display.take_text_input("Share? y/n")
     while not keepgoing in ["y", "n"]:
-        keepgoing = input("Invalid input. Continue? y/n")
+        keepgoing = Display.take_text_input("Invalid input. Continue? y/n")
     if keepgoing != "y":
-        print("Process cancelled.")
+        Display.display("Process cancelled.")
         sys.exit()
 
 today = datetime.date.today()
 gmailIDs = mailAPI.find_emails_from_sender_with_label()
 if EmailCount := len(gmailIDs) == 0:
-    print("No emails found with the label 'Finances Automation'. What this means is that you have to check your email to see if the Airtable automated email is marked with the label.")
+    Display.display("No emails found with the label 'Finances Automation'. What this means is that you have to check your email to see if the Airtable automated email is marked with the label.")
     sys.exit()
-print(f"Found {len(gmailIDs)} emails with the label 'Finances Automation'.")
+Display.display(f"Found {len(gmailIDs)} emails with the label 'Finances Automation'.")
 mail_school_names = mailAPI.extract_strings_and_remove_label(message_ids=gmailIDs)
 
 i=0
@@ -124,14 +126,14 @@ for i in range(len(mail_school_names)):
     city, state, zipCode, DelCount = Database.search_formResponse(record_id)
     state = statename(state)
 
-    independent = input("Independent registration? y/n. Exit to stop.").lower().strip()
+    independent = Display.take_text_input("Independent registration? y/n. Exit to stop.").lower().strip()
     if independent == "exit":
-        print("Process cancelled.")
+        Display.display("Process cancelled.")
         continue
     while not independent in ["y", "n", "exit"]:
-        independent = input("Invalid input. Independent registration? y/n. Exit to stop.")
+        independent = Display.take_text_input("Invalid input. Independent registration? y/n. Exit to stop.")
     if independent == "exit":
-        print("Process cancelled for this school.")
+        Display.display("Process cancelled for this school.")
         continue
 
     yearfolder = folderfinding(sName)
@@ -147,8 +149,8 @@ for i in range(len(mail_school_names)):
     elif "/" in str(date):
         splitter = "/"
     else:
-        print("Date format error. Check Airtable.")
-        print("Date: " + str(date))
+        Display.display("Date format error. Check Airtable.")
+        Display.display("Date: " + str(date))
         sys.exit()
     month = int(date.split(splitter)[1])
     day = int(date.split(splitter)[2])
@@ -171,7 +173,7 @@ for i in range(len(mail_school_names)):
         inputCell = "B30"
         invoiceNumber = 3
     else:
-        print("Today's date error for delegate fee.")
+        Display.display("Today's date error for delegate fee.")
         sys.exit()
 
     Sheets.write_values_to_sheet_from_dict(
@@ -196,10 +198,10 @@ for i in range(len(mail_school_names)):
     SheetTotal = Sheets.read_single_cell(spreadsheet_id=newInvoice, cell_range="Purchase order!H36")
 
     if int(float(SheetTotal.replace("$", "").replace(",", "").strip()) if SheetTotal != None else 0) != Balance:
-        print("Subtotal mismatch error.")
+        Display.display("Subtotal mismatch error.")
 
     sheeturl = "https://docs.google.com/spreadsheets/d/" + newInvoice
-    print(sheeturl)
+    Display.display(sheeturl)
     Todo.place_invoice_link_in_todolist(sName, invoiceNumber, sheeturl)
 
     docID = CloudStorageAPI.copy_drive_file(
@@ -210,9 +212,9 @@ for i in range(len(mail_school_names)):
 
     Document.fill_doc_placeholders(document_id=docID,aEmail = aEmail,schoolName = sName,sheeturl = sheeturl, headDelegateEmail = head_delegate_email)
 
-    print("Email draft created.")
+    Display.display("Email draft created.")
     keepgoing()
     CloudStorageAPI.share_doc_with_user(document_id=docID,email="sg@scvmun.com",role="writer")
 
-    print("Shared.")
-    print("https://docs.google.com/document/d/" + docID)
+    Display.display("Shared.")
+    Display.display("https://docs.google.com/document/d/" + docID)

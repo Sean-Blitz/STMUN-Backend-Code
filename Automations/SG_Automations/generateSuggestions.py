@@ -43,7 +43,7 @@ def generate_dictionary_of_suggestions(SchoolInfo: SchoolInformation, Delegates:
     if blacklist is not None:
         blacklist = [school.strip() for school in blacklist.lower().split(",") if school.strip()]
     else:
-        print("No schools in the blacklist")
+        Display.display("No schools in the blacklist")
         blacklist = []
     sanitized_school_name = SchoolInfo.schoolname.lower().replace("high", "").replace("school", "").replace("hs", "").replace("college", "").replace("preparatory", "").replace("prep", "").strip()
     school_status = SheetsAPI.get_school_awards_data(sanitized_school_name) # returns "good", "great", "below average", or "unexperienced"

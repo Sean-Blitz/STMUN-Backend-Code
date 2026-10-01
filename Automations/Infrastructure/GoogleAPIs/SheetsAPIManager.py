@@ -3,7 +3,10 @@ import string
 from googleapiclient.discovery import build
 from .GoogleAPIsManager import GoogleAPIs
 from Infrastructure.utilities import retry_on_http_error
+from ..Display.DisplayManager import DisplayClass
 import sys
+
+Display = DisplayClass()
 
 class SheetAPI(GoogleAPIs):
     def __init__(self, SCOPES = None, CREDENTIALS_FILE = None, TOKEN_FILE = None):
@@ -224,11 +227,11 @@ class SheetAPI(GoogleAPIs):
                     return index + 1
                     
             # If the loop finishes without hitting the return statement, the string wasn't found
-            print(f"Warning: '{search_string}' not found in column {column_letter}.")
+            Display.display(f"Warning: '{search_string}' not found in column {column_letter}.")
             return None
             
         except Exception as e:
-            print(f"API Error searching column {column_letter}: {e}")
+            Display.display(f"API Error searching column {column_letter}: {e}")
             return None
 
     def sheets_alphabet(self, n):
@@ -333,7 +336,7 @@ class SheetAPI(GoogleAPIs):
         if current_number is not None:
             current_number = int(current_number)
         else:
-            print(f"Warning: Could not read the current number from Assignments!A{currentRow+1}. Please check the sheet.")
+            Display.display(f"Warning: Could not read the current number from Assignments!A{currentRow+1}. Please check the sheet.")
             sys.exit(1)
         for delegate, vals in finalassignments.items():
             if len(vals) == 3:

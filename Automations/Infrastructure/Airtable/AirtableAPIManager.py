@@ -4,7 +4,9 @@ import datetime
 import os
 from dotenv import load_dotenv
 from urllib.parse import quote
+from ..Display.DisplayManager import DisplayClass
 load_dotenv()
+Display = DisplayClass()
 
 finance_table_id = os.getenv("FINANCE_TABLE_ID")  # Ensure this is set in your .env file
 form_response_table_id = os.getenv("FORM_RESPONSE_TABLE_ID")  # Ensure this is set in your .env file
@@ -92,7 +94,7 @@ class AirtableAPI:
         
         response = requests.patch(url, headers=headers, json=payload)
         if response.status_code != 200:
-            print(f"Failed to update '{field_name}': {response.status_code} - {response.text}")
+            Display.display(f"Failed to update '{field_name}': {response.status_code} - {response.text}")
             
     def get_latest_record_id(self, base_id, table_name):
         """
@@ -152,7 +154,7 @@ class AirtableAPI:
         date = fields["Registration Date"]
         datestr = date
 
-        print(sName + "\n" + sAddress + "\n" + aPhoneNumber + "\n" + aEmail + "\nNumber of delegates: " + str(DelegateCount) + "\n" + datestr)
+        Display.display(sName + "\n" + sAddress + "\n" + aPhoneNumber + "\n" + aEmail + "\nNumber of delegates: " + str(DelegateCount) + "\n" + datestr)
         return sName, sAddress, aPhoneNumber, aEmail, DelegateCount, date, datestr
 
     def create_airtable_record(self, record_id_value, date_1, DateBox, DelBox, NumDelegates, number_2, schoolName):
@@ -190,12 +192,12 @@ class AirtableAPI:
 
         response = requests.post(url, headers=headers, json=payload)
 
-        print("Status code:", response.status_code)
-        print("Response text:", response.text)
+        Display.display("Status code:", response.status_code)
+        Display.display("Response text:", response.text)
 
         if response.status_code != 200:
             try:
-                print("Response JSON:", response.json())
+                Display.display("Response JSON:", response.json())
             except Exception:
                 pass
 
@@ -259,11 +261,11 @@ class AirtableAPI:
         # 422 indicates invalid dropdown selection or schema mismatch
         if response.status_code == 422:
             error_details = response.json().get("error", {})
-            print(
+            Display.display(
                 f"[Airtable 422] Option '{target_option}' rejected for field '{field_name}'. Details: {error_details}"
             )
         else:
-            print(f"[Airtable Error] HTTP {response.status_code}: {response.text}")
+            Display.display(f"[Airtable Error] HTTP {response.status_code}: {response.text}")
 
         return False
 
@@ -290,7 +292,7 @@ class AirtableAPI:
             if records:
                 return records[0]["id"]
         else:
-            print(f"Error searching Airtable: {response.status_code} - {response.text}")
+            Display.display(f"Error searching Airtable: {response.status_code} - {response.text}")
             
         return None
 
@@ -341,7 +343,7 @@ class AirtableAPI:
         records = search_resp.json().get("records", [])
 
         if not records:
-            print(
+            Display.display(
                 f"No matching record found for '{search_string}' in '{target_table_name}'."
             )
             return None

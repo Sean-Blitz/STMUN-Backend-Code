@@ -33,7 +33,7 @@ class DisplayClass:
 
         # Handle the break condition
         if selected_choice == exitOption or selected_choice is None:
-            print("Exiting modification menu...")
+            self.display("Exiting modification menu...")
             selected_choice = "exit"
         
         return selected_choice
@@ -65,7 +65,7 @@ class DisplayClass:
         if selected_choices is None or "EXIT_KEY" in selected_choices:
             # Filter out the exit key if any other items were checked alongside it
             selected_choices = [c for c in selected_choices if c != "EXIT_KEY"] if selected_choices else []
-            print("Exiting selection menu...")
+            self.display("Exiting selection menu...")
             
             # If no other choices were picked, return "exit" string or empty list as needed
             if not selected_choices:
@@ -95,12 +95,12 @@ class DisplayClass:
         str: The name of the school chosen by the user.
         """
         if not options:
-            print("\n All schools have been assigned! Nothing left to process.")
+            self.display("\n All schools have been assigned! Nothing left to process.")
             sys.exit(0)
             
-        print("\n" + "="*40)
-        print(Title)
-        print("="*40)
+        self.display("\n" + "="*40)
+        self.display(Title)
+        self.display("="*40)
         
         selected = questionary.select(
             promptText,
