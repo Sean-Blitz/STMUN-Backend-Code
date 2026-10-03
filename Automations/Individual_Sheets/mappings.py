@@ -111,15 +111,22 @@ class IndividualSheetData:
             "C31": self.dmunc_award[attendance_sheet_index] if self.dmunc_award else "",
             "D31": self.dmunc_points[attendance_sheet_index] if self.dmunc_points else "",
         }
-        thursday_length = len(self.thursday_attendances[attendance_sheet_index])
-        wednesday_length = len(self.training_attendances[attendance_sheet_index])
+        try:
+            self.thursday_attendances[attendance_sheet_index]
+            self.training_attendances[attendance_sheet_index]
+        except IndexError:
+            Display.display(f"Warning: No Thursday or Wednesday attendance data for {self.names[attendance_sheet_index]}.")
+            self.thursday_attendances[attendance_sheet_index] = ["" for _ in range(len(self.thursday_attendance_dates))]
+            self.training_attendances[attendance_sheet_index] = ["" for _ in range(len(self.training_attendance_dates))]
+        thursday_count = len(self.thursday_attendances[attendance_sheet_index])
+        wednesday_count = len(self.training_attendances[attendance_sheet_index])
 
         for coord, value in data_dict.items():
             if value is None:
                 data_dict[coord] = ""  # Replace None with an empty string
-        for i in range(thursday_length):
+        for i in range(thursday_count):
             data_dict[f"{self.thursday_meetings_column_in_individual_sheet}{i+2}"] = self.thursday_attendances[attendance_sheet_index][i]
-        for i in range(wednesday_length):
+        for i in range(wednesday_count):
             data_dict[f"{self.wednesday_meetings_column_in_individual_sheet}{i+2}"] = self.training_attendances[attendance_sheet_index][i]
         for i in range(len(self.training_attendance_dates)):
             data_dict[f"{self.wednesday_meetings_date_column_in_individual_sheet}{i+2}"] = self.training_attendance_dates[i]
@@ -156,6 +163,7 @@ class IndividualSheetData:
         self.last_names = read("Master Roster Contact Info", "A"); time.sleep(1)
         self.grades = read("Master Roster Contact Info", "C")
         self.student_IDs = read("Master Roster Contact Info", "D"); time.sleep(2)
+        self.points = read("Overall Total Points", "E"); time.sleep(1)
 
         self.total_points = read("Overall Total Points", "E")
 
