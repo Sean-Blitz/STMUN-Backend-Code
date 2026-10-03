@@ -39,6 +39,8 @@ class IndividualSheetData:
         self.dmunc_cost = os.environ["DMUNCcost"]
         self.thursday_meetings_column_in_individual_sheet = "J"
         self.wednesday_meetings_column_in_individual_sheet = "M"
+        self.wednesday_meetings_date_column_in_individual_sheet = "L"
+        self.thursday_meetings_date_column_in_individual_sheet = "I"
 
     def write_data_to_individual_sheet(self, attendance_sheet_index, sheet_id):
         data_dict = {
@@ -119,6 +121,10 @@ class IndividualSheetData:
             data_dict[f"{self.thursday_meetings_column_in_individual_sheet}{i+2}"] = self.thursday_attendances[attendance_sheet_index][i]
         for i in range(wednesday_length):
             data_dict[f"{self.wednesday_meetings_column_in_individual_sheet}{i+2}"] = self.training_attendances[attendance_sheet_index][i]
+        for i in range(len(self.training_attendance_dates)):
+            data_dict[f"{self.wednesday_meetings_date_column_in_individual_sheet}{i+2}"] = self.training_attendance_dates[i]
+        for i in range(len(self.thursday_attendance_dates)):
+            data_dict[f"{self.thursday_meetings_date_column_in_individual_sheet}{i+2}"] = self.thursday_attendance_dates[i]
 
         SheetsAPI.write_values_to_sheet_from_dict(sheet_id, data_dict)
 
@@ -214,6 +220,9 @@ class IndividualSheetData:
         general_end_column, training_end_column, general_meeting_count, training_count = self.read_sheet_setup(start_row)
         self.thursday_attendances = SheetsAPI.get_2d_range(AttendanceSheetID, "Thursday Meeting Attd", f"F{start_row}", f"{general_end_column}{len(self.first_names) + start_row-1}"); time.sleep(1)
         self.training_attendances = SheetsAPI.get_2d_range(AttendanceSheetID, "Mock/Training Attd", f"F{start_row}", f"{training_end_column}{len(self.first_names) + start_row-1}"); time.sleep(1)
+        
+        self.training_attendance_dates = SheetsAPI.read_row_from(AttendanceSheetID, "Mock/Training Attd", start_row-2, "F")[:training_count]; time.sleep(1)
+        self.thursday_attendance_dates = SheetsAPI.read_row_from(AttendanceSheetID, "Thursday Meeting Attd", start_row-2, "F")[:general_meeting_count]; time.sleep(1)
 
         self.names = [f"{first} {last}" for first, last in zip(self.first_names, self.last_names)]
 
