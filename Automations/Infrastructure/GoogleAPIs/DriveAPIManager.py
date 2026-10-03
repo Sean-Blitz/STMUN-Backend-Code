@@ -2,6 +2,9 @@ from googleapiclient.discovery import build
 import re
 from Infrastructure.GoogleAPIs.GoogleAPIsManager import GoogleAPIs
 from Infrastructure.utilities import retry_on_http_error
+from ..Display.DisplayManager import DisplayClass
+
+Display = DisplayClass()
 
 class DriveAPI(GoogleAPIs):
     def __init__(self, SCOPES = None, CREDENTIALS_FILE = None, TOKEN_FILE = None):
@@ -298,11 +301,11 @@ class DriveAPI(GoogleAPIs):
                 sendNotificationEmail=True 
             ).execute()
 
-            print(f"Successfully shared with {email} as {role}. Permission ID: {permission.get('id')}")
+            Display.display(f"Successfully shared with {email} as {role}. Permission ID: {permission.get('id')}")
             return permission
 
         except Exception as e:
-            print(f"An error occurred: {e}")
+            Display.display(f"An error occurred: {e}")
             return None
 
     @retry_on_http_error()
@@ -352,5 +355,3 @@ class DriveAPI(GoogleAPIs):
         ).execute()
 
         return copied_file["id"]
-
-

@@ -1,7 +1,10 @@
 from .GoogleAPIsManager import GoogleAPIs
 from googleapiclient.discovery import build
 from Infrastructure.utilities import retry_on_http_error
+from ..Display.DisplayManager import DisplayClass
 import time
+
+Display = DisplayClass()
 
 class AppScriptAPI(GoogleAPIs):
     def __init__(self):
@@ -39,5 +42,5 @@ class AppScriptAPI(GoogleAPIs):
             }
         ).execute()
 
-        print(f"Successfully attached Apps Script project to sheet {new_sheet_id}")
+        Display.display(f"Successfully attached Apps Script project to sheet {new_sheet_id}")
         return new_script_id

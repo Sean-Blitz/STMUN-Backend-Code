@@ -330,7 +330,7 @@ def sync_with_secondary_storage(SchoolInfo: SchoolInformation, Delegates: School
         record_id = SecondaryStorage.find_airtable_record_id(base_id=base_id, table_name=table_name, school_name=school_name, delegate_num=str(delegate_key))
 
         if not record_id:
-            print(f"Warning: No matching record found for '{school_name}' (Delegate #{delegate_key})")
+            Display.display(f"Warning: No matching record found for '{school_name}' (Delegate #{delegate_key})")
             continue
 
         # 1. Update 'Committee Assigned' using your dropdown helper method

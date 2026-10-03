@@ -6,9 +6,11 @@ os.chdir(SCRIPT_DIR)
 from dotenv import load_dotenv
 from Automations.Infrastructure import DriveAPI
 from Automations.Infrastructure import SheetAPI
+from Automations.Infrastructure import DisplayClass
 
 CloudStorageAPI = DriveAPI()
 Sheets = SheetAPI()
+Display = DisplayClass()
 load_dotenv()
 
 #--------------------- Controls ------------------------
@@ -19,17 +21,17 @@ partiallyPaidInvoiceFolderID = os.getenv("partiallyPaidInvoiceFolderID")
 unpaidInvoiceFolderID = os.getenv("unpaidInvoiceFolderID")
 #-------------------------------------------------------
 
-def inputcheck(input, valid):
-    while input not in valid:
-        input = input("Invalid input. " + "Continue? y/n")
-    return input
+def inputcheck(input_text, valid):
+    while input_text not in valid:
+        input_text = Display.take_text_input("Invalid input. " + "Continue? y/n")
+    return input_text
 
-Final = input("Is this the final invoice? y/n")
+Final = Display.take_text_input("Is this the final invoice? y/n")
 if Final != "y":
-    From = int(input("Invoice number that you are copying from?"))
-    To = int(input("Invoice number that you are copying to?"))
+    From = int(Display.take_text_input("Invoice number that you are copying from?"))
+    To = int(Display.take_text_input("Invoice number that you are copying to?"))
     if From == To or To > 3 or From > 2:
-        print ("Input error.")
+        Display.display ("Input error.")
         sys.exit()
 
 FolderIDs = CloudStorageAPI.get_subfolders_as_dict(AttendingFolderID)
@@ -41,23 +43,23 @@ stop = 0
 for i in range(len(names)):
     yearfolder = CloudStorageAPI.find_subfolder_id(FolderIDs[names[i]], YearText)
     if yearfolder is None:
-        print(f"Could not find year folder for {names[i]}.")
+        Display.display(f"Could not find year folder for {names[i]}.")
         stop = 1
         continue
     else:
         yearfolderids.append(yearfolder)
 
 if stop >= 1:
-    print("Process cancelled due to missing year folders.")
+    Display.display("Process cancelled due to missing year folders.")
     sys.exit()
 
 if Final != "y":
     for i in range(len(FolderIDs)):
         yearfolder = yearfolderids[i]
-        inputcheck(input(f"Processing {names[i]}... Continue? y/n"), ["y", "n"])
+        inputcheck(Display.take_text_input(f"Processing {names[i]}... Continue? y/n"), ["y", "n"])
         fromsheetID = CloudStorageAPI.find_sheet_id_by_name_contains(yearfolder, f"Invoice {From}") #type: ignore
         if fromsheetID is None:
-            print("Could not find source sheet.")
+            Display.display("Could not find source sheet.")
             continue
 
         payments = Sheets.read_single_unformatted_cell(fromsheetID, "Purchase order!H33")
@@ -67,11 +69,11 @@ if Final != "y":
             payments = int(payments)
 
         if Final != "y": #not final invoice, regular copying.
-            From = int(input("Invoice number that you are copying from?"))
-            To = int(input("Invoice number that you are copying to?"))
+            From = int(Display.take_text_input("Invoice number that you are copying from?"))
+            To = int(Display.take_text_input("Invoice number that you are copying to?"))
             
             if From == To or To > 3 or From > 2: #error checking.
-                print ("Input error.")
+                Display.display ("Input error.")
                 sys.exit()
             
             tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, yearfolder, f"Invoice {To} - {names[i]}")
@@ -116,30 +118,30 @@ if Final != "y":
                         "Purchase order!C22": datetime.datetime.now().strftime("%m/%d/%Y"),
                         "Purchase order!A10": f"Invoice {To}",
                     })
-            print("Here is the new invoice: https://docs.google.com/spreadsheets/d/" + tosheetID )
+            Display.display("Here is the new invoice: https://docs.google.com/spreadsheets/d/" + tosheetID )
 
 
     forfunctionlist = list(toeditsheets.keys())
-    print("You should manually edit these sheets:")
+    Display.display("You should manually edit these sheets:")
     for n in range (len(toeditsheets)):
-        print(forfunctionlist[n] + " - " + "https://docs.google.com/spreadsheets/d/" + str(toeditsheets[forfunctionlist[n]]))
+        Display.display(forfunctionlist[n] + " - " + "https://docs.google.com/spreadsheets/d/" + str(toeditsheets[forfunctionlist[n]]))
 
-    print() #for readability
+    Display.display() #for readability
     forfunctionlist2 = list(paidschoolsheets.keys())
-    print("These schools have paid in full:")
+    Display.display("These schools have paid in full:")
 
     for i in range(len(paidschoolsheets)):
-        print(forfunctionlist2[i] + " - " + str(paidschoolsheets[forfunctionlist2[i]]))
+        Display.display(forfunctionlist2[i] + " - " + str(paidschoolsheets[forfunctionlist2[i]]))
 
 elif Final == "y":
     for i in range(len(FolderIDs)):
         yearfolder = yearfolderids[i]
         if names[i] == "Santa Teresa High School":
             continue
-        print(f"Processing final invoice for {names[i]}...")
+        Display.display(f"Processing final invoice for {names[i]}...")
         fromsheetID = CloudStorageAPI.find_sheet_id_by_name_contains(yearfolder, "Invoice 3")
         if fromsheetID is None:
-            print("Could not find source sheet.")
+            Display.display("Could not find source sheet.")
             continue
 
         payments = int(Sheets.read_single_unformatted_cell(fromsheetID, "Purchase order!H33")) #type: ignore
@@ -152,7 +154,7 @@ elif Final == "y":
                 {
                     "Purchase order!A10": "FINAL INVOICE",
                 })
-            print("Paid" )
+            Display.display("Paid" )
         elif payments != 0 and balance != 0:
             tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, partiallyPaidInvoiceFolderID, f"Final Invoice - {names[i]}")
             Sheets.write_values_to_sheet_from_dict(
@@ -160,7 +162,7 @@ elif Final == "y":
                 {
                     "Purchase order!A10": "FINAL INVOICE",
                 })
-            print("Partially Paid")
+            Display.display("Partially Paid")
         elif payments == 0 and balance >= 0:
             tosheetID = CloudStorageAPI.copy_drive_file(fromsheetID, unpaidInvoiceFolderID, f"Final Invoice - {names[i]}")
             Sheets.write_values_to_sheet_from_dict(
@@ -168,5 +170,5 @@ elif Final == "y":
                 {
                     "Purchase order!A10": "FINAL INVOICE",
                 })
-            print(f"Unpaid")
+            Display.display(f"Unpaid")
         

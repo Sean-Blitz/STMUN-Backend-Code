@@ -104,7 +104,7 @@ class Assignments_to_Sheets:
         if current_number is not None:
             current_number = int(current_number)
         else:
-            print(f"Warning: Could not read the current number from Assignments!A{schoolrow+1}. Please check the sheet.")
+            Display.display(f"Warning: Could not read the current number from Assignments!A{schoolrow+1}. Please check the sheet.")
             sys.exit(1)
         assignments = []
         for committee, country in zip(Delegates.committee.values(), Delegates.country.values()):
