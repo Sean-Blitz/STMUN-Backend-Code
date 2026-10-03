@@ -1,3 +1,6 @@
+"""
+Note: this script WILL take a long time to run just to set up, as it is pulling a significant amount of data at the start.
+"""
 import sys
 from pathlib import Path
 
@@ -14,6 +17,7 @@ import time
 from dotenv import load_dotenv; load_dotenv()
 from Infrastructure import SheetAPI
 from Infrastructure import DriveAPI
+from Infrastructure import DisplayClass; Display = DisplayClass()
 
 SheetsAPI = SheetAPI()
 Drive = DriveAPI()
@@ -43,74 +47,78 @@ class IndividualSheetData:
             "E3": self.student_IDs[attendance_sheet_index],
             "E4": self.grades[attendance_sheet_index],
             "A9": self.carry_over[attendance_sheet_index],
-            "B9": self.vertical_raise[attendance_sheet_index],
-            "C9": self.sees_candy[attendance_sheet_index],
-            "D9": self.first_aid[attendance_sheet_index],
-            "E9": self.emergency_kits[attendance_sheet_index],
-            "F9": self.fundraising_balance[attendance_sheet_index],
-            "G9": self.fundraising_used[attendance_sheet_index],
-            "B13": self.gmunc_payment1[attendance_sheet_index],
-            "C13": self.gmunc_payment2[attendance_sheet_index],
-            "D13": self.gmunc_applied[attendance_sheet_index],
+            "B9": self.vertical_raise[attendance_sheet_index] if self.vertical_raise else "",
+            "C9": self.sees_candy[attendance_sheet_index] if self.sees_candy else "",
+            "D9": self.first_aid[attendance_sheet_index] if self.first_aid else "",
+            "E9": self.emergency_kits[attendance_sheet_index] if self.emergency_kits else "",
+            "F9": self.fundraising_balance[attendance_sheet_index] if self.fundraising_balance else "",
+            "G9": self.fundraising_used[attendance_sheet_index] if self.fundraising_used else "",
+            "B13": self.gmunc_payment1[attendance_sheet_index] if self.gmunc_payment1 else "",
+            "C13": self.gmunc_payment2[attendance_sheet_index] if self.gmunc_payment2 else "",
+            "D13": self.gmunc_applied[attendance_sheet_index] if self.gmunc_applied else "",
             "E13": self.gmunc_cost,
-            "B14": self.smunc_payment1[attendance_sheet_index],
-            "C14": self.smunc_payment2[attendance_sheet_index],
-            "D14": self.smunc_applied[attendance_sheet_index],
+            "B14": self.smunc_payment1[attendance_sheet_index] if self.smunc_payment1 else "",
+            "C14": self.smunc_payment2[attendance_sheet_index] if self.smunc_payment2 else "",
+            "D14": self.smunc_applied[attendance_sheet_index] if self.smunc_applied else "",
             "E14": self.smunc_cost,
-            "B15": self.pacmun_payment1[attendance_sheet_index],
-            "C15": self.pacmun_payment2[attendance_sheet_index],
-            "D15": self.pacmun_applied[attendance_sheet_index],
+            "B15": self.pacmun_payment1[attendance_sheet_index] if self.pacmun_payment1 else "",
+            "C15": self.pacmun_payment2[attendance_sheet_index] if self.pacmun_payment2 else "",
+            "D15": self.pacmun_applied[attendance_sheet_index] if self.pacmun_applied else "",
             "E15": self.pacmun_cost,
-            "B16": self.scvmun_payment[attendance_sheet_index],
-            "C16": self.scvmun_applied[attendance_sheet_index],
+            "B16": self.scvmun_payment[attendance_sheet_index] if self.scvmun_payment else "",
+            "C16": self.scvmun_applied[attendance_sheet_index] if self.scvmun_applied else "",
             "E16": self.scvmun_cost,
-            "B17": self.nhsmun_payment1[attendance_sheet_index],
-            "C17": self.nhsmun_payment2[attendance_sheet_index],
-            "D17": self.nhsmun_applied[attendance_sheet_index],
+            "B17": self.nhsmun_payment1[attendance_sheet_index] if self.nhsmun_payment1 else "",
+            "C17": self.nhsmun_payment2[attendance_sheet_index] if self.nhsmun_payment2 else "",
+            "D17": self.nhsmun_applied[attendance_sheet_index] if self.nhsmun_applied else "",
             "E17": self.nhsmun_cost,
-            "B18": self.international_payment1[attendance_sheet_index],
-            "C18": self.international_payment2[attendance_sheet_index],
-            "D18": self.international_applied[attendance_sheet_index],
+            "B18": self.international_payment1[attendance_sheet_index] if self.international_payment1 else "",
+            "C18": self.international_payment2[attendance_sheet_index] if self.international_payment2 else "",
+            "D18": self.international_applied[attendance_sheet_index] if self.international_applied else "",
             "E18": self.international_cost,
-            "B19": self.bmun_payment1[attendance_sheet_index],
-            "C19": self.bmun_payment2[attendance_sheet_index],
-            "D19": self.bmun_applied[attendance_sheet_index],
+            "B19": self.bmun_payment1[attendance_sheet_index] if self.bmun_payment1 else "",
+            "C19": self.bmun_payment2[attendance_sheet_index] if self.bmun_payment2 else "",
+            "D19": self.bmun_applied[attendance_sheet_index] if self.bmun_applied else "",
             "E19": self.bmunc_cost,
-            "B20": self.dmunc_payment1[attendance_sheet_index],
-            "C20": self.dmunc_payment2[attendance_sheet_index],
-            "D20": self.dmunc_applied[attendance_sheet_index],
+            "B20": self.dmunc_payment1[attendance_sheet_index] if self.dmunc_payment1 else "",
+            "C20": self.dmunc_payment2[attendance_sheet_index] if self.dmunc_payment2 else "",
+            "D20": self.dmunc_applied[attendance_sheet_index] if self.dmunc_applied else "",
             "E20": self.dmunc_cost,
-            "B24": self.gmunc_attendance[attendance_sheet_index],
-            "C24": self.gmunc_award[attendance_sheet_index],
-            "D24": self.gmunc_points[attendance_sheet_index],
-            "B25": self.smunc_attendance[attendance_sheet_index],
-            "C25": self.smunc_award[attendance_sheet_index],
-            "D25": self.smunc_points[attendance_sheet_index],
-            "B26": self.pacmun_attendance[attendance_sheet_index],
-            "C26": self.pacmun_award[attendance_sheet_index],
-            "D26": self.pacmun_points[attendance_sheet_index],
-            "B27": self.scvmun_attendance[attendance_sheet_index],
-            "C27": self.scvmun_award[attendance_sheet_index],
-            "D27": self.scvmun_points[attendance_sheet_index],
-            "B28": self.nhsmun_attendance[attendance_sheet_index],
-            "C28": self.nhsmun_award[attendance_sheet_index],
-            "D28": self.nhsmun_points[attendance_sheet_index],
-            "B29": self.international_attendance[attendance_sheet_index],
-            "C29": self.international_award[attendance_sheet_index],
-            "D29": self.international_points[attendance_sheet_index],
-            "B30": self.bmun_attendance[attendance_sheet_index],
-            "C30": self.bmun_award[attendance_sheet_index],
-            "D30": self.bmun_points[attendance_sheet_index],
-            "B31": self.dmunc_attendance[attendance_sheet_index],
-            "C31": self.dmunc_award[attendance_sheet_index],
-            "D31": self.dmunc_points[attendance_sheet_index],
+            "B24": self.gmunc_attendance[attendance_sheet_index] if self.gmunc_attendance else "",
+            "C24": self.gmunc_award[attendance_sheet_index] if self.gmunc_award else "",
+            "D24": self.gmunc_points[attendance_sheet_index] if self.gmunc_points else "",
+            "B25": self.smunc_attendance[attendance_sheet_index] if self.smunc_attendance else "",
+            "C25": self.smunc_award[attendance_sheet_index] if self.smunc_award else "",
+            "D25": self.smunc_points[attendance_sheet_index] if self.smunc_points else "",
+            "B26": self.pacmun_attendance[attendance_sheet_index] if self.pacmun_attendance else "",
+            "C26": self.pacmun_award[attendance_sheet_index] if self.pacmun_award else "",
+            "D26": self.pacmun_points[attendance_sheet_index] if self.pacmun_points else "",
+            "B27": self.scvmun_attendance[attendance_sheet_index] if self.scvmun_attendance else "",
+            "C27": self.scvmun_award[attendance_sheet_index] if self.scvmun_award else "",
+            "D27": self.scvmun_points[attendance_sheet_index] if self.scvmun_points else "",
+            "B28": self.nhsmun_attendance[attendance_sheet_index] if self.nhsmun_attendance else "",
+            "C28": self.nhsmun_award[attendance_sheet_index] if self.nhsmun_award else "",
+            "D28": self.nhsmun_points[attendance_sheet_index] if self.nhsmun_points else "",
+            "B29": self.international_attendance[attendance_sheet_index] if self.international_attendance else "",
+            "C29": self.international_award[attendance_sheet_index] if self.international_award else "",
+            "D29": self.international_points[attendance_sheet_index] if self.international_points else "",
+            "B30": self.bmun_attendance[attendance_sheet_index] if self.bmun_attendance else "",
+            "C30": self.bmun_award[attendance_sheet_index] if self.bmun_award else "",
+            "D30": self.bmun_points[attendance_sheet_index] if self.bmun_points else "",
+            "B31": self.dmunc_attendance[attendance_sheet_index] if self.dmunc_attendance else "",
+            "C31": self.dmunc_award[attendance_sheet_index] if self.dmunc_award else "",
+            "D31": self.dmunc_points[attendance_sheet_index] if self.dmunc_points else "",
         }
         thursday_length = len(self.thursday_attendances[attendance_sheet_index])
         wednesday_length = len(self.training_attendances[attendance_sheet_index])
+
+        for coord, value in data_dict.items():
+            if value is None:
+                data_dict[coord] = ""  # Replace None with an empty string
         for i in range(thursday_length):
-            data_dict[f"{self.thursday_meetings_column_in_individual_sheet}{i+1}"] = self.thursday_attendances[attendance_sheet_index][i]
+            data_dict[f"{self.thursday_meetings_column_in_individual_sheet}{i+2}"] = self.thursday_attendances[attendance_sheet_index][i]
         for i in range(wednesday_length):
-            data_dict[f"{self.wednesday_meetings_column_in_individual_sheet}{i+1}"] = self.training_attendances[attendance_sheet_index][i]
+            data_dict[f"{self.wednesday_meetings_column_in_individual_sheet}{i+2}"] = self.training_attendances[attendance_sheet_index][i]
 
         SheetsAPI.write_values_to_sheet_from_dict(sheet_id, data_dict)
 
@@ -124,8 +132,16 @@ class IndividualSheetData:
         return general_end_column, training_end_column
 
     def pull_data_from_master_sheet(self, start_row):
+        number_of_names = len(SheetsAPI.get_column_data(AttendanceSheetID, "Master Roster Contact Info", "B", start_row))
         def read(sheet_name, column_letter, begin = start_row):
-            return SheetsAPI.get_column_data(AttendanceSheetID, sheet_name, column_letter, begin)
+            list = SheetsAPI.get_column_data(AttendanceSheetID, sheet_name, column_letter, begin)
+            if len(list) < number_of_names:
+                Display.display(f"Note: The number of entries in column {column_letter} of sheet '{sheet_name}' is less than the number of names. Filling missing entries with empty strings.")
+                list.extend([""] * (number_of_names - len(list)))
+            elif len(list) > number_of_names:
+                Display.display(f"Note: The number of entries in column {column_letter} of sheet '{sheet_name}' is greater than the number of names. Truncating extra entries.")
+                list = list[:number_of_names]
+            return list
         
         # here are the ones where we pull an entire list from the master sheet.
         self.emails = read("Master Roster Contact Info", "E"); time.sleep(1)
@@ -210,8 +226,10 @@ def main():
             sheet_id = Drive.copy_drive_file(file_id=template_file_id, new_name=f"{name} - Individualized Dashboard", destination_folder_id=drive_folder_ID)
             #Drive.share_spreadsheet(sheet_id, data.emails[data.names.index(name)], role="commenter")
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)
+            Display.display(f"Created, populated, and shared sheet for {name}.")
         else:
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)
+            Display.display(f"Populated existing sheet for {name}.")
         time.sleep(2)  # Sleep for 2 seconds to avoid hitting API rate limits
 
 if __name__ == "__main__":
