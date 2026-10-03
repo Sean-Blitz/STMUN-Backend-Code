@@ -236,15 +236,14 @@ class SheetAPI(GoogleAPIs):
 
     def sheets_alphabet(self, n):
         """
-        Takes a number as input and returns the corresponding column letter.
+        Takes a 0-indexed integer and returns the corresponding column letter string.
+        0 -> 'A', 25 -> 'Z', 26 -> 'AA', 40 -> 'AO', 44 -> 'AS'
         """
-        alphabet = string.ascii_uppercase
-        result = None
-        if n >= 0 and n <= 25:
-            result = alphabet[n]
-        if n > 25:
-            result = alphabet[(n//26)-1] + alphabet[n % 26]
-        return result
+        result = []
+        while n >= 0:
+            result.append(string.ascii_uppercase[n % 26])
+            n = (n // 26) - 1
+        return "".join(reversed(result))
 
     @retry_on_http_error()
     def get_column_odd_cells(self, sheet_id, sheet_name, column_letter, start_row):

@@ -123,13 +123,13 @@ class IndividualSheetData:
         SheetsAPI.write_values_to_sheet_from_dict(sheet_id, data_dict)
 
     def read_sheet_setup(self, start_row):
-        general_meeting_header_row = SheetsAPI.read_row_from(AttendanceSheetID, "Thursday Meeting Attd", start_row -1, "F")
+        general_meeting_header_row = SheetsAPI.read_row_from(AttendanceSheetID, "Thursday Meeting Attd", start_row -1, "E"); time.sleep(2)
         general_meeting_count = len([cell for cell in general_meeting_header_row if cell == thursday_meeting_column_indicator])
-        training_header_row = SheetsAPI.read_row_from(AttendanceSheetID, "Mock/Training Attd", start_row -1, "F")
+        training_header_row = SheetsAPI.read_row_from(AttendanceSheetID, "Mock/Training Attd", start_row -1, "E"); time.sleep(2)
         training_count = len([cell for cell in training_header_row if cell == wednesday_meeting_column_indicator])
-        general_end_column = SheetsAPI.sheets_alphabet(general_meeting_count + 5)
-        training_end_column = SheetsAPI.sheets_alphabet(training_count + 5)
-        return general_end_column, training_end_column
+        general_end_column = SheetsAPI.sheets_alphabet(general_meeting_count + 4)
+        training_end_column = SheetsAPI.sheets_alphabet(training_count + 4)
+        return general_end_column, training_end_column, general_meeting_count, training_count
 
     def pull_data_from_master_sheet(self, start_row):
         number_of_names = len(SheetsAPI.get_column_data(AttendanceSheetID, "Master Roster Contact Info", "B", start_row))
@@ -149,14 +149,14 @@ class IndividualSheetData:
         self.first_names = read("Master Roster Contact Info", "B"); time.sleep(1)
         self.last_names = read("Master Roster Contact Info", "A"); time.sleep(1)
         self.grades = read("Master Roster Contact Info", "C")
-        self.student_IDs = read("Master Roster Contact Info", "D"); time.sleep(1)
+        self.student_IDs = read("Master Roster Contact Info", "D"); time.sleep(2)
 
         self.total_points = read("Overall Total Points", "E")
 
         self.carry_over = read("Fundraising/Deposits", "E")
         self.vertical_raise = read("Fundraising/Deposits", "F"); time.sleep(1)
         self.sees_candy = read("Fundraising/Deposits", "G")
-        self.first_aid = read("Fundraising/Deposits", "H"); time.sleep(1)
+        self.first_aid = read("Fundraising/Deposits", "H"); time.sleep(2)
         self.emergency_kits = read("Fundraising/Deposits", "I")
         self.fundraising_balance = read("Fundraising/Deposits", "J"); time.sleep(1)
         self.fundraising_used = read("Fundraising/Deposits", "K")
@@ -165,7 +165,7 @@ class IndividualSheetData:
         self.gmunc_payment2 = read("Fundraising/Deposits", "P"); time.sleep(1)
         self.gmunc_applied = read("Fundraising/Deposits", "Q")
         self.smunc_payment1 = read("Fundraising/Deposits", "S")
-        self.smunc_payment2 = read("Fundraising/Deposits", "T"); time.sleep(1)
+        self.smunc_payment2 = read("Fundraising/Deposits", "T"); time.sleep(2)
         self.smunc_applied = read("Fundraising/Deposits", "U")
         self.pacmun_payment1 = read("Fundraising/Deposits", "W")
         self.pacmun_payment2 = read("Fundraising/Deposits", "X"); time.sleep(1)
@@ -173,8 +173,8 @@ class IndividualSheetData:
         self.scvmun_payment = read("Fundraising/Deposits", "AA")
         self.scvmun_applied = read("Fundraising/Deposits", "AB"); time.sleep(1)
         self.nhsmun_payment1 = read("Fundraising/Deposits", "AC")
-        self.nhsmun_payment2 = read("Fundraising/Deposits", "AD"); time.sleep(1)
-        self.nhsmun_applied = read("Fundraising/Deposits", "AE"); time.sleep(1)
+        self.nhsmun_payment2 = read("Fundraising/Deposits", "AD"); time.sleep(2)
+        self.nhsmun_applied = read("Fundraising/Deposits", "AE")
         self.international_payment1 = read("Fundraising/Deposits", "AG")
         self.international_payment2 = read("Fundraising/Deposits", "AH")
         self.international_applied = read("Fundraising/Deposits", "AI"); time.sleep(1)
@@ -187,14 +187,14 @@ class IndividualSheetData:
 
         self.gmunc_attendance = read("Conference Attd/Award", "F"); time.sleep(1)
         self.gmunc_award = read("Conference Attd/Award", "G")
-        self.gmunc_points = read("Conference Attd/Award", "H"); time.sleep(1)
+        self.gmunc_points = read("Conference Attd/Award", "H"); time.sleep(2)
         self.smunc_attendance = read("Conference Attd/Award", "I")
         self.smunc_award = read("Conference Attd/Award", "J"); time.sleep(1)
         self.smunc_points = read("Conference Attd/Award", "K")
         self.pacmun_attendance = read("Conference Attd/Award", "L")
-        self.pacmun_award = read("Conference Attd/Award", "M"); time.sleep(1)
+        self.pacmun_award = read("Conference Attd/Award", "M") 
         self.pacmun_points = read("Conference Attd/Award", "N")
-        self.scvmun_attendance = read("Conference Attd/Award", "Q"); time.sleep(1)
+        self.scvmun_attendance = read("Conference Attd/Award", "Q"); time.sleep(2)
         self.scvmun_award = read("Conference Attd/Award", "R")
         self.scvmun_points = read("Conference Attd/Award", "S"); time.sleep(1)
         self.nhsmun_attendance = read("Conference Attd/Award", "W")
@@ -202,15 +202,16 @@ class IndividualSheetData:
         self.nhsmun_points = read("Conference Attd/Award", "Y")
         self.international_attendance = read("Conference Attd/Award", "Z"); time.sleep(1)
         self.international_award = read("Conference Attd/Award", "AA")
-        self.international_points = read("Conference Attd/Award", "AB"); time.sleep(1)
+        self.international_points = read("Conference Attd/Award", "AB"); time.sleep(2)
         self.bmun_attendance = read("Conference Attd/Award", "T")
         self.bmun_award = read("Conference Attd/Award", "U"); time.sleep(1)
         self.bmun_points = read("Conference Attd/Award", "V")
         self.dmunc_attendance = read("Conference Attd/Award", "AC"); time.sleep(1)
         self.dmunc_award = read("Conference Attd/Award", "AD")
-        self.dmunc_points = read("Conference Attd/Award", "AE"); time.sleep(1)
+        self.dmunc_points = read("Conference Attd/Award", "AE"); time.sleep(2)
+        time.sleep(20)  # Sleep for 20 seconds to avoid hitting API rate limits
 
-        general_end_column, training_end_column = self.read_sheet_setup(start_row)
+        general_end_column, training_end_column, general_meeting_count, training_count = self.read_sheet_setup(start_row)
         self.thursday_attendances = SheetsAPI.get_2d_range(AttendanceSheetID, "Thursday Meeting Attd", f"F{start_row}", f"{general_end_column}{len(self.first_names) + start_row-1}"); time.sleep(1)
         self.training_attendances = SheetsAPI.get_2d_range(AttendanceSheetID, "Mock/Training Attd", f"F{start_row}", f"{training_end_column}{len(self.first_names) + start_row-1}"); time.sleep(1)
 
@@ -219,18 +220,18 @@ class IndividualSheetData:
 def main():
     data = IndividualSheetData()
     data.pull_data_from_master_sheet(start_row=5)
-    for name in data.names:
+    for i, name in enumerate(data.names):
         individual_sheet_name = f"{name} - Individualized Dashboard"
         sheet_id = Drive.find_sheet_id_by_name_contains(drive_folder_ID, individual_sheet_name)
         if sheet_id is None:
             sheet_id = Drive.copy_drive_file(file_id=template_file_id, new_name=f"{name} - Individualized Dashboard", destination_folder_id=drive_folder_ID)
-            #Drive.share_spreadsheet(sheet_id, data.emails[data.names.index(name)], role="commenter")
+            Drive.share_spreadsheet(sheet_id, data.emails[data.names.index(name)], role="commenter")
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)
-            Display.display(f"Created, populated, and shared sheet for {name}.")
+            Display.display(f"{i+1} - Created, populated, and shared sheet for {name}.")
         else:
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)
-            Display.display(f"Populated existing sheet for {name}.")
-        time.sleep(2)  # Sleep for 2 seconds to avoid hitting API rate limits
+            Display.display(f"{i+1} - Populated existing sheet for {name}.")
+        time.sleep(3)  # Sleep for 3 seconds to avoid hitting API rate limits
 
 if __name__ == "__main__":
     main()
