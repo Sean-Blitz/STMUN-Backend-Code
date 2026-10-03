@@ -1,6 +1,16 @@
+import sys
+from pathlib import Path
+
+# Locate the root 'Automations' directory relative to this script file
+# parent.parent points to Automations folder.
+AUTOMATIONS_DIR = Path(__file__).resolve().parent.parent
+
+# Inject the path into sys.path if it isn't already present
+if str(AUTOMATIONS_DIR) not in sys.path:
+    sys.path.insert(0, str(AUTOMATIONS_DIR))
+
 import os
 import time
-from typing import cast
 from dotenv import load_dotenv; load_dotenv()
 from Infrastructure import SheetAPI
 from Infrastructure import DriveAPI
@@ -11,6 +21,7 @@ AttendanceSheetID = os.environ["AttendanceSheetID"]
 drive_folder_ID = os.environ["drive_folder_ID"]
 template_file_id = os.environ["individualized_dashboard_template_file_id"]
 thursday_meeting_column_indicator = "Thu"
+wednesday_meeting_column_indicator = "Wed"
 
 class IndividualSheetData:
     def __init__(self):
@@ -97,17 +108,17 @@ class IndividualSheetData:
         thursday_length = len(self.thursday_attendances[attendance_sheet_index])
         wednesday_length = len(self.training_attendances[attendance_sheet_index])
         for i in range(thursday_length):
-            data_dict[f"{self.thursday_meetings_column_in_individual_sheet}{i}"] = self.thursday_attendances[attendance_sheet_index][i]
+            data_dict[f"{self.thursday_meetings_column_in_individual_sheet}{i+1}"] = self.thursday_attendances[attendance_sheet_index][i]
         for i in range(wednesday_length):
-            data_dict[f"{self.wednesday_meetings_column_in_individual_sheet}{i}"] = self.training_attendances[attendance_sheet_index][i]
+            data_dict[f"{self.wednesday_meetings_column_in_individual_sheet}{i+1}"] = self.training_attendances[attendance_sheet_index][i]
 
         SheetsAPI.write_values_to_sheet_from_dict(sheet_id, data_dict)
 
     def read_sheet_setup(self, start_row):
         general_meeting_header_row = SheetsAPI.read_row_from(AttendanceSheetID, "Thursday Meeting Attd", start_row -1, "F")
-        general_meeting_count = len([cell for cell in general_meeting_header_row if cell == "Thu"])
+        general_meeting_count = len([cell for cell in general_meeting_header_row if cell == thursday_meeting_column_indicator])
         training_header_row = SheetsAPI.read_row_from(AttendanceSheetID, "Mock/Training Attd", start_row -1, "F")
-        training_count = len([cell for cell in training_header_row if cell == "Wed"])
+        training_count = len([cell for cell in training_header_row if cell == wednesday_meeting_column_indicator])
         general_end_column = SheetsAPI.sheets_alphabet(general_meeting_count + 5)
         training_end_column = SheetsAPI.sheets_alphabet(training_count + 5)
         return general_end_column, training_end_column
@@ -158,9 +169,6 @@ class IndividualSheetData:
         self.dmunc_payment2 = read("Fundraising/Deposits", "AP"); time.sleep(1)
         self.dmunc_applied = read("Fundraising/Deposits", "AQ")
 
-        cells_list = ["Fundraising/Deposits!AT6", "Fundraising/Deposits!AT7", "Fundraising/Deposits!AT8", "Fundraising/Deposits!AT9", "Fundraising/Deposits!AT10", "Fundraising/Deposits!AT11", "Fundraising/Deposits!AT12", "Fundraising/Deposits!AT13"] 
-        self.cost_per_conference = SheetsAPI.read_cells(AttendanceSheetID, cells_list)
-
         self.gmunc_attendance = read("Conference Attd/Award", "F"); time.sleep(1)
         self.gmunc_award = read("Conference Attd/Award", "G")
         self.gmunc_points = read("Conference Attd/Award", "H"); time.sleep(1)
@@ -196,13 +204,15 @@ def main():
     data = IndividualSheetData()
     data.pull_data_from_master_sheet(start_row=5)
     for name in data.names:
-        sheet_id = Drive.find_sheet_id_by_name_contains(drive_folder_ID, name)
+        individual_sheet_name = f"{name} - Individualized Dashboard"
+        sheet_id = Drive.find_sheet_id_by_name_contains(drive_folder_ID, individual_sheet_name)
         if sheet_id is None:
             sheet_id = Drive.copy_drive_file(file_id=template_file_id, new_name=f"{name} - Individualized Dashboard", destination_folder_id=drive_folder_ID)
-            Drive.share_spreadsheet(sheet_id, data.emails[data.names.index(name)], role="commenter")
+            #Drive.share_spreadsheet(sheet_id, data.emails[data.names.index(name)], role="commenter")
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)
         else:
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)
+        time.sleep(2)  # Sleep for 2 seconds to avoid hitting API rate limits
 
 if __name__ == "__main__":
     main()
