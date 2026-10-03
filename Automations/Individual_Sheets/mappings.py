@@ -48,6 +48,7 @@ class IndividualSheetData:
             "B4": self.emails[attendance_sheet_index],
             "E3": self.student_IDs[attendance_sheet_index],
             "E4": self.grades[attendance_sheet_index],
+            "B5": self.points[attendance_sheet_index] if self.points else "",
             "A9": self.carry_over[attendance_sheet_index],
             "B9": self.vertical_raise[attendance_sheet_index] if self.vertical_raise else "",
             "C9": self.sees_candy[attendance_sheet_index] if self.sees_candy else "",
