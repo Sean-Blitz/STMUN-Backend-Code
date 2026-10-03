@@ -59,7 +59,8 @@ def statename(state):
         state = statetempstore
     return state
 
-def folderfinding(sName):
+def folderfinding(sName) -> str | None:
+    yearfolder = None
     findfolder = CloudStorageAPI.find_subfolder_id(
             parent_folder_id= NotAttendingFolderID,
             search_string= sName.replace("High School","").replace("School","").strip()
@@ -100,7 +101,7 @@ def folderfinding(sName):
             Display.display("Process cancelled.")
             sys.exit()
     
-    return yearfolder # type: ignore
+    return yearfolder
 
 def keepgoing():
     keepgoing = Display.take_text_input("Share? y/n")
@@ -126,7 +127,8 @@ for i in range(len(mail_school_names)):
     city, state, zipCode, DelCount = Database.search_formResponse(record_id)
     state = statename(state)
 
-    independent = Display.take_text_input("Independent registration? y/n. Exit to stop.").lower().strip()
+    print(f"Processing school: {sName}. Delegate count: {DelCount}. Balance: {Balance}.")
+    independent = input("Independent registration? y/n. Exit to stop.").lower().strip()
     if independent == "exit":
         Display.display("Process cancelled.")
         continue

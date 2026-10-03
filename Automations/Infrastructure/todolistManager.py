@@ -79,6 +79,8 @@ class TodoList():
     def place_invoice_link_in_todolist(self, school_name, invoice_number, link):
         """Places the invoice link in the to-do list for a specific school. Final Invoice is invoice_number 4."""
         school_row = SheetsAPI.find_row_by_string(self.todolist_sheet_id, todolist_sheetname, "A", school_name)
+        if school_row is None:
+            raise ValueError(f"School '{school_name}' not found in the to-do list column.")
         # Find column letter for roster_link header, based on invoice number
         invoice_column = invoice_column_names[invoice_number - 1]  # Adjust for 0-based index
         invoice_link_col = self.__get_header_column(invoice_column)
