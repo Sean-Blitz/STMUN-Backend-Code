@@ -117,8 +117,8 @@ class IndividualSheetData:
             self.training_attendances[attendance_sheet_index]
         except IndexError:
             Display.display(f"Warning: No Thursday or Wednesday attendance data for {self.names[attendance_sheet_index]}.")
-            self.thursday_attendances[attendance_sheet_index] = ["" for _ in range(len(self.thursday_attendance_dates))]
-            self.training_attendances[attendance_sheet_index] = ["" for _ in range(len(self.training_attendance_dates))]
+            self.thursday_attendances.append(["" for _ in range(len(self.thursday_attendance_dates))])
+            self.training_attendances.append(["" for _ in range(len(self.training_attendance_dates))])
         thursday_count = len(self.thursday_attendances[attendance_sheet_index])
         wednesday_count = len(self.training_attendances[attendance_sheet_index])
 
@@ -200,6 +200,7 @@ class IndividualSheetData:
         self.dmunc_payment2 = read("Fundraising/Deposits", "AP"); time.sleep(1)
         self.dmunc_applied = read("Fundraising/Deposits", "AQ")
 
+        time.sleep(20)  # Sleep for 20 seconds to avoid hitting API rate limits
         self.gmunc_attendance = read("Conference Attd/Award", "F"); time.sleep(1)
         self.gmunc_award = read("Conference Attd/Award", "G")
         self.gmunc_points = read("Conference Attd/Award", "H"); time.sleep(2)
