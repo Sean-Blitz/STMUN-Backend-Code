@@ -154,10 +154,10 @@ for i in range(len(mail_school_names)):
         Display.display("Date format error. Check Airtable.")
         Display.display("Date: " + str(date))
         sys.exit()
-    month = int(date.split(splitter)[1])
-    day = int(date.split(splitter)[2])
-    year = int(date.split(splitter)[0])
-    date = datetime.date(year, month, day)
+    month = int(date.split(splitter)[0])
+    day = int(date.split(splitter)[1])
+    year = int(date.split(splitter)[2])
+    date = datetime.date(month=month, day=day, year=year)
 
     if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
         newInvoice = CreateInvoice(template1_independent if independent == "y" else template1_school, independent)

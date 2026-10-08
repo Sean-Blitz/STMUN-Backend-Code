@@ -45,12 +45,22 @@ class AirtableAPI:
 
         # Extract finance fields directly from the second table
         # Using .get() prevents KeyError if a field is empty/missing
-        Balance = int(fin_fields.get("Balance", 0))
-        CheckDelegateCount = int(
-            fin_fields.get("Number of Delegates (Final)", 0)
-        )
-        Subtotal = int(fin_fields.get("Subtotal", 0))
-        DelFee = int(fin_fields.get("Delegation Fee", 0))
+        if type(fin_fields.get("Balance")) == dict:
+            Balance = 0
+        else:
+            Balance = int(fin_fields.get("Balance", 0))
+        if type(fin_fields.get("Number of Delegates (Final)")) == dict:
+            CheckDelegateCount = 0
+        else:
+            CheckDelegateCount = int(fin_fields.get("Number of Delegates (Final)", 0))
+        if type(fin_fields.get("Subtotal")) == dict:
+            Subtotal = 0
+        else:
+            Subtotal = int(fin_fields.get("Subtotal", 0))
+        if type(fin_fields.get("Delegation Fee")) == dict:
+            DelFee = 0
+        else:
+            DelFee = int(fin_fields.get("Delegation Fee", 0).replace("$", "").replace(",", ""))
 
         return sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, DelFee, head_delegate_email, date
 
