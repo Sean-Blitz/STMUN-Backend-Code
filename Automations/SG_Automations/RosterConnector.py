@@ -70,11 +70,7 @@ def add_delegates_to_existing_school_roster(schoolname: str, Delegates: SchoolDe
         raise RuntimeError(f"Could not find roster for school '{schoolname}'.")
 
     # Read the roster to find the next available row
-    row = SheetsAPI.get_column_until_empty(school_roster_ID, "Sheet1", "C", 21) + 21  # Start reading from row 21
-    doublecheckrow = SheetsAPI.get_column_until_empty(school_roster_ID, "Sheet1", "D", 21) + 21
-
-    if row != doublecheckrow:
-        raise RuntimeError(f"Row mismatch when adding delegates to roster for school '{schoolname}'. Check the roster for errors.")
+    row = SheetsAPI.get_column_until_empty(school_roster_ID, "Sheet1", "D", 21) + 21  # Start reading from row 21
 
     # Add the new delegates to the roster
     cell_map_of_committee = {}

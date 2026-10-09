@@ -53,7 +53,7 @@ class SheetAPI(GoogleAPIs):
         ).execute()
 
     @retry_on_http_error()
-    def read_single_cell(self, spreadsheet_id, cell_range):
+    def read_single_cell(self, spreadsheet_id: str, cell_range: str):
         """
         Reads a single cell from a Google Sheet.
         Args:
@@ -331,7 +331,7 @@ class SheetAPI(GoogleAPIs):
         cell_map = {}
         assigned_cell_map = {}
         checkingSet = set()
-        current_number = self.read_single_cell(registrationSheetID, [f"Assignments!A{currentRow+1}"])
+        current_number = self.read_single_cell(registrationSheetID, f"Assignments!A{currentRow+1}")
         if current_number is not None:
             current_number = int(current_number)
         else:

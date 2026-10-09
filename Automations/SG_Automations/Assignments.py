@@ -24,14 +24,21 @@ DoubleGAs = os.getenv("DOUBLE_GAs") # yes or no, depending on if there are doubl
 
 registrationSheetURL = f"https://docs.google.com/spreadsheets/d/{registration_sheet_ID}/edit"
 
-def set_up_data(selected_school):
+def set_up_data(selected_school, newschool=True):
     Delegates = SchoolDelegates()
     SchoolInfo = SchoolInformation()
     ConferenceInfo = ConferenceInformation()
-    SheetsAPI.read_school_and_current_committees_data(selected_school, SchoolInfo)
+    if not newschool:
+        adding_delegate_count = Display.take_text_input("How many delegates are being added for this school? (Input a number)")
+        while not adding_delegate_count.isdigit() or int(adding_delegate_count) <= 0:
+            adding_delegate_count = Display.take_text_input("Invalid input. Please enter a positive integer for the number of delegates being added for this school.")
+        adding_delegate_count = int(adding_delegate_count)
+        SheetsAPI.read_school_and_current_committees_data(selected_school, SchoolInfo, to_add_delegate_count=adding_delegate_count)
+    else:
+        SheetsAPI.read_school_and_current_committees_data(selected_school, SchoolInfo)
     SheetsAPI.read_conference_information_from_overview(ConferenceInfo)
     SheetsAPI.get_available_countries_and_backup_storage(ConferenceInfo)
-    AssignmentsFunctions.print_data_to_terminal(SchoolInfo.region_bloc, SchoolInfo.country_preferences, SchoolInfo.security_council_preference, SchoolInfo.numdels, newschool=True)
+    AssignmentsFunctions.print_data_to_terminal(SchoolInfo.region_bloc, SchoolInfo.country_preferences, SchoolInfo.security_council_preference, SchoolInfo.numdels, newschool=newschool)
     try:
         AssignmentsFunctions.get_input_for_committee_assignment_counts(DoubleGAs, SchoolInfo)
     except ValueError: # here, if it is being called for adding schools, then the user inputted number does not match the number of delegates first registered. However, we pass as that does not need to be true.
@@ -150,7 +157,7 @@ def add_delegates():
         Display.display(f"Display.take_text_input error. Did you mean: {ClosestMatch}?")
         selectedSchool = Display.take_text_input("Please input the school to add delegates to.")
 
-    Delegates, SchoolInfo, ConferenceInfo = set_up_data(selectedSchool)
+    Delegates, SchoolInfo, ConferenceInfo = set_up_data(selectedSchool, newschool=False)
     assign_all_committees(Delegates, SchoolInfo, ConferenceInfo)
 
     Display.display("Assignments for this school:")
@@ -170,7 +177,6 @@ def add_delegates():
     #writing to the sheet the cell maps.
     SheetsAPI.push_values(remaining_cell_map)
     SheetsAPI.push_values(SchoolAssignmentsCells)
-    SheetsAPI.write_school_name_to_sheet(selectedSchool)
     
     time.sleep(5); Display.display("Checking sheet for changes...") #pause for cloud storage system (sheets) to register changes.
     percentagesChecking = SheetsAPI.read_percentages_from_overview(ConferenceInfo.committee_names)

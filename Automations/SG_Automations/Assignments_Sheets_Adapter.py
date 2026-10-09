@@ -100,7 +100,7 @@ class Assignments_to_Sheets:
         # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
         cell_map = {}
         assigned_cell_map = {}
-        current_number = SheetsAPI.read_single_cell(registration_sheet_ID, [f"Assignments!A{schoolrow+1}"])
+        current_number = SheetsAPI.read_single_cell(registration_sheet_ID, f"Assignments!A{schoolrow+1}")
         if current_number is not None:
             current_number = int(current_number)
         else:
@@ -197,9 +197,11 @@ class Assignments_to_Sheets:
                 need_suggestion = False 
             ConferenceInfo.add_committee(names[i], spots[i], percentages[i], ranges[names[i]], type[i], double_status, need_suggestion)
 
-    def read_school_and_current_committees_data(self, selectedSchool, schoolInfo: SchoolInformation):
+    def read_school_and_current_committees_data(self, selectedSchool, schoolInfo: SchoolInformation, to_add_delegate_count=None):
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)
         RegionBloc, country1, country2, country3, country4, country5, SecurityCouncil, numdels = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!R{row}", f"Responses!S{row}", f"Responses!T{row}", f"Responses!U{row}", f"Responses!V{row}", f"Responses!W{row}", f"Responses!Y{row}", f"Responses!Q{row}"])
+        if to_add_delegate_count is not None:
+            numdels = int(to_add_delegate_count)
         countryprefs = [country1, country2, country3, country4, country5]
         if SecurityCouncil is None:
             SecurityCouncil = False
