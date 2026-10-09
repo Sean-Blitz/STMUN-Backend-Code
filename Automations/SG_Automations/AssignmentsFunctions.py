@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import random
 from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets
 from Infrastructure import DisplayClass
 from Infrastructure import CSV
@@ -232,14 +233,43 @@ def add_assignments(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInform
         # ─── CASE 1: NO SUGGESTIONS MATRIX EXISTS ─────────────────────────────────────
         if not current_suggestions:
             Display.go_one_line_up(); Display.clear_current_line()
-            input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
+            random_sample_pool = []
+            for committee_name, country_name in ConferenceInfo.available_countries:
+                if committee_name.strip() == current_comm.strip() and country_name.strip() != "":
+                    random_sample_pool.append(country_name.strip())
+            random_sample_pool = list(dict.fromkeys(random_sample_pool))
 
-            lookup_pair = [current_comm.strip(), input.strip()]
-            while not lookup_pair in ConferenceInfo.available_countries:
-                Display.display("Entered country is not in the list of available countries. Try checking spelling or capitalization.")
+            manual_option = "Type a custom country manually"
+            back_option = "Go back to main menu"
+            random_country_choices = random.sample(random_sample_pool, k=min(8, len(random_sample_pool)))
+
+            if random_country_choices:
+                selected_country = Display.select_option_with_pointer(
+                    random_country_choices + [manual_option, back_option],
+                    f"Select a country assignment for {delegate_key} in {current_comm}:",
+                    f"Random available countries for {current_comm}"
+                )
+
+                if selected_country == back_option or selected_country is None:
+                    continue
+
+                if selected_country != manual_option:
+                    lookup_pair = [current_comm.strip(), selected_country.strip()]
+                    if lookup_pair in ConferenceInfo.available_countries:
+                        new_country = selected_country.strip()
+                    else:
+                        Display.display("Selected country is no longer available. Please choose again.")
+                        continue
+
+            if new_country is None:
                 input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
+                lookup_pair = [current_comm.strip(), input.strip()]
+                while not lookup_pair in ConferenceInfo.available_countries:
+                    Display.display("Entered country is not in the list of available countries. Try checking spelling or capitalization.")
+                    input = Display.typing_with_pre_fill(f"Enter country assignment for {delegate_key} in {current_comm}:", "")
+                    lookup_pair = [current_comm.strip(), input.strip()]
 
-            new_country = input.strip()
+                new_country = input.strip()
 
         # ─── CASE 2: SUGGESTIONS MATRIX EXISTS (THE SHORTCUT ENGINE) ──────────────────
         else:
@@ -348,4 +378,3 @@ def sync_with_secondary_storage(SchoolInfo: SchoolInformation, Delegates: School
         # 2. Update 'Country' (text field) via HTTP PATCH request
         if country:
             SecondaryStorage.update_airtable_text_field(base_id=base_id, table_name=table_name, record_id=record_id, field_name="Country", value=country)
-
