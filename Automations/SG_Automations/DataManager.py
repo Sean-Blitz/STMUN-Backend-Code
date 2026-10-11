@@ -6,6 +6,7 @@ class SchoolDelegates:
         self.country: dict[int, str] = {}
         self.suggestions: dict[int, list[str]] = {}
         self.preferences_in_committee: dict[int, list[str]] = {}
+        self.twin: dict[int, int] = {}
 
     def add_delegate(self, committee, committee_type, country, number):
         if number in self.number:
@@ -20,6 +21,26 @@ class SchoolDelegates:
             raise ValueError(f"Delegate number {number} does not exist. Ensure that the delegate has been added before adding suggestions.")
         self.suggestions[number] = suggestions_list
         self.preferences_in_committee[number] = preferences_in_committee_list
+
+    def link_twins(self, first_delegate: int, second_delegate: int) -> None:
+        """Binds two delegates together as the double-delegation pair for one committee."""
+        if first_delegate == second_delegate:
+            raise ValueError("A delegate cannot be twinned with itself.")
+        for delegate, partner in ((first_delegate, second_delegate), (second_delegate, first_delegate)):
+            previous_partner = self.twin.get(delegate)
+            if previous_partner is not None and self.twin.get(previous_partner) == delegate:
+                del self.twin[previous_partner]
+            self.twin[delegate] = partner
+
+    def unlink_twin(self, delegate: int) -> None:
+        """Removes the twin binding for a delegate, if one exists."""
+        partner = self.twin.pop(delegate, None)
+        if partner is not None and self.twin.get(partner) == delegate:
+            del self.twin[partner]
+
+    def get_twin(self, delegate: int):
+        """Returns the delegate number bound to this delegate, or None."""
+        return self.twin.get(delegate)
 
 class SchoolInformation:
     def __init__(self):
@@ -64,17 +85,17 @@ class ConferenceInformation:
         self.ranges: dict[str, str] = {}
         self.backup: dict[str, str] = {}
 
-    def add_committee(self, committee_name: str, spots: int, percentage_filled: float, range,
-                      type="GA", single_committee=False, need_suggestion = False):
+    def add_committee(self, committee_name: str, spots: int, percentage_filled: float, committee_range,
+                      type="GA", double_status=False, need_suggestion = False):
         if committee_name not in self.committee_names:
             self.committee_names.append(committee_name)
             self.committee_spots[committee_name] = spots
             self.committee_percentage_filled[committee_name] = percentage_filled
             self.committee_types[committee_name] = type
-            self.ranges[committee_name] = range
+            self.ranges[committee_name] = committee_range
         else:
             raise ValueError(f"Committee name {committee_name} is not unique. Ensure that names in sheets are not repeated.")
-        self.committee_double_status[committee_name] = not single_committee
+        self.committee_double_status[committee_name] = bool(double_status)
 
         if need_suggestion is True:
             self.needing_suggestions_committee_names.append(committee_name)
@@ -83,6 +104,12 @@ class ConferenceInformation:
         names = [name for name in self.committee_names if self.committee_types[name] == committee_type]
         lowest_percentage_name = min(names, key=lambda x: self.committee_percentage_filled[x])
         return lowest_percentage_name
+
+    def get_free_spots(self, committee_name: str) -> int:
+        """Returns how many delegate slots remain in a committee, derived from its filled percentage."""
+        spots = self.committee_spots[committee_name]
+        filled = round(self.committee_percentage_filled[committee_name] * spots / 100)
+        return max(spots - filled, 0)
 
     def add_available_assignments(self, available_countries):
         self.available_countries = available_countries

@@ -195,7 +195,15 @@ class Assignments_to_Sheets:
                 need_suggestion = True
             else:
                 need_suggestion = False 
-            ConferenceInfo.add_committee(names[i], spots[i], percentages[i], ranges[names[i]], type[i], double_status, need_suggestion)
+            ConferenceInfo.add_committee(
+                committee_name=names[i],
+                spots=spots[i],
+                percentage_filled=percentages[i],
+                committee_range=ranges[names[i]],
+                type=type[i],
+                double_status=double_status,
+                need_suggestion=need_suggestion,
+            )
 
     def read_school_and_current_committees_data(self, selectedSchool, schoolInfo: SchoolInformation, to_add_delegate_count=None):
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)

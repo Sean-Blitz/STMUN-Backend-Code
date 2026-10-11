@@ -38,6 +38,9 @@ def verify_committee_number_input(GA, Specialized, DoubleGAs):
 def assign_committee(ConferenceInfo: ConferenceInformation, SchoolInfo: SchoolInformation, Delegates: SchoolDelegates, iterator, i, CommitteeTypeSelection):
     """
     Assigns delegates based on parameter of CommitteeTypeSelection, which is a string for either "GA", "Specialized", or "Crisis".
+
+    Double-delegation committees only ever receive delegates in pairs, and every pair is bound
+    together as twins so that country assignments can be mirrored automatically later.
     """
     #sets up variables
     if CommitteeTypeSelection == "GA":
@@ -50,36 +53,49 @@ def assign_committee(ConferenceInfo: ConferenceInformation, SchoolInfo: SchoolIn
         Display.display("Error in Committee Type Selection.")
         sys.exit()
 
-    committee = ConferenceInfo.get_lowest_committee_percentage_for_type(CommitteeTypeSelection)
-    if ConferenceInfo.committee_double_status[committee] == True and committeeCount - iterator > 1: #if double delegate committee and enough GA assignmentspots left.
+    remaining = committeeCount - iterator
+    committees_of_type = [name for name in ConferenceInfo.committee_names if ConferenceInfo.committee_types[name] == CommitteeTypeSelection]
+
+    # Only committees that can actually receive the delegate(s) we are about to place are candidates.
+    # A double committee is only eligible for a pair (never a lone delegate).
+    double_candidates = [name for name in committees_of_type
+                         if ConferenceInfo.committee_double_status[name] and ConferenceInfo.get_free_spots(name) >= 2]
+    single_candidates = [name for name in committees_of_type
+                         if not ConferenceInfo.committee_double_status[name] and ConferenceInfo.get_free_spots(name) >= 1]
+
+    pair_committee = min(double_candidates, key=lambda name: ConferenceInfo.committee_percentage_filled[name]) if (remaining >= 2 and double_candidates) else None
+    single_committee = min(single_candidates, key=lambda name: ConferenceInfo.committee_percentage_filled[name]) if single_candidates else None
+
+    def add_pair(committee: str) -> None:
+        nonlocal i, iterator
         Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+1)
         Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+2)
-        ConferenceInfo.committee_percentage_filled[committee] += (2 * 100/ ConferenceInfo.committee_spots[committee])
-        i = i + 2 #skip the next delegate since we just assigned it.
+        Delegates.link_twins(i+1, i+2)  # bind the pair so country assignments mirror each other.
+        ConferenceInfo.committee_percentage_filled[committee] += (2 * 100 / ConferenceInfo.committee_spots[committee])
+        i = i + 2  # skip the next delegate since we just assigned it.
         iterator = iterator + 2
-    elif ConferenceInfo.committee_double_status[committee] == True and committeeCount - iterator == 1: #if double delegate commmittee and not enough GA assignment spots left
-        committee = min([name for name in ConferenceInfo.committee_names if ConferenceInfo.committee_types[name] == CommitteeTypeSelection], key = lambda name: ConferenceInfo.committee_percentage_filled[name]) 
-        #only scans single del GA's. Finds another committee that is a single del GA this time.
+
+    def add_single(committee: str) -> None:
+        nonlocal i, iterator
         Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+1)
-        ConferenceInfo.committee_percentage_filled[committee] += (100/ ConferenceInfo.committee_spots[committee])
-        i = i +1
-        iterator = iterator + 1
-    elif ConferenceInfo.committee_double_status[committee] == False: #if single delegate committee
-        Delegates.add_delegate(committee, ConferenceInfo.committee_types[committee], country="", number=i+1)
-        ConferenceInfo.committee_percentage_filled[committee] += (100/ ConferenceInfo.committee_spots[committee])
+        ConferenceInfo.committee_percentage_filled[committee] += (100 / ConferenceInfo.committee_spots[committee])
         i = i + 1
         iterator = iterator + 1
-    elif iterator == 0:
+
+    # Keep the balancing behaviour: always fill the least-filled committee, but only pair when a
+    # double committee is at least as empty as the best available single committee.
+    if pair_committee is not None and (single_committee is None or ConferenceInfo.committee_percentage_filled[pair_committee] <= ConferenceInfo.committee_percentage_filled[single_committee]):
+        add_pair(pair_committee)
+    elif single_committee is not None:
+        add_single(single_committee)
+    else:
         Display.clear_current_line()
-        Display.display("Error in assignment logic.")
-        if Display.take_text_input("Continue? (y/n)") == "y":
+        Display.display("Error in assignment logic: no", CommitteeTypeSelection, "committee has room for the remaining delegates.")
+        if Display.take_text_input("Continue by skipping this delegate? (y/n)") == "y":
             i = i + 1
             iterator = iterator + 1
-        elif Display.take_text_input("Continue? (y/n)") == "n":
+        else:
             sys.exit(0)
-    else:
-        Display.display("Error in making committees for GA at values of i and iterator:", i, iterator)
-        i = i + 1
     return i, iterator
 
 def confirm_committees(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInformation):
@@ -119,54 +135,63 @@ def confirm_committees(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInf
         #update dictionary with new choice
         if new_committee and (new_committee.strip() != current_committee) and (new_committee in ConferenceInfo.committee_names):
             Delegates.committee[int(delegate_key)] = new_committee
+            # Keep twin bindings coherent: drop the old pair, then pair up with an unpaired
+            # delegate already in the new double committee when one is available.
+            Delegates.unlink_twin(int(delegate_key))
+            if ConferenceInfo.committee_double_status[new_committee]:
+                partner = next((number for number in Delegates.number
+                                if number != int(delegate_key)
+                                and Delegates.committee[number] == new_committee
+                                and Delegates.get_twin(number) is None), None)
+                if partner is not None:
+                    Delegates.link_twins(int(delegate_key), partner)
             check_doubles(current_committee, new_committee, delegate_key, ConferenceInfo)
         else:
             Display.display("No changes made or invalid committee name entered. Please try again.")
 
 def update_delegates(new_country: str, old_country: str | None, delegate_key: int, current_comm: str, ConferenceInfo: ConferenceInformation, Delegates: SchoolDelegates):
     # ─── MASTER DICTIONARY UPDATE ─────────────────────────────────────────
-    if new_country:
-        new_country = new_country.strip()
-        if new_country is not None and new_country != old_country:
-            if old_country is not None and old_country.strip() != "":
-                # If the delegate already had an assignment, return it to availableCountries
-                ConferenceInfo.available_countries.append([current_comm, old_country])
-            ConferenceInfo.available_countries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries
-        # 1. Update the selected delegate
-        Delegates.country[delegate_key] = new_country
-            
-        Display.display(f"\033[K Assigned {new_country} to {delegate_key} ({current_comm})")
-    
-            # 2. TWIN LINKING LOGIC FOR DOUBLE DELEGATION COMMITTEES
-        if ConferenceInfo.committee_double_status[current_comm] == True:
+    if not new_country:
+        return
+    new_country = new_country.strip()
+    old_country = old_country.strip() if old_country else ""
+    if new_country == old_country:
+        return  # Nothing changed; do not re-pair or touch the availability pool.
 
-            twin_delegate = None
-            # Scan the dict for the other partner delegate in the exact same committee
-            for other_delegate_number in Delegates.number:
+    # The twin is the delegate explicitly bound to this one during committee assignment. It is only
+    # valid while it still sits in the same double-delegation committee; otherwise the binding is stale.
+    twin_delegate = Delegates.get_twin(delegate_key)
+    if (twin_delegate is None
+            or Delegates.committee.get(twin_delegate) != current_comm
+            or not ConferenceInfo.committee_double_status.get(current_comm, False)):
+        twin_delegate = None
+    delegates_sharing_country = [delegate_key] + ([twin_delegate] if twin_delegate is not None else [])
 
-                # Skip the one we literally just manually updated
-                if other_delegate_number == delegate_key:
-                    continue
-                    
-                # If it's the same committee, copy the country over!
-                if Delegates.committee[other_delegate_number] == current_comm:
-                    other_old_country = Delegates.country.get(other_delegate_number)
-                    other_old_country = other_old_country.strip() if other_old_country else ""
-                    if other_old_country == old_country:
-                        twin_delegate = other_delegate_number
-                        break # this part ensures that you only flag the other delegate once, so that there is only one twin.
+    # 1. Return any country these delegates previously held to the availability pool (once each).
+    #    A bound pair shares one country, so duplicates collapse into a single entry.
+    for previous_country in {(Delegates.country.get(number) or "").strip() for number in delegates_sharing_country}:
+        if previous_country:
+            ConferenceInfo.available_countries.append([current_comm, previous_country])
 
-            if twin_delegate is not None:
-                Delegates.country[twin_delegate] = new_country
-                Display.display(f"\033[K Assigned {new_country} to twin delegate {twin_delegate}")
-                if old_country is not None and old_country.strip() != "":
-                    # If the delegate already had an assignment, return it to availableCountries
-                    ConferenceInfo.available_countries.append([current_comm, old_country])
-                ConferenceInfo.available_countries.remove([current_comm, new_country])  # Remove the newly assigned country from availableCountries, for the twin delegate.
+    # 2. Consume the newly assigned country from the availability pool, once per delegate that now
+    #    holds it. Guarded so a shared pair (single pool entry) cannot raise ValueError.
+    for _ in delegates_sharing_country:
+        if [current_comm, new_country] in ConferenceInfo.available_countries:
+            ConferenceInfo.available_countries.remove([current_comm, new_country])
+
+    # 3. Update the selected delegate and mirror the assignment onto its twin.
+    for number in delegates_sharing_country:
+        Delegates.country[number] = new_country
+        if number == delegate_key:
+            Display.display(f"\033[K Assigned {new_country} to {number} ({current_comm})")
+        else:
+            Display.display(f"\033[K Assigned {new_country} to twin delegate {number}")
 
 def print_data_to_terminal(RegionBloc, CountryPrefs, SecurityCouncil, numdels, newschool=True):
     Display.display("Region block most preferred:", "\033[1m" + RegionBloc + "\033[0m") #Display.display country preferences in bold for visibility.
     for i, country in enumerate(CountryPrefs):
+        if country is None:
+            continue
         Display.display(f"Country preference {i + 1}:", "\033[1m" + country + "\033[0m")
     Display.display("Security Council interest:", "\033[1m" + str(SecurityCouncil) + "\033[0m")
     if newschool == True:
