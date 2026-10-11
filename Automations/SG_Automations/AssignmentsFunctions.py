@@ -2,7 +2,7 @@ import os
 import sys
 import re
 import random
-from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets
+from SG_Automations.Assignments_Sheets_Adapter import Assignments_to_Sheets, interpret_yes_no
 from Infrastructure import DisplayClass
 from Infrastructure import CSV
 from Infrastructure import AirtableAPI
@@ -112,8 +112,8 @@ def confirm_committees(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInf
         delegate_key = selected_choice.split(":")[0].strip() #read result
         current_committee = Delegates.committee[int(delegate_key)]
         display_list = []
-        for committee_names, committee_types in zip(ConferenceInfo.committee_names, ConferenceInfo.committee_types.values()):
-            display_list.append(f"{committee_names} - ({committee_types})")
+        for committee_name in ConferenceInfo.committee_names:
+            display_list.append(f"{committee_name} - ({ConferenceInfo.committee_types[committee_name]})")
         new_committee = Display.display_list_of_selections(display_list, "Choose new committee", "Exit (keep same committee)")
         if new_committee == "Exit (keep same committee)":
             new_committee = current_committee
@@ -193,7 +193,7 @@ def print_data_to_terminal(RegionBloc, CountryPrefs, SecurityCouncil, numdels, n
         if country is None:
             continue
         Display.display(f"Country preference {i + 1}:", "\033[1m" + country + "\033[0m")
-    Display.display("Security Council interest:", "\033[1m" + str(SecurityCouncil) + "\033[0m")
+    Display.display("Security Council interest:", "\033[1m" + ("Yes" if interpret_yes_no(SecurityCouncil) else "No") + "\033[0m")
     if newschool == True:
         Display.display("Delegates to assign for this school:" "\033[1m" + str(numdels) + "\033[0m")
 

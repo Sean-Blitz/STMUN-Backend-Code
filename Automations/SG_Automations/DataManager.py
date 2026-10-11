@@ -84,6 +84,7 @@ class ConferenceInformation:
         self.needing_suggestions_committee_names: list[str] = []
         self.ranges: dict[str, str] = {}
         self.backup: dict[str, str] = {}
+        self.committee_rows: dict[str, int] = {}  # committee name -> Overview sheet row (used for row-aware reads)
 
     def add_committee(self, committee_name: str, spots: int, percentage_filled: float, committee_range,
                       type="GA", double_status=False, need_suggestion = False):
@@ -116,3 +117,20 @@ class ConferenceInformation:
 
     def add_backup(self, backup):
         self.backup = backup
+
+    def remove_committees(self, committee_names_to_remove) -> None:
+        """
+        Removes committees from every parallel structure so that names, types, spots, percentages,
+        ranges and recorded Overview rows all stay in sync. Matching is case- and whitespace-insensitive.
+        """
+        targets = {name.strip().lower() for name in committee_names_to_remove}
+        for name in [name for name in self.committee_names if name.strip().lower() in targets]:
+            self.committee_names.remove(name)
+            self.committee_types.pop(name, None)
+            self.committee_double_status.pop(name, None)
+            self.committee_percentage_filled.pop(name, None)
+            self.committee_spots.pop(name, None)
+            self.ranges.pop(name, None)
+            self.committee_rows.pop(name, None)
+            if name in self.needing_suggestions_committee_names:
+                self.needing_suggestions_committee_names.remove(name)

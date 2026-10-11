@@ -16,6 +16,19 @@ registrationSheetResponsesName = "Responses" # Name of the tab in the registrati
 SheetsAPI = SheetAPI()
 Display = DisplayClass()
 
+def interpret_yes_no(value) -> bool:
+    """
+    Interprets how a Google Sheet stores a yes/no answer.
+
+    Handles real booleans (checkbox cells), textual answers ("Yes"/"No", "TRUE"/"FALSE"),
+    numeric flags ("1"/"0"), surrounding whitespace, and blank/None cells.
+    """
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"yes", "y", "true", "1"}
+
 class Assignments_to_Sheets:
     def find_schools_not_yet_assigned(self, registrationSheetName, assignmentsSheetName) -> list[str] | None:
         """
@@ -44,12 +57,20 @@ class Assignments_to_Sheets:
 
         return list(unassigned_schools) if unassigned_schools else None
 
-    def read_percentages_from_overview(self, names: list[str]) -> list[float]:
+    def read_percentages_from_overview(self, ConferenceInfo: ConferenceInformation) -> list[float]:
         """
-        Reads the percentages from the Overview sheet and returns them as a dictionary.
-        Assumes the Overview sheet stores percentages from D2 and onwards (down to the length of the committee names)
+        Reads the current filled percentage for each active committee from the Overview sheet.
+
+        Reads by each committee's recorded Overview row (``ConferenceInfo.committee_rows``) instead of
+        by position, so removing a committee can never shift the rows that later checks compare against.
         """
-        percentagesChecking = SheetsAPI.read_cells(registration_sheet_ID, [f"Overview!D{i+2}" for i in range(len(names))])
+        references = []
+        for name in ConferenceInfo.committee_names:
+            row = ConferenceInfo.committee_rows.get(name)
+            if row is None:
+                raise KeyError(f"No Overview row recorded for committee '{name}'. Re-read the Overview sheet before reading percentages.")
+            references.append(f"Overview!D{row}")
+        percentagesChecking = SheetsAPI.read_cells(registration_sheet_ID, references)
         percentagesChecking = [float(p.strip('%')) for p in percentagesChecking] # Convert "45%" to 45.0
 
         return percentagesChecking
@@ -204,6 +225,7 @@ class Assignments_to_Sheets:
                 double_status=double_status,
                 need_suggestion=need_suggestion,
             )
+            ConferenceInfo.committee_rows[names[i]] = i + 2  # remember the Overview row for row-aware reads
 
     def read_school_and_current_committees_data(self, selectedSchool, schoolInfo: SchoolInformation, to_add_delegate_count=None):
         row = SheetsAPI.find_row_by_string(registration_sheet_ID, "Responses", "C", selectedSchool)
@@ -211,8 +233,7 @@ class Assignments_to_Sheets:
         if to_add_delegate_count is not None:
             numdels = int(to_add_delegate_count)
         countryprefs = [country1, country2, country3, country4, country5]
-        if SecurityCouncil is None:
-            SecurityCouncil = False
+        SecurityCouncil = interpret_yes_no(SecurityCouncil)  # sheet stores yes/no text, a checkbox, or blank
         advisorEmail, HeadDelegateEmail = SheetsAPI.read_cells(registration_sheet_ID, [f"Responses!K{row}", f"Responses!O{row}"])
         schoolInfo.add_school(advisorEmail, HeadDelegateEmail, selectedSchool, countryprefs, RegionBloc, SecurityCouncil,int(numdels))
 

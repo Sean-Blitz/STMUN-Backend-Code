@@ -64,9 +64,10 @@ def assign_new_schools():
     while unassignedSchools:
         selectedSchool = Display.select_option_with_pointer(unassignedSchools, "Select a school to begin assignments", "SCVMUN ASSIGNMENT ENGINE - PENDING SCHOOLS")
         Delegates, SchoolInfo, ConferenceInfo = set_up_data(selectedSchool)
-        if SchoolInfo.security_council_preference != True:
-            ConferenceInfo.committee_names = [name for name in ConferenceInfo.committee_names if name.lower() != "security council" and name.lower() != "historical crisis"]
-            # edit the committee names to remove security council if the school does not want it.
+        if not SchoolInfo.security_council_preference:
+            # The school did not opt into Security Council, so drop it (and Historical Crisis, which
+            # runs alongside it) from the model entirely, including the committee-switch menu.
+            ConferenceInfo.remove_committees(["security council", "historical crisis"])
         assign_all_committees(Delegates, SchoolInfo, ConferenceInfo)
 
         Display.display("Assignments for this school:")
@@ -89,7 +90,7 @@ def assign_new_schools():
         SheetsAPI.write_school_name_to_sheet(selectedSchool)
         
         time.sleep(5); Display.display("Checking sheet for changes...") #pause for sheet to register changes.
-        percentagesChecking = SheetsAPI.read_percentages_from_overview(ConferenceInfo.committee_names)
+        percentagesChecking = SheetsAPI.read_percentages_from_overview(ConferenceInfo)
         hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates)
         if percentagesChecking == ConferenceInfo.committee_percentage_filled and hashes != None:
             Display.display("Percentages are correct. Here are the hashes.")
@@ -179,7 +180,7 @@ def add_delegates():
     SheetsAPI.push_values(SchoolAssignmentsCells)
     
     time.sleep(5); Display.display("Checking sheet for changes...") #pause for cloud storage system (sheets) to register changes.
-    percentagesChecking = SheetsAPI.read_percentages_from_overview(ConferenceInfo.committee_names)
+    percentagesChecking = SheetsAPI.read_percentages_from_overview(ConferenceInfo)
     if percentagesChecking == ConferenceInfo.committee_percentage_filled:
         Display.display("Percentages are correct. Moving on to next school.")
         hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates)
