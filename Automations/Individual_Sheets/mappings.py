@@ -239,6 +239,7 @@ class IndividualSheetData:
 def main():
     data = IndividualSheetData()
     data.pull_data_from_master_sheet(start_row=5)
+    Display.display("Logged time: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     for i, name in enumerate(data.names):
         individual_sheet_name = f"{name} - Individualized Dashboard"
         sheet_id = Drive.find_sheet_id_by_name_contains(drive_folder_ID, individual_sheet_name)
@@ -250,7 +251,7 @@ def main():
         else:
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)
             Display.display(f"{i+1} - Populated existing sheet for {name}.")
-        time.sleep(3)  # Sleep for 3 seconds to avoid hitting API rate limits
+        time.sleep(5)  # Sleep for 5 seconds to avoid hitting API rate limits
 
 if __name__ == "__main__":
     main()
