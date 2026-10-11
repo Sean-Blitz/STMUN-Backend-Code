@@ -133,17 +133,18 @@ def assign_new_schools():
 
         roster_link = f"https://docs.google.com/spreadsheets/d/{new_roster_ID}/edit"
         Display.display(f"Roster generated and assignments added. Please check it for errors: {roster_link}")
-        while (cont := Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")) != "yes":
-            cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)")
+        cont = ""
+        while cont not in {"yes", "no"}:
+            cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)").strip().lower()
         if cont == "no":
             Display.display("Email draft skipped. Please make it manually.")
             sys.exit()
-        school_row = new_email_doc_ID = RosterConnector.draft_email_for_school_and_share_roster(selectedSchool, SchoolInfo.advisor_email, SchoolInfo.head_del_email, new_roster_ID, this_year_folder_ID)
+        new_email_doc_ID = RosterConnector.draft_email_for_school_and_share_roster(selectedSchool, SchoolInfo.advisor_email, SchoolInfo.head_del_email, new_roster_ID, this_year_folder_ID)
         Display.display(f"Email draft created: https://docs.google.com/document/d/{new_email_doc_ID}/edit")
         unassignedSchools.remove(selectedSchool)
-        Todo.flag_assignments_made_and_place_roster_link(selectedSchool, roster_link)
+        school_row = Todo.flag_assignments_made_and_place_roster_link(selectedSchool, roster_link)
         shared = Display.take_text_input("Roster email sent? (y/n)")
-        if shared != "n":
+        if shared.strip().lower() in {"y", "yes"}:
             Todo.flag_roster_sent(school_row)
 
 def add_delegates():

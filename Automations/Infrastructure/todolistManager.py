@@ -51,6 +51,8 @@ class TodoList():
         """Flags that assignments have been made for a school in the sheet to-do list."""
         # Find column letters for both headers
         school_row = SheetsAPI.find_row_by_string(self.todolist_sheet_id, todolist_sheetname, "A", school_name)
+        if school_row is None:
+            raise ValueError(f"School '{school_name}' not found in the to-do list column.")
         assignments_col = self.__get_header_column(assignments_made)
         roster_link_col = self.__get_header_column(roster_link)
         roster_sent_col = self.__get_header_column(roster_sent)
@@ -70,6 +72,8 @@ class TodoList():
 
     def flag_roster_sent(self, school_row):
         """Flags that the roster has been sent for a school in the sheet to-do list."""
+        if school_row is None:
+            raise ValueError("Cannot flag the roster as sent: no to-do list row was provided.")
         # Find column letter for roster_sent header
         roster_sent_col = self.__get_header_column(roster_sent)
 
