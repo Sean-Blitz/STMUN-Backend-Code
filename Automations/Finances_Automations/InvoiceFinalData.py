@@ -1,13 +1,15 @@
 import csv
+from pathlib import Path
 import sys
 import os
 import time
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-os.chdir(SCRIPT_DIR)
+AUTOMATIONS_DIR = Path(__file__).resolve().parent.parent
+if str(AUTOMATIONS_DIR) not in sys.path:
+    sys.path.insert(0, str(AUTOMATIONS_DIR))
 from dotenv import load_dotenv
-from Automations.Infrastructure import DriveAPI
-from Automations.Infrastructure import SheetAPI
-from Automations.Infrastructure import DisplayClass
+from Infrastructure import DriveAPI
+from Infrastructure import SheetAPI
+from Infrastructure import DisplayClass
 #These four are other .py files with the proper functions called here.
 
 storage = DriveAPI()
