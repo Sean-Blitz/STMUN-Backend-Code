@@ -157,19 +157,18 @@ for i in range(len(mail_school_names)):
     month = int(date.split(splitter)[0])
     day = int(date.split(splitter)[1])
     year = int(date.split(splitter)[2])
-    date = datetime.date(month=month, day=day, year=year)
 
-    if date.month == 11 and date.day == 1 or date.month == 10 or date.month == 9 or date.month == 8:
+    if (month == 8) or (month == 9):
         newInvoice = CreateInvoice(template1_independent if independent == "y" else template1_school, independent)
         checkcell = "B25"
         inputCell = "B28"
         invoiceNumber = 1
-    elif date.month == 12 and date.day <= 20 or date.month == 11 and date.day >= 2: 
+    elif (month == 10) or (month == 11) or (month == 12 and day <= 9): 
         newInvoice = CreateInvoice(template2_independent if independent == "y" else template2_school, independent)
         checkcell = "B26"
         inputCell = "B29"
         invoiceNumber = 2
-    elif date.month == 1 and date.day <= 26 or date.month == 12 and date.day >= 21:
+    elif (month == 12 and day >= 10) or (month == 1):
         newInvoice = CreateInvoice(template3_independent if independent == "y" else template3_school, independent)
         checkcell = "B27"
         inputCell = "B30"
