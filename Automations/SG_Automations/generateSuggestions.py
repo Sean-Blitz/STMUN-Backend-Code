@@ -13,6 +13,23 @@ SheetsAPI = Assignments_to_Sheets()
 
 top5 = {"China", "United States", "Russia", "United Kingdom", "France"}
 
+school_tier_levels = ("great", "good", "below average", "unexperienced")
+
+def select_school_tier_level(school_name: str) -> str:
+    """
+    Lets the user pick a tier level for a school that could not be found in the awards sheet.
+
+    Uses the DisplayManager list interface. Choosing the exit option (or cancelling) falls back to "good".
+    """
+    selected_level = Display.display_list_of_selections(
+        list(school_tier_levels),
+        f"School \"{school_name}\" was not found in the awards sheet. Select its tier level manually",
+        "Cancel (use \"good\")"
+    )
+    if selected_level == "exit":
+        return "good"
+    return selected_level
+
 def generate_dictionary_of_suggestions(SchoolInfo: SchoolInformation, Delegates: SchoolDelegates, ConferenceInfo: ConferenceInformation) -> dict[str, list[str]] | None:
     """
     Generates up to 5 suggested available countries for each delegate in a GA committee,
@@ -46,7 +63,9 @@ def generate_dictionary_of_suggestions(SchoolInfo: SchoolInformation, Delegates:
         Display.display("No schools in the blacklist")
         blacklist = []
     sanitized_school_name = SchoolInfo.schoolname.lower().replace("high", "").replace("school", "").replace("hs", "").replace("college", "").replace("preparatory", "").replace("prep", "").strip()
-    school_status = SheetsAPI.get_school_awards_data(sanitized_school_name) # returns "good", "great", "below average", or "unexperienced"
+    school_status = SheetsAPI.get_school_awards_data(sanitized_school_name) # returns "good", "great", "below average", "unexperienced", or None if not found
+    if school_status is None:
+        school_status = select_school_tier_level(SchoolInfo.schoolname) # school not in the awards sheet: let the user choose a tier level
 
     if SchoolInfo.numdels >= 30 and sanitized_school_name not in blacklist:
         count = 0

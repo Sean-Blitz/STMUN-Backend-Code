@@ -341,10 +341,13 @@ class Assignments_to_Sheets:
             del self.available_countries_and_coordinates
             return assigned_cell_map, remaining_cell_map
 
-    def get_school_awards_data(self, sanitized_school_name) -> str:
+    def get_school_awards_data(self, sanitized_school_name) -> str | None:
         """
         Read school's points from the sheet. If greater than average but below twice of average, return "good". If higher, return "great". 
         If less than average but more than half of average, return "below average", and if less than that, return "unexperienced".
+
+        Returns None when the school itself cannot be found in the awards sheet, so the caller can
+        ask the user to select a tier level manually.
         """
         sheetID = award_sheet_ID
 
@@ -364,11 +367,11 @@ class Assignments_to_Sheets:
                     row = list_of_school_names_in_awards_sheet.index(school_name) +2
                 except ValueError:
                     Display.display("Cannot find that school in the sheet. If you've updated that sheet while running this code, re-run this code.")
-                    Display.display("Otherwise, we default to making this school a \"good\" school in ranking.")
-                    return "good"
+                    Display.display("You will now be asked to select this school's tier level manually.")
+                    return None
             else:
-                Display.display("Now, we default to making this school a \"good\" school in ranking.")
-                return "good"
+                Display.display("You will now be asked to select this school's tier level manually.")
+                return None
 
         school_points = SheetsAPI.read_single_cell(sheetID, f"N{row}")
         average_points = SheetsAPI.read_single_cell(sheetID, f"N{len(list_of_school_names_in_awards_sheet)+2}")
