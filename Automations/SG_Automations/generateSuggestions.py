@@ -63,11 +63,17 @@ def generate_dictionary_of_suggestions(SchoolInfo: SchoolInformation, Delegates:
         Display.display("No schools in the blacklist")
         blacklist = []
     sanitized_school_name = SchoolInfo.schoolname.lower().replace("high", "").replace("school", "").replace("hs", "").replace("college", "").replace("preparatory", "").replace("prep", "").strip()
+    if sanitized_school_name in blacklist:
+        suggest_countries_for_blacklisted_school(tier1, tier2, SchoolInfo, ConferenceInfo, Delegates)
+        return
+
+    # Not blacklisted, so the award tier applies: read it from the sheet, or ask the user when the
+    # school cannot be found there.
     school_status = SheetsAPI.get_school_awards_data(sanitized_school_name) # returns "good", "great", "below average", "unexperienced", or None if not found
     if school_status is None:
         school_status = select_school_tier_level(SchoolInfo.schoolname) # school not in the awards sheet: let the user choose a tier level
 
-    if SchoolInfo.numdels >= 30 and sanitized_school_name not in blacklist:
+    if SchoolInfo.numdels >= 30:
         count = 0
         for committee in ConferenceInfo.committee_names:
             if committee in ConferenceInfo.needing_suggestions_committee_names:
@@ -76,11 +82,8 @@ def generate_dictionary_of_suggestions(SchoolInfo: SchoolInformation, Delegates:
         suggest_p5_countries(top5, half1, SchoolInfo, ConferenceInfo, Delegates)
         suggest_countries_based_on_ranking(school_status, tier1, tier2, SchoolInfo, ConferenceInfo, Delegates)
 
-    elif SchoolInfo.numdels < 30 and sanitized_school_name not in blacklist:
+    else:
         suggest_countries_based_on_ranking(school_status, tier1, tier2, SchoolInfo, ConferenceInfo, Delegates)
-
-    elif sanitized_school_name in blacklist:
-        suggest_countries_for_blacklisted_school(tier1, tier2, SchoolInfo, ConferenceInfo, Delegates)
 
 def suggest_countries_based_on_ranking(school_status, tier1, tier2, SchoolInfo: SchoolInformation, ConferenceInfo: ConferenceInformation, Delegates: SchoolDelegates):
     """

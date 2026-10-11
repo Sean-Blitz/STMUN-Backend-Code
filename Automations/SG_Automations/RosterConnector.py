@@ -122,6 +122,7 @@ def draft_email_for_school_and_share_roster(schoolname: str, advisorEmail, HeadD
     Docs.fill_doc_placeholders_from_dictionary(new_email_doc_ID, replacements)
 
     Drive.share_spreadsheet(roster_ID, advisorEmail, role="writer")
-    Drive.share_spreadsheet(roster_ID, HeadDelegateEmail, role="writer")
+    if HeadDelegateEmail != advisorEmail:
+        Drive.share_spreadsheet(roster_ID, HeadDelegateEmail, role="writer")
 
     return new_email_doc_ID
