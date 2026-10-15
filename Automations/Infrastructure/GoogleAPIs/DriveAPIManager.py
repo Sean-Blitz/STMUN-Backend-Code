@@ -6,6 +6,19 @@ from ..Display.DisplayManager import DisplayClass
 
 Display = DisplayClass()
 
+
+def escape_drive_query_literal(value: str) -> str:
+    """
+    Escapes a value for safe interpolation into a Drive API ``q`` string literal.
+
+    Drive's query syntax ends a string literal at the first single quote, so an
+    unescaped apostrophe (a delegate named "O'Brien", for example) truncates the
+    literal and the API rejects the whole request with a 400. Backslashes are
+    escaped first so they are not mistaken for the escape character itself.
+    """
+    return str(value).replace("\\", "\\\\").replace("'", "\\'")
+
+
 class DriveAPI(GoogleAPIs):
     def __init__(self, SCOPES = None, CREDENTIALS_FILE = None, TOKEN_FILE = None):
         if SCOPES is None:
@@ -214,10 +227,12 @@ class DriveAPI(GoogleAPIs):
             str or None: Google Sheet file ID
         """
 
+        safe_name_contains = escape_drive_query_literal(name_contains)
+
         query = (
             f"'{folder_id}' in parents and "
             "mimeType = 'application/vnd.google-apps.spreadsheet' and "
-            f"name contains '{name_contains}' and "
+            f"name contains '{safe_name_contains}' and "
             "trashed = false"
         )
 
