@@ -97,7 +97,7 @@ class SheetAPI(GoogleAPIs):
         return values[0][0]
 
     @retry_on_http_error()
-    def read_cells(self, spreadsheet_id: str, cell_list: list):
+    def read_cells(self, spreadsheet_id: str, cell_list: list, value_render_option: str = "FORMATTED_VALUE"):
         """
         Reads multiple individual cells from a Google Sheet and returns their values
         in the same order as the provided cell_list.
@@ -105,6 +105,8 @@ class SheetAPI(GoogleAPIs):
         Parameters:
             spreadsheet_id (str): The ID of the Google Sheet.
             cell_list (list): List of A1-notation cell references, e.g. ["A1", "B2"].
+            value_render_option (str): How values are rendered. Defaults to "FORMATTED_VALUE";
+                pass "UNFORMATTED_VALUE" to get raw numbers instead of formatted text.
 
         Returns:
             list: Values in the same order as cell_list. Empty cells return None.
@@ -114,7 +116,8 @@ class SheetAPI(GoogleAPIs):
         # Batch request for all cells
         result = self.service.spreadsheets().values().batchGet(
             spreadsheetId=spreadsheet_id,
-            ranges=ranges
+            ranges=ranges,
+            valueRenderOption=value_render_option
         ).execute()
 
         value_ranges = result.get("valueRanges", [])
@@ -707,6 +710,12 @@ class SheetAPI(GoogleAPIs):
             if sheet['properties']['title'] == sheet_name:
                 return sheet['properties']['sheetId']
         raise ValueError(f"Sheet with name '{sheet_name}' not found.")
+
+    @retry_on_http_error()
+    def get_sheet_names(self, spreadsheet_id: str) -> list[str]:
+        """Fetches the names of all tabs in a spreadsheet, in their current order."""
+        spreadsheet = self.service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+        return [sheet['properties']['title'] for sheet in spreadsheet.get('sheets', [])]
 
     @retry_on_http_error()
     def copy_sheet_tab_to_front(self, spreadsheet_id: str, source_sheet_name: str, new_sheet_name: str) -> int:
