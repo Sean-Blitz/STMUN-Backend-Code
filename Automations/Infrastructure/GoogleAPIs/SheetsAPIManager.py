@@ -708,6 +708,39 @@ class SheetAPI(GoogleAPIs):
                 return sheet['properties']['sheetId']
         raise ValueError(f"Sheet with name '{sheet_name}' not found.")
 
+    @retry_on_http_error()
+    def copy_sheet_tab_to_front(self, spreadsheet_id: str, source_sheet_name: str, new_sheet_name: str) -> int:
+        """
+        Copies an existing tab (searched by name) within the same spreadsheet, renames the copy,
+        and moves it to the first position (index 0).
+
+        Parameters:
+            spreadsheet_id (str): The ID of the Google Sheet.
+            source_sheet_name (str): The name of the existing tab to copy.
+            new_sheet_name (str): The name to give the copied tab.
+
+        Returns:
+            int: The numeric sheetId (gid) of the newly created tab.
+        """
+        source_sheet_id = self.get_sheet_id_by_name(spreadsheet_id, source_sheet_name)
+
+        response = self.service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={
+                "requests": [
+                    {
+                        "duplicateSheet": {
+                            "sourceSheetId": source_sheet_id,
+                            "insertSheetIndex": 0,
+                            "newSheetName": new_sheet_name,
+                        }
+                    }
+                ]
+            }
+        ).execute()
+
+        return response["replies"][0]["duplicateSheet"]["properties"]["sheetId"]
+
     def set_cell_background_color(self, spreadsheet_id, sheet_name, row, col, red=1.0, green=1.0, blue=1.0):
         """
         Changes the background color of a specific cell in a Google Sheet.

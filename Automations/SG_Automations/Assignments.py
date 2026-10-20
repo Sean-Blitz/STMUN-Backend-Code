@@ -93,12 +93,15 @@ def assign_new_schools():
         percentagesChecking = SheetsAPI.read_percentages_from_overview(ConferenceInfo)
         hashes = ServerRequests.add_new_school_or_delegates_to_existing_school_and_request_hashes(Delegates)
         if percentagesChecking == list(ConferenceInfo.committee_percentage_filled.values()) and hashes != None:
-            Display.display("Percentages are correct. Here are the hashes.")
+            Display.display("Percentages are correct.")
+        else:
+            Display.display("Percentage error. Please check the sheet!")
+            Display.display(registrationSheetURL)
+        if hashes != None:
+            Display.display("Hashes received from server:")
             Display.display(hashes)
         else:
-            Display.display("Percentage error. Please check the sheet! Here are the hashes.")
-            Display.display(registrationSheetURL)
-            Display.display(hashes)
+            Display.display("No hashes received from server. Please check the server response for errors.")
 
         while (cont := Display.take_text_input("Sync with secondary storage? (yes/no)")) != "yes":
             cont = Display.take_text_input("Sync with secondary storage? (yes/no)")
@@ -135,7 +138,7 @@ def assign_new_schools():
         Display.display(f"Roster generated and assignments added. Please check it for errors: {roster_link}")
         cont = ""
         while cont not in {"yes", "no"}:
-            cont = Display.take_text_input("Draft an email for the school with the roster link and share it with the school? (yes/no)").strip().lower()
+            cont = Display.take_text_input("Draft an email for the school with the roster link and share the roster with the school? (yes/no)").strip().lower()
         if cont == "no":
             Display.display("Email draft skipped. Please make it manually.")
             sys.exit()
@@ -276,9 +279,3 @@ def drop_delegates():
     else:
         Display.display("The sheet for the school's assignments came back empty. Check the Assignments sheet.")
         sys.exit()
-
-"""
-Improvements:
-
-In get_school_awards_data, you can change input options so that the user can input rankings themselves. Also, change the way the sheets calculates things to make it based on number of people attending too.
-"""
