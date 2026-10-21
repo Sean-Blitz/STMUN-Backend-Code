@@ -139,12 +139,10 @@ for i in range(len(mail_school_names)):
         continue
 
     yearfolder = folderfinding(sName)
-    CreateInvoice = lambda templateID, independent: CloudStorageAPI.copy_drive_file_with_number(
-                
-                original_file_id= templateID,
+    CreateInvoice = lambda templateID, independent: CloudStorageAPI.copy_drive_file(
+                file_id=templateID,
                 destination_folder_id=yearfolder,
-                new_name_template="Invoice {n}" + (" - Independent" if independent == "y" else ""),
-                sName = sName)
+                new_name=f"Invoice - {sName}" + (" - Independent" if independent == "y" else ""))
 
     if "-" in str(date):
         splitter = "-"
@@ -177,26 +175,29 @@ for i in range(len(mail_school_names)):
         Display.display("Today's date error for delegate fee.")
         sys.exit()
 
+    tab = f"Invoice {invoiceNumber}"
+    Sheets.rename_sheet_tab(newInvoice, "Purchase order", tab)
+
     Sheets.write_values_to_sheet_from_dict(
         spreadsheet_id=newInvoice,
         cell_value_map={
-            "Purchase order!C16": sName,
-            "Purchase order!C17": aName,
-            "Purchase order!C18": aEmail,
-            "Purchase order!C19": aPhoneNumber,
-            "Purchase order!C20": sAddress,
-            "Purchase order!C21": city + ", " + state + " " + zipCode,
-            "Purchase order!C22": datetime.date.today().strftime("%m/%d/%Y"),
+            f"{tab}!C16": sName,
+            f"{tab}!C17": aName,
+            f"{tab}!C18": aEmail,
+            f"{tab}!C19": aPhoneNumber,
+            f"{tab}!C20": sAddress,
+            f"{tab}!C21": city + ", " + state + " " + zipCode,
+            f"{tab}!C22": datetime.date.today().strftime("%m/%d/%Y"),
         })
 
     Sheets.write_values_to_sheet_from_dict(
         spreadsheet_id=newInvoice,
         cell_value_map={
-            f"Purchase order!{checkcell}": "true",
-            f"Purchase order!{inputCell}": DelCount,
+            f"{tab}!{checkcell}": "true",
+            f"{tab}!{inputCell}": DelCount,
         })
 
-    SheetTotal = Sheets.read_single_cell(spreadsheet_id=newInvoice, cell_range="Purchase order!H36")
+    SheetTotal = Sheets.read_single_cell(spreadsheet_id=newInvoice, cell_range=f"{tab}!H36")
 
     if int(float(SheetTotal.replace("$", "").replace(",", "").strip()) if SheetTotal != None else 0) != Balance:
         Display.display("Subtotal mismatch error.")

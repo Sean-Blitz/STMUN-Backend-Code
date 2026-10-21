@@ -718,6 +718,38 @@ class SheetAPI(GoogleAPIs):
         return [sheet['properties']['title'] for sheet in spreadsheet.get('sheets', [])]
 
     @retry_on_http_error()
+    def rename_sheet_tab(self, spreadsheet_id: str, old_sheet_name: str, new_sheet_name: str) -> dict:
+        """
+        Renames a tab in a Google Sheet.
+
+        Parameters:
+            spreadsheet_id (str): The ID of the Google Sheet.
+            old_sheet_name (str): The current name of the tab.
+            new_sheet_name (str): The new name for the tab.
+
+        Returns:
+            dict: The API batchUpdate response.
+        """
+        sheet_id = self.get_sheet_id_by_name(spreadsheet_id, old_sheet_name)
+
+        return self.service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={
+                "requests": [
+                    {
+                        "updateSheetProperties": {
+                            "properties": {
+                                "sheetId": sheet_id,
+                                "title": new_sheet_name,
+                            },
+                            "fields": "title",
+                        }
+                    }
+                ]
+            }
+        ).execute()
+
+    @retry_on_http_error()
     def copy_sheet_tab_to_front(self, spreadsheet_id: str, source_sheet_name: str, new_sheet_name: str) -> int:
         """
         Copies an existing tab (searched by name) within the same spreadsheet, renames the copy,
