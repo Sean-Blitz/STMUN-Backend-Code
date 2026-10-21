@@ -17,34 +17,37 @@ SheetsAPI = SheetAPI()
 Display = DisplayClass()
 load_dotenv()
 
-folderID = os.getenv("FoldersWithAllFinalInvoicesID") if os.getenv("FoldersWithAllFinalInvoicesID") else None  #Change folderIDs from year to year.
-if folderID:
-    folderID = list(folderID.split(","))  #Convert the string of folder IDs into a list of folder IDs.
-else:
-    Display.display("No folder IDs provided in the environment variable 'FoldersWithAllFinalInvoicesID'. Please set this variable in your .env file.")
+AttendingFolderID = os.getenv("AttendingFolderID")
+YearText = os.getenv("YearText")
+if not AttendingFolderID or not YearText:
+    Display.display("No AttendingFolderID or YearText provided in the .env file. Please set them.")
     sys.exit(1)
-#Change folderIDs from year to year.
 
-for i in range(len(folderID)): #each folder (technically only one right now. Can modify above to scan more.)
-    allsheetIDs = storage.list_google_sheet_ids(folderID[i])
-    balance = []
-    comments = []
-    name = []
-    data = [['Name', 'Balance', 'Comments']]
-    for j in range(len(allsheetIDs)): #each sheet
-        sheetID = allsheetIDs[j]
-        cell_values = SheetsAPI.read_cells(sheetID, ['Purchase order!H36', 'Purchase order!C38', 'Purchase order!C16'])
-        balance = cell_values[0]
-        comments = cell_values[1]
-        name = cell_values[2]
-        data.append([name, balance, comments])
-        time.sleep(1)  # To avoid hitting API rate limits. 
+data = [['Name', 'Balance', 'Comments']]
+for school_name, school_folder_ID in storage.get_subfolders_as_dict(AttendingFolderID).items():
+    yearfolder = storage.find_subfolder_id(school_folder_ID, YearText)
+    if yearfolder is None:
+        Display.display(f"Year folder not found for {school_name}. Skipping.")
+        continue
 
-    file_path = f'InvoiceData{i}.csv'
-    # write the data to a CSV file
-    with open(file_path, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile, delimiter=',')
-        # Write all rows at once
-        writer.writerows(data)
+    sheetID = storage.find_sheet_id_by_name_contains(yearfolder, f"Invoice - {school_name}")
+    if sheetID is None:
+        Display.display(f"Invoice sheet not found for {school_name}. Skipping.")
+        continue
 
-    Display.display(f"Data successfully written to {file_path}")
+    if "Final Invoice" not in SheetsAPI.get_sheet_names(sheetID):
+        Display.display(f"Final Invoice tab not found for {school_name}. Skipping.")
+        continue
+
+    balance, comments, name = SheetsAPI.read_cells(sheetID, ['Final Invoice!H36', 'Final Invoice!C38', 'Final Invoice!C16'])
+    data.append([name, balance, comments])
+    time.sleep(1)  # To avoid hitting API rate limits.
+
+file_path = 'InvoiceData.csv'
+# write the data to a CSV file
+with open(file_path, 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile, delimiter=',')
+    # Write all rows at once
+    writer.writerows(data)
+
+Display.display(f"Data successfully written to {file_path}")
