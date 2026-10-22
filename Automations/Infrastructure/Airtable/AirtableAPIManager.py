@@ -71,11 +71,9 @@ class AirtableAPI:
         headers = {
             "Authorization": f"Bearer {auth_token}"
         }
-        resp=requests.get(url,headers=headers)
-        d1 = str(resp.json())
-        d2 = d1.replace("\'", "\"").replace("True", "true").replace("False", "false").replace("Null", "null")
-        #getting rid of the stupid JSON errors Airtable has
-        response = json.loads(d2)
+        resp = requests.get(url, headers=headers)
+        resp.raise_for_status()
+        response = resp.json()  # requests already parses the Airtable JSON; no need to stringify/reparse
 
         fields = response["fields"]
         #fields is a dictionary
