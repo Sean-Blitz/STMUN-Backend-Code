@@ -26,6 +26,7 @@ drive_folder_ID = os.environ["drive_folder_ID"]
 template_file_id = os.environ["individualized_dashboard_template_file_id"]
 thursday_meeting_column_indicator = "Thu"
 wednesday_meeting_column_indicator = "Wed"
+REBUILD_EVERY = 25  # Rebuild the API clients every N delegates to get fresh connections
 
 class IndividualSheetData:
     def __init__(self):
@@ -237,16 +238,43 @@ class IndividualSheetData:
         self.names = [f"{first} {last}" for first, last in zip(self.first_names, self.last_names)]
 
 def main():
+    global Drive, SheetsAPI
+
     data = IndividualSheetData()
     data.pull_data_from_master_sheet(start_row=5)
     Display.display("Logged time: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
+    # One folder listing instead of one Drive search per delegate.
+    sheet_ids_by_name = Drive.list_sheet_ids_by_name(drive_folder_ID)
+
     for i, name in enumerate(data.names):
+        if i and i % REBUILD_EVERY == 0:
+            # httplib2 keeps a single connection alive for the whole run, so one
+            # dead socket poisons every later call. Rebuild the clients so each
+            # chunk starts on fresh connections.
+            try:
+                Drive = DriveAPI()
+                SheetsAPI = SheetAPI()
+                Display.display(f"Rebuilt API clients before entry {i+1}/{len(data.names)}.")
+            except Exception as e:
+                Display.display(f"Could not rebuild API clients ({e}). Continuing with existing connections.")
+
         individual_sheet_name = f"{name} - Individualized Dashboard"
-        sheet_id = Drive.find_sheet_id_by_name_contains(drive_folder_ID, individual_sheet_name)
+        sheet_id = sheet_ids_by_name.get(individual_sheet_name)
+
         if sheet_id is None:
-            sheet_id = Drive.copy_drive_file(file_id=template_file_id, new_name=f"{name} - Individualized Dashboard", destination_folder_id=drive_folder_ID)
+            # Keep the old `name contains` behaviour for sheets whose names
+            # carry extra text, e.g. an appended " (copy)".
+            for listed_name, listed_id in sheet_ids_by_name.items():
+                if individual_sheet_name.lower() in listed_name.lower():
+                    sheet_id = listed_id
+                    break
+
+        if sheet_id is None:
+            sheet_id = Drive.copy_drive_file(file_id=template_file_id, new_name=individual_sheet_name, destination_folder_id=drive_folder_ID)
             Drive.share_spreadsheet(sheet_id, data.emails[data.names.index(name)], role="commenter")
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)
+            sheet_ids_by_name[individual_sheet_name] = sheet_id
             Display.display(f"{i+1} - Created, populated, and shared sheet for {name}.")
         else:
             data.write_data_to_individual_sheet(data.names.index(name), sheet_id)

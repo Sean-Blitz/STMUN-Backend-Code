@@ -249,6 +249,50 @@ class DriveAPI(GoogleAPIs):
         return files[0]["id"]
 
     @retry_on_http_error()
+    def list_sheet_ids_by_name(self, folder_id: str) -> dict:
+        """
+        Returns every Google Sheet directly inside a folder, keyed by its exact
+        name, using one listing request per page (1000 files per page) instead
+        of one search per sheet name.
+
+        The result is a dict on purpose: the API's file ordering is not
+        meaningful, so callers must look names up rather than assuming the
+        listing order matches any roster order.
+
+        Args:
+            folder_id (str): ID of the Drive folder to list.
+
+        Returns:
+            dict[str, str]: {exact sheet name: sheet file ID}. If two files
+            share a name, the first one listed wins, mirroring the previous
+            "return files[0]" behaviour.
+        """
+
+        sheet_ids_by_name = {}
+        page_token = None
+
+        while True:
+            response = self.service.files().list(
+                q=(
+                    f"'{folder_id}' in parents and "
+                    "mimeType = 'application/vnd.google-apps.spreadsheet' and "
+                    "trashed = false"
+                ),
+                fields="nextPageToken, files(id, name)",
+                pageSize=1000,
+                pageToken=page_token
+            ).execute()
+
+            for sheet in response.get("files", []):
+                sheet_ids_by_name.setdefault(sheet["name"], sheet["id"])
+
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+
+        return sheet_ids_by_name
+
+    @retry_on_http_error()
     def list_google_sheet_ids(self, folder_id: str) -> list:
         """
         Returns a list of Google Sheet file IDs inside a Google Drive folder.
