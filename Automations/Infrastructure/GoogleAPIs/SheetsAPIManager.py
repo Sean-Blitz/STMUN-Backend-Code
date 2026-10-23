@@ -4,7 +4,6 @@ from googleapiclient.discovery import build
 from .GoogleAPIsManager import GoogleAPIs
 from Infrastructure.utilities import retry_on_http_error
 from ..Display.DisplayManager import DisplayClass
-import sys
 
 Display = DisplayClass()
 
@@ -52,49 +51,17 @@ class SheetAPI(GoogleAPIs):
             body=body
         ).execute()
 
-    @retry_on_http_error()
     def read_single_cell(self, spreadsheet_id: str, cell_range: str):
         """
         Reads a single cell from a Google Sheet.
         Args:
-            service: Authenticated Sheets service
             spreadsheet_id (str): Spreadsheet ID
             cell_range (str): A1 notation (e.g. 'Sheet1!B2')
 
         Returns:
             The cell value (str, number, or None if empty)
         """
-        result = self.service.spreadsheets().values().get(
-            spreadsheetId=spreadsheet_id,
-            range=cell_range
-        ).execute()
-
-        values = result.get("values", [])
-
-        if not values or not values[0]:
-            return None
-
-        return values[0][0]
-
-    @retry_on_http_error()
-    def read_single_unformatted_cell(self, spreadsheet_id, cell_range):
-        """
-        Reads a single cell from a Google Sheet (unformatted value).
-        Returns:
-            Number, bool, string, or None
-        """
-        result = self.service.spreadsheets().values().get(
-            spreadsheetId=spreadsheet_id,
-            range=cell_range,
-            valueRenderOption="UNFORMATTED_VALUE"
-        ).execute()
-
-        values = result.get("values", [])
-
-        if not values or not values[0]:
-            return None
-
-        return values[0][0]
+        return self.read_cells(spreadsheet_id, [cell_range])[0]
 
     @retry_on_http_error()
     def read_cells(self, spreadsheet_id: str, cell_list: list, value_render_option: str = "FORMATTED_VALUE"):
@@ -133,61 +100,26 @@ class SheetAPI(GoogleAPIs):
         return output
 
     @retry_on_http_error()
-    def get_column_until_empty(self, sheet_id, sheet_name, column_letter, start_row):
-        """
-        Reads down a specific column in Google Sheets and returns all values 
-        until it hits an empty cell.
-        """    
-        # 2. Construct the range string (e.g., "Sheet1!A2:A" fetches to the bottom)
+    def _read_column(self, sheet_id, sheet_name, column_letter, start_row):
+        """Fetches the raw values of one column from start_row down (single API call)."""
         range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
-        
-        # 3. Make a single API call to fetch the data
-        sheet = self.service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
-        
-        # The API returns a list of lists, like [['Data1'], ['Data2'], [], ['Data4']]
-        values = result.get('values', [])
-        
-        collected_data = []
-        
-        # 4. Loop through the fetched values and stop at the first blank
-        for row in values:
-            # Google Sheets API represents an empty cell either as an empty list `[]` 
-            # or a list containing an empty string `['']`
-            if not row or not str(row[0]).strip():
-                break  # Exit the loop as soon as an empty cell is found
-                
-            collected_data.append(row[0])
-            
-        return len(collected_data)
+        result = self.service.spreadsheets().values().get(
+            spreadsheetId=sheet_id,
+            range=range_string
+        ).execute()
+        return result.get('values', [])
 
-    @retry_on_http_error()
+    def get_column_until_empty(self, sheet_id, sheet_name, column_letter, start_row):
+        """Returns how many contiguous non-empty values are in a column."""
+        return len(self.get_column_data_until_empty(sheet_id, sheet_name, column_letter, start_row))
+
     def get_column_data_until_empty(self, sheet_id, sheet_name, column_letter, start_row):
-        """
-        Reads down a specific column in Google Sheets and returns all values 
-        until it hits an empty cell.
-        """    
-        # 2. Construct the range string (e.g., "Sheet1!A2:A" fetches to the bottom)
-        range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
-        
-        # 3. Make a single API call to fetch the data
-        sheet = self.service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
-        
-        # The API returns a list of lists, like [['Data1'], ['Data2'], [], ['Data4']]
-        values = result.get('values', [])
-        
+        """Returns column values until the first blank cell."""
         collected_data = []
-        
-        # 4. Loop through the fetched values and stop at the first blank
-        for row in values:
-            # Google Sheets API represents an empty cell either as an empty list `[]` 
-            # or a list containing an empty string `['']`
+        for row in self._read_column(sheet_id, sheet_name, column_letter, start_row):
             if not row or not str(row[0]).strip():
-                break  # Exit the loop as soon as an empty cell is found
-                
+                break
             collected_data.append(row[0])
-            
         return collected_data
 
     @retry_on_http_error()
@@ -248,114 +180,39 @@ class SheetAPI(GoogleAPIs):
             n = (n // 26) - 1
         return "".join(reversed(result))
 
-    @retry_on_http_error()
-    def get_column_odd_cells(self, sheet_id, sheet_name, column_letter, start_row):
+    def _parse_range_start(self, range_str: str):
         """
-        Reads down a specific column in Google Sheets and returns all values 
-        until it hits an empty odd cell.
-        """    
-        range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
-        
-        sheet = self.service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
-        
-        values = result.get('values', [])
-        collected_data = []
-        
-        for i in range(len(values)):
-            # Calculate the actual physical spreadsheet row number
-            current_spreadsheet_row = start_row + i
-            
-            # Safe check: first see if the row list is completely empty
-            is_empty = False
-            if not values[i] or len(values[i]) == 0:
-                is_empty = True
-            elif not str(values[i][0]).strip():
-                is_empty = True
-                
-            # If it's empty, check if the PHYSICAL spreadsheet row is odd
-            if is_empty:
-                if current_spreadsheet_row % 2 != 0:
-                    break  # Stop tracking immediately if it's an empty odd row!
-                else:
-                    # If it's an empty EVEN row, your rules say keep going.
-                    # We append a blank placeholder string so your index matches up.
-                    collected_data.append("")
-                    continue
+        Parses a range like "Sheet!A1:C5" or "A1:C5" and returns the top-left cell as
+        (sheet_name, zero-indexed column, one-indexed row).
+        """
+        sheet_name, cell_part = range_str.split("!", 1) if "!" in range_str else ("", range_str)
+        start_cell = cell_part.split(":")[0]
+        start_col_str = "".join(c for c in start_cell if c.isalpha()).upper()
+        start_row_num = int("".join(c for c in start_cell if c.isdigit()))
+        start_col_idx = 0
+        for char in start_col_str:
+            start_col_idx = start_col_idx * 26 + (ord(char) - ord('A') + 1)
+        return sheet_name, start_col_idx - 1, start_row_num
 
-            # If it's not empty, grab the cell data safely
-            collected_data.append(values[i][0])
-            
-        return len(collected_data)
-    
-    @retry_on_http_error()
+    def get_column_odd_cells(self, sheet_id, sheet_name, column_letter, start_row):
+        """Returns how many values get_column_odd_cells_data would return."""
+        return len(self.get_column_odd_cells_data(sheet_id, sheet_name, column_letter, start_row))
+
     def get_column_odd_cells_data(self, sheet_id, sheet_name, column_letter, start_row) -> list:
         """
-        Reads down a specific column in Google Sheets and returns all values 
-        until it hits an empty odd cell.
-        """    
-        range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
-        
-        sheet = self.service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
-        
-        values = result.get('values', [])
+        Reads down a column until the first blank cell on an odd physical row.
+        Blank cells on even rows are preserved as "" so indices stay aligned.
+        """
         collected_data = []
-        
-        for i in range(len(values)):
-            # Calculate the actual physical spreadsheet row number
+        for i, row in enumerate(self._read_column(sheet_id, sheet_name, column_letter, start_row)):
             current_spreadsheet_row = start_row + i
-            
-            # Safe check: first see if the row list is completely empty
-            is_empty = False
-            if not values[i] or len(values[i]) == 0:
-                is_empty = True
-            elif not str(values[i][0]).strip():
-                is_empty = True
-                
-            # If it's empty, check if the PHYSICAL spreadsheet row is odd
-            if is_empty:
+            if not row or not str(row[0]).strip():
                 if current_spreadsheet_row % 2 != 0:
-                    break  # Stop tracking immediately if it's an empty odd row!
-                else:
-                    # If it's an empty EVEN row, your rules say keep going.
-                    # We append a blank placeholder string so your index matches up.
-                    collected_data.append("")
-                    continue
-
-            # If it's not empty, grab the cell data safely
-            collected_data.append(values[i][0])
-            
+                    break
+                collected_data.append("")
+                continue
+            collected_data.append(row[0])
         return collected_data
-
-    @retry_on_http_error()
-    def map_cells_for_added_delegates(self, finalassignments: dict, availableCountries, currentRow, registrationSheetID):
-        # this one appends to the row instead of overwriting it. It also reads the current number of delegates assigned to the school from the sheet, and starts from there.
-        cell_map = {}
-        assigned_cell_map = {}
-        checkingSet = set()
-        current_number = self.read_single_cell(registrationSheetID, f"Assignments!A{currentRow+1}")
-        if current_number is not None:
-            current_number = int(current_number)
-        else:
-            Display.display(f"Warning: Could not read the current number from Assignments!A{currentRow+1}. Please check the sheet.")
-            sys.exit(1)
-        for delegate, vals in finalassignments.items():
-            if len(vals) == 3:
-                committee = vals[0]
-                country = vals[2]
-                checkingSet.add(f"{committee.lower()}, {country.lower()}")
-
-                #construct school assignments cells. Search for first empty cell (displayed in Sheet)
-                assigned_cell_map[f"Assignments!{self.sheets_alphabet(current_number+1)}{currentRow}" if current_number <= 29 else f"Assignments!{self.sheets_alphabet(current_number-29)}{currentRow + 1}"] = f"{country} ({committee})"
-            current_number += 1
-        for (committee, country), coordinate in availableCountries.items():
-            if (f"{committee.lower()}, {country.lower()}") in checkingSet:
-                #just iterate through the whole availableCountries map and create a cell map while also changing values to "" for those in final assignments.
-                cell_map[coordinate] = ""
-            elif (f"{committee.lower()}, {country.lower()}") not in checkingSet:
-                cell_map[coordinate] = country
-        return finalassignments, cell_map, assigned_cell_map
 
     @retry_on_http_error()
     def read_headers_until_blank(self, spreadsheet_id, sheet_name):
@@ -515,11 +372,10 @@ class SheetAPI(GoogleAPIs):
     @retry_on_http_error()
     def read_data_for_backup(self, spreadsheet_id: str, ranges_list: list) -> dict:
         """
-        Reads multiple ranges from a Google Sheet in a single API call and maps 
+        Reads multiple ranges from a Google Sheet in a single API call and maps
         every individual cell coordinate to its current value for rollback purposes.
 
         Parameters:
-            service: Authenticated Google Sheets API service object.
             spreadsheet_id (str): The ID of the spreadsheet.
             ranges_list (list): List of range strings (e.g., ["Assignments!A1:C5", "Overview!A1:B10"])
 
@@ -530,59 +386,25 @@ class SheetAPI(GoogleAPIs):
         if not ranges_list:
             return {}
 
-        # Helper function to convert 0-indexed column numbers into A1 letters
-        def col_to_letter(col_idx):
-            result = ""
-            while col_idx >= 0:
-                result = chr(col_idx % 26 + 65) + result
-                col_idx = col_idx // 26 - 1
-            return result
-
-        # 1. Fetch all ranges in ONE single network request
         response = self.service.spreadsheets().values().batchGet(
             spreadsheetId=spreadsheet_id,
             ranges=ranges_list,
             valueRenderOption="FORMATTED_VALUE"
         ).execute()
 
-        value_ranges = response.get("valueRanges", [])
         backup_map = {}
-
-        # 2. Iterate through each returned range block
-        for vr in value_ranges:
+        for vr in response.get("valueRanges", []):
             range_str = vr.get("range", "")
             values = vr.get("values", [])
-
             if not range_str or not values:
                 continue
 
-            # Extract Sheet Name and starting coordinate from range_str (e.g., "Assignments!A1:C5")
-            if "!" in range_str:
-                sheet_name, cell_part = range_str.split("!", 1)
-            else:
-                sheet_name, cell_part = "", range_str
-
-            # Get starting cell coordinate (e.g., "A1")
-            start_cell = cell_part.split(":")[0]
-            
-            # Separate column letters from row numbers
-            start_col_str = "".join([c for c in start_cell if c.isalpha()])
-            start_row_num = int("".join([c for c in start_cell if c.isdigit()]))
-
-            # Convert starting column letter to a 0-indexed number (e.g., "A" -> 0, "B" -> 1)
-            start_col_num = 0
-            for char in start_col_str.upper():
-                start_col_num = start_col_num * 26 + (ord(char) - ord('A'))
-
-            # 3. Map every individual row and column to its cell key
+            sheet_name, start_col_num, start_row_num = self._parse_range_start(range_str)
+            prefix = f"{sheet_name}!" if sheet_name else ""
             for r_idx, row in enumerate(values):
                 current_row = start_row_num + r_idx
                 for c_idx, cell_value in enumerate(row):
-                    current_col_letter = col_to_letter(start_col_num + c_idx)
-                    
-                    # Format key: 'SheetName!A1'
-                    cell_key = f"{sheet_name}!{current_col_letter}{current_row}" if sheet_name else f"{current_col_letter}{current_row}"
-                    backup_map[cell_key] = cell_value
+                    backup_map[f"{prefix}{self.sheets_alphabet(start_col_num + c_idx)}{current_row}"] = cell_value
 
         return backup_map
 
@@ -605,103 +427,40 @@ class SheetAPI(GoogleAPIs):
         sheet_name = "Remaining Assignments"
         full_ranges = [f"{sheet_name}!{r}" for r in ranges.values()]
 
-        # Execute ONE bulk network pull for all grid blocks
         result = self.service.spreadsheets().values().batchGet(
             spreadsheetId=sheet_id,
             ranges=full_ranges
         ).execute()
 
-        value_ranges = result.get('valueRanges', [])
         availability_map = {}
-
-        # Helper to convert column indexes back to Excel letters
-        def col_to_letter(col_idx):
-            letter = ""
-            while col_idx >= 0:
-                letter = chr(col_idx % 26 + 65) + letter
-                col_idx = (col_idx // 26) - 1
-            return letter
-
-        # Process each committee block
-        for (committee_name, raw_range_str), value_range_obj in zip(
-            ranges.items(), value_ranges
-        ):
-
+        for (committee_name, raw_range_str), value_range_obj in zip(ranges.items(), result.get('valueRanges', [])):
             rows = value_range_obj.get('values', [])
             if not rows:
                 continue
 
-            # Parse the top-left starting corner of this specific bounding box
-            start_cell = raw_range_str.split(':')[0]
-            start_col_str = ''.join(
-                c for c in start_cell if c.isalpha()
-            ).upper()
-            start_row_num = int(
-                ''.join(c for c in start_cell if c.isdigit())
-            )
+            _, start_col_idx, start_row_num = self._parse_range_start(raw_range_str)
 
-            # Convert start column letter to a base-0 index
-            start_col_idx = 0
-            for char in start_col_str:
-                start_col_idx = (
-                    start_col_idx * 26
-                    + (ord(char) - ord('A') + 1)
-                )
-            start_col_idx -= 1
-
-            # Loop through every cell in the returned matrix
             for row_offset, row in enumerate(rows):
                 for col_offset, cell_value in enumerate(row):
-
                     country_name = cell_value.strip()
                     if "(" in country_name:
                         country_name = country_name.split("(", 1)[0].strip()
 
-                    # Ignore empty cells or placeholders
                     if not country_name or country_name.lower() == "unassigned":
                         continue
 
-                    # Calculate the exact row and column for THIS cell
                     current_row_abs = start_row_num + row_offset
-                    current_col_abs_letter = col_to_letter(
-                        start_col_idx + col_offset
-                    )
-
-                    absolute_coordinate = (
-                        f"{sheet_name}!{current_col_abs_letter}{current_row_abs}"
-                    )
-
-                    # Coordinate is now the unique key
-                    availability_map[absolute_coordinate] = [
+                    current_col_abs_letter = self.sheets_alphabet(start_col_idx + col_offset)
+                    availability_map[f"{sheet_name}!{current_col_abs_letter}{current_row_abs}"] = [
                         committee_name,
                         country_name
                     ]
 
         return availability_map
 
-    @retry_on_http_error()
     def get_column_data(self, sheet_id, sheet_name, column_letter, start_row):
-        """
-        Reads down a specific column in Google Sheets and returns all values 
-        """    
-        # 2. Construct the range string (e.g., "Sheet1!A2:A" fetches to the bottom)
-        range_string = f"{sheet_name}!{column_letter}{start_row}:{column_letter}"
-        
-        # 3. Make a single API call to fetch the data
-        sheet = self.service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=sheet_id, range=range_string).execute()
-        
-        # The API returns a list of lists, like [['Data1'], ['Data2'], [], ['Data4']]
-        values = result.get('values', [])
-        
-        collected_data = []
-        
-        for row in values:
-            # If row is empty, it's a blank cell; otherwise take the cell value
-            cell_value = row[0] if row else ""
-            collected_data.append(cell_value)
-            
-        return collected_data
+        """Reads down a column and returns every value, using "" for blank cells."""
+        return [row[0] if row else "" for row in self._read_column(sheet_id, sheet_name, column_letter, start_row)]
 
     def get_sheet_id_by_name(self, spreadsheet_id: str, sheet_name: str) -> int:
         """Fetches the numeric sheetId (gid) for a given sheet/tab name."""
