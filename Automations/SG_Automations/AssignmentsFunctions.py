@@ -339,25 +339,29 @@ def add_assignments(Delegates: SchoolDelegates, ConferenceInfo: ConferenceInform
                         Display.display("Country not available. Check spelling/capitalization.")
                     
             else:
-                # Validate if the user actually typed a valid option integer
                 try:
                     selection_idx = int(user_input) - 1
-                    if 0 <= selection_idx < len(current_suggestions[0]):
-                        suggested_name = current_suggestions[selection_idx]
-                        lookup_pair = [current_comm.strip(), suggested_name.strip()]
-                        
-                        # FIXED: Tuple evaluation instead of zip()
-                        if lookup_pair in ConferenceInfo.available_countries: 
-                            new_country = suggested_name
-                        else:
-                            Display.display("Selected country is no longer available. Please try again.")
-                            Display.press_any_key_to_continue()
-                    else:
-                        Display.display("Invalid suggestion option number.")
-                        Display.press_any_key_to_continue()
                 except ValueError:
                     Display.display("Please type a valid number or menu shortcut character.")
+                    Display.press_any_key_to_continue()
+                    continue
 
+                if not (0 <= selection_idx < len(current_suggestions)):
+                    Display.display(f"Invalid suggestion option number. Choose 1-{len(current_suggestions)}.")
+                    Display.press_any_key_to_continue()
+                    continue
+
+                suggested_name = current_suggestions[selection_idx]
+                lookup_pair = [current_comm.strip(), suggested_name.strip()]
+                if lookup_pair in ConferenceInfo.available_countries:
+                    new_country = suggested_name
+                else:
+                    Display.display("Selected country is no longer available. Please try again.")
+                    Display.press_any_key_to_continue()
+                    continue
+
+        if new_country is None:
+            continue  # no valid country was selected; rebuild the menu
         if type(new_country) is not str:
             raise ValueError(f"Invalid country assignment for delegate {delegate_key}. Expected a string, got {type(new_country)}.")
         update_delegates(new_country, old_country, delegate_key, current_comm, ConferenceInfo, Delegates)
