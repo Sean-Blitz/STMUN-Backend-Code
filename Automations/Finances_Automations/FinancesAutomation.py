@@ -121,7 +121,7 @@ mail_school_names = mailAPI.extract_strings_and_remove_label(message_ids=gmailID
 
 i=0
 for i in range(len(mail_school_names)):
-    record_id = Database.get_field_by_name(search_name=mail_school_names[i], search_column="School Name")
+    record_id = Database.get_field_by_name(search_name=mail_school_names[i], search_column="School Name", return_column="Record ID")
 
     sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, delFee, head_delegate_email, date = Database.search_records(record_id)
     city, state, zipCode, DelCount = Database.search_formResponse(record_id)
@@ -204,7 +204,10 @@ for i in range(len(mail_school_names)):
 
     sheeturl = "https://docs.google.com/spreadsheets/d/" + newInvoice
     Display.display(sheeturl)
-    Todo.place_invoice_link_in_todolist(sName, invoiceNumber, sheeturl)
+    try:
+        Todo.place_invoice_link_in_todolist(sName, invoiceNumber, sheeturl)
+    except Exception as e:
+        Display.display(f"Error placing invoice link in todo list: {e}")
 
     docID = CloudStorageAPI.copy_drive_file(
         file_id=emailtemplate,

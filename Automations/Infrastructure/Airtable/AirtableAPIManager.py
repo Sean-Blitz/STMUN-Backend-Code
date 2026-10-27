@@ -60,7 +60,7 @@ class AirtableAPI:
         if type(fin_fields.get("Delegation Fee")) == dict:
             DelFee = 0
         else:
-            DelFee = int(fin_fields.get("Delegation Fee", 0).replace("$", "").replace(",", ""))
+            DelFee = int(fin_fields.get("Delegation Fee").replace("$", "").replace(",", ""))
 
         return sName, sAddress, sPhoneNumber, aName, aPhoneNumber, aEmail, DelegateCount, Balance, CheckDelegateCount, Subtotal, DelFee, head_delegate_email, date
 
@@ -211,7 +211,7 @@ class AirtableAPI:
 
         return response.json()
 
-    def get_field_by_name(self, search_name, search_column):
+    def get_field_by_name(self, search_name, search_column, return_column):
         """
         Searches Airtable table for a value and returns another field from the same row.
 
@@ -224,7 +224,6 @@ class AirtableAPI:
             str or None: Value from return_column in the matching row
         """
         api_key = self.api_token
-        return_column = "Record ID"
         url = f"https://api.airtable.com/v0/appEySB2x9jqHy16Q/{form_response_table_id}" #change this next year.
         headers = {"Authorization": f"Bearer {api_key}"}
 
