@@ -53,12 +53,6 @@ def find_year_folder_id(school_name):
 
     return yearfolder
 
-# error prevention by creating a safe float value in case an empty cell or unexpected value is returned 
-def safe_int(value): 
-    if value is None or value == "":
-        return 0 
-    return float(value) # float value is fine for safe_int?
-
 def display_sheets_needing_edits():
     Display.display("You should manually edit these sheets due to partial payment/decisions you need to make:")
     for school_name, sheet_id in toeditsheets.items():
@@ -104,8 +98,8 @@ if Final == "n":
 
         try:
             payments, balance = Sheets.read_cells(fromsheetID, [f"{from_tab}!H33", f"{from_tab}!H36"], value_render_option="UNFORMATTED_VALUE")
-            balance = safe_int(balance) # if balance is not None else 0 -> use safe_int
-            payments = safe_int(payments) # if payments is not None else 0
+            balance = int(balance) if balance is not None else 0
+            payments = int(payments) if payments is not None else 0
         except Exception as e:
             Display.display(f"Error reading cell values for {school_name}: {e}")
             Display.display(f"Likely due to a missing {from_tab} tab or non-numeric values. Skipping this school.")
@@ -195,8 +189,8 @@ elif Final == "y":
 
         try:
             payments, balance = Sheets.read_cells(fromsheetID, ["Invoice 3!H33", "Invoice 3!H36"], value_render_option="UNFORMATTED_VALUE")
-            payments = safe_int(payments) # if payments is not None else 0 -> not needed anymore bc of safe_int
-            balance = safe_int(balance) # if balance is not None else 0 -> not needed anymore bc of safe_int 
+            balance = int(balance) if balance is not None else 0
+            payments = int(payments) if payments is not None else 0 
         except Exception as e:
             Display.display(f"Error reading cell values for {school_name}: {e}")
             Display.display("Likely due to missing Invoice 3 tab. Please check the sheet and ensure Invoice 3 is created. Skipping this school.")
