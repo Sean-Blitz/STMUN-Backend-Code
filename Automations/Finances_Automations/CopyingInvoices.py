@@ -39,10 +39,18 @@ names = list(FolderIDs.keys())
 toeditsheets = {}
 paidschoolsheets = {}
 
-def find_year_folder_id(school_name):
+# original function assumed school name always exists
+# the new function should prevent any possible keyerror
+def find_year_folder_id(school_name): 
+    if school_name not in FolderIDs:
+        Display.display(f"School folder not found: {school_name}")
+        return None
+
     yearfolder = CloudStorageAPI.find_subfolder_id(FolderIDs[school_name], YearText)
+
     if yearfolder is None:
         Display.display(f"Year folder not found for {school_name}. Please check the folder structure.")
+
     return yearfolder
 
 def display_sheets_needing_edits():
@@ -181,8 +189,8 @@ elif Final == "y":
 
         try:
             payments, balance = Sheets.read_cells(fromsheetID, ["Invoice 3!H33", "Invoice 3!H36"], value_render_option="UNFORMATTED_VALUE")
-            payments = int(payments) if payments is not None else 0
             balance = int(balance) if balance is not None else 0
+            payments = int(payments) if payments is not None else 0 
         except Exception as e:
             Display.display(f"Error reading cell values for {school_name}: {e}")
             Display.display("Likely due to missing Invoice 3 tab. Please check the sheet and ensure Invoice 3 is created. Skipping this school.")
